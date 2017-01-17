@@ -17,12 +17,12 @@
  */
 
 /**
- * klingel-cgi.c
+ * ir-cgi.c
  *
- * CGI program to connect to the klingel daemon and send an open door code
- * passed as the query string, or to ring the bell on an empty query.
+ * CGI program to connect to the mpd daemon and communicate various XML HTTP
+ * requests from the client.
  *
- * Simply make the klingel.cgi binary executable by your web server. 
+ * Simply make the ir.cgi binary executable by your web server.
  *
  */
 
@@ -101,47 +101,101 @@ char* urldecode( const char *str )
     return dup;
 }
 
+// start outputting results
+void output_start( )
+{
+    puts( "Content-type: application/json\n" );               // header
+    puts( "{\"status\":200,\"message\":\"Request successfull\",\"data\":{" );  // start JSON output
+}
+
+// finish outputting results and end program
+void output_end( )
+{
+    puts( "}}" );  // end JSON output
+    exit( 0 );
+}
+
+// output result
+void output( const char* data )
+{
+    output_start( );
+    if( data ) puts( data );
+    output_end( );
+}
+
+// output an error and exit
+void error( const int code, const char* msg, const char* message )
+{
+    fprint( "Status: %d %s\nContent-type: application/json\n\n", code, msg );               // header
+    fprint( "{\"status\":%d,\"message\":\"%s\"}", code, message != NULL ? message : msg );  // JSON
+    exit( code );
+}
+
 // Main program entry point
 int main( int argc, char *argv[] )
 {
     // get query string from CGI environment
     const char *arg = getenv( "QUERY_STRING" );
     if( arg == NULL )
-    {
-        puts( "Status: 400 Bad Request" );
-        puts( "Content-type: application/json\n" );
-        puts( "{\"status\":400,\"message\":\"Request incomplete\"}" );
-        return 400;
-    }
-
-    // open FIFO pipe to main klingel daemon
-    int fd = open( FIFO_PFAD, O_WRONLY );
-    if( fd == -1 )
-    {
-        puts( "Status: 500 Internal Server Error" );
-        puts( "Content-type: application/json\n" );
-        puts( "{\"status\":500,\"message\":\"Request failed\"}" );
-        return 500;
-    }
+        error( 400, "Bad Request", "Request incomplete" );
 
     // URL decode argument
     char *argdec = urldecode( arg );
     if( argdec == NULL )
+        error( 500, "Internal Server Error", "Request failed" );
+
+    // decode command
+    if( strcmp( argdec, "music" ) == 0 )
     {
-        puts( "Status: 500 Internal Server Error" );
-        puts( "Content-type: application/json\n" );
-        puts( "{\"status\":500,\"message\":\"Request failed\"}" );
-        close( fd );
-        return 500;
+        // Send list of all music files on server (may be large!)
+        sendMusic( NULL );
+    }
+    else if( strncmp( argdec, "music:", 6 ) == 0 )
+    {
+        // Send list of music files on server matching the search string (or all files on empty search string)
+        sendMusic( argdec[6] == '\0' ? NULL : argdec+6 );
+    }
+    else if( strcmp( argdec, "playlists" ) == 0 )
+    {
+        // Send list of all playlists on server
+        sendPlaylists( );
+    }
+    else if( strcmp( argdec, "forward" ) == 0 )
+    {
+        // Jump to next item on playlist
+        skip( 1 );
+    }
+    else if( strcmp( argdec, "back" ) == 0 )
+    {
+        // Jump to previous item on playlist
+        skip( -1 );
+    }
+    else if( strncmp( argdec, "skip:", 5 ) == 0 )
+    {
+        // Jump a given number of songs
+        int i = strtol( argdec+5, 10, NULL );
+        skip( i );
+    }
+    else if( strcmp( argdec, "play" ) == 0 )
+    {
+        // Start playback
+        play( );
+    }
+    else if( strcmp( argdec, "pause" ) == 0 )
+    {
+        // Pause playback
+        pause( );
+    }
+    else if( strcmp( argdec, "state" ) == 0 )
+    {
+        // Send current state (current playlist, current song, ...)
+        sendState( );
     }
 
-    // decode and send argument
-    write( fd, argdec, strlen( argdec ) );
+    // cleanup
     free( argdec );
-    close( fd );
 
-    puts( "Content-type: application/json\n" );
-    puts( "{\"status\":200,\"message\":\"Request accepted\"}" );
-
+    // success, no data to send
+    output( NULL );
     return 0;
 }
