@@ -145,20 +145,20 @@ int main( int argc, char *argv[] )
         error( 500, "Internal Server Error", "Request failed" );
 
     // decode command
-    if( strcmp( argdec, "music" ) == 0 )
+    if( strncmp( argdec, "search:", 7 ) == 0 )
     {
-        // Send list of all music files on server (may be large!)
-        sendMusic( NULL );
-    }
-    else if( strncmp( argdec, "music:", 6 ) == 0 )
-    {
-        // Send list of music files on server matching the search string (or all files on empty search string)
-        sendMusic( argdec[6] == '\0' ? NULL : argdec+6 );
+        // Search a song in the music list
+        searchMusic( argdec+7 );
     }
     else if( strcmp( argdec, "playlists" ) == 0 )
     {
         // Send list of all playlists on server
         sendPlaylists( );
+    }
+    else if( strncmp( argdec, "playlist:", 9 ) == 0 )
+    {
+        // Send content of given playlist
+        sendPlaylist( argdec+9 );
     }
     else if( strcmp( argdec, "forward" ) == 0 )
     {
@@ -172,8 +172,8 @@ int main( int argc, char *argv[] )
     }
     else if( strncmp( argdec, "skip:", 5 ) == 0 )
     {
-        // Jump a given number of songs
-        int i = strtol( argdec+5, 10, NULL );
+        // Jump a given number of songs in current playlist
+        int i = strtol( argdec+5, NULL, 10 );
         skip( i );
     }
     else if( strcmp( argdec, "play" ) == 0 )
@@ -186,10 +186,10 @@ int main( int argc, char *argv[] )
         // Pause playback
         pause( );
     }
-    else if( strcmp( argdec, "state" ) == 0 )
+    else if( strcmp( argdec, "status" ) == 0 )
     {
-        // Send current state (current playlist, current song, ...)
-        sendState( );
+        // Send current state (current queue, current song, ...)
+        sendStatus( );
     }
 
     // cleanup
