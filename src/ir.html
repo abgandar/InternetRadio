@@ -27,13 +27,13 @@
                   user-select: none; /* Non-prefixed version */ }
       #container { position: fixed; top: 0px; left: 0px; height: 100%; width: 100%; overflow: hidden; padding: 0px; margin: 0px; }
 
-      #sidebar { z-index: 10; position: absolute; left: -260px; width: 300px; transition: left 300ms; -webkit-transition: left 300ms; margin: 0px; padding: 0px; }
+      #sidebar { z-index: 10; position: absolute; left: -260px; width: 300px; transition: left 300ms; -webkit-transition: left 300ms; margin: 0px; padding: 0px; overflow-x: hidden; overflow-y: scroll; }
       #sidebar.aktiv { left: 0%; }
       #sidebar li { border: 1px solid black; font-size: 20pt; display: block; background: #DDDDDD; white-space: nowrap; }
       #sidebar a { margin: 0px; padding: 15px 5px; display: block; text-decoration: none; color: black; text-align: right; }
-      #pause-li.play { background: green; }
+      #pause-li.play { background: lightgreen; }
       #pause-li.play #stop { display: none; }
-      #pause-li.stop { background: red; }
+      #pause-li.stop { background: pink; }
       #pause-li.stop #start { display: none; }
       #laden-li { border-bottom: 2px double; }
       #sidebar .playlist { background: lightyellow; }
@@ -95,7 +95,7 @@
             li.className = 'playlist';
             var a = document.createElement('a');
             a.href = "javascript:loadPlaylist('"+this.response.playlists[i].name+"');";
-            var text = document.createTextNode(this.response.playlists[i].name+" &nbsp;&nbsp; &#x1f4fb;");
+            var text = document.createTextNode(this.response.playlists[i].name+"    \ux1f4fb");
             a.appendChild(text);
             li.appendChild(a);
             list.appendChild(li);

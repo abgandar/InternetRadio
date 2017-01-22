@@ -237,8 +237,7 @@ void loadPlaylist( const char *arg )
 
     if( !mpd_run_load( conn, arg ) )
         error( 404, "Not found", "Playlist not found" );
-
-    output_start( );
+    play( 0 );  // start playing the first song (also starts the response output)
 }
 
 // send content of specific playlist on server and simultaneously load it into queue
