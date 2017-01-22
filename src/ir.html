@@ -89,7 +89,7 @@
         while( old[0] ) list.removeChild( old[0] );
 
         // sort and add new entries
-        var playlists = this.response.playlists.sort( function( a, b ) { return a.name.localeCompare( a.name ); } )
+        var playlists = this.response.playlists.sort( function( a, b ) { return a.name.localeCompare( b.name ); } )
         for( var i = 0; i < playlists.length; i++ )
         {
             var li = document.createElement( 'li' );
