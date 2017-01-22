@@ -1,7 +1,5 @@
-#define DEBUG                                   // Show debug output
+//#define DEBUG                                   // Show debug output
 
 // System Pfade
-#define PLAYLIST_PFAD           "/var/lib/mpd/playlists"    // Playlists
-#define MUSIC_PFAD              "/var/lib/mpd/music"        // Music
 #define SOCKET_PFAD             "/run/mpd/socket"           // MPD socket
-//#define MPD_PASSWORD            ""                          // MPD passwort (falls konfiguriert)
+#define MPD_PASSWORD            "72TkJ98yo0mw"              // MPD passwort (falls nötig)
