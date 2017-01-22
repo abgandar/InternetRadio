@@ -232,6 +232,8 @@ void loadPlaylist( const char *arg )
 
     if( !mpd_run_load( conn, arg ) )
         error( 404, "Not found", "Playlist not found" );
+
+    output_start( );
 }
 
 // send content of specific playlist on server and simultaneously load it into queue
@@ -288,6 +290,8 @@ void skip( int where )
 
     if( !res )
         error( 500, "Internal Server Error", "Error skipping songs" );
+
+    output_start( );
 }
 
 // play given song position
@@ -296,6 +300,8 @@ void play( int position )
     if( position >= 0 )
         if( !mpd_send_play_pos( conn, position ) )
             error( 404, "Not found", "Invalid song position" );
+
+    output_start( );
 }
 
 // play given song id
@@ -304,6 +310,8 @@ void playid( int id )
     if( id >= 0 )
         if( !mpd_send_play_id( conn, id ) )
             error( 404, "Not found", "Invalid song id" );
+
+    output_start( );
 }
 
 // pause / unpause playback
@@ -328,7 +336,10 @@ void pausemusic( int position )
         default:
             // start playing the given song id
             play( position );
+            return;
     }
+
+    output_start( );
 }
 
 // Main program entry point
