@@ -152,7 +152,7 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?state";
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function() { updateState( this.request.state ); } );
+        xhr.addEventListener( 'load', function() { updateState( this.response.state ); } );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
