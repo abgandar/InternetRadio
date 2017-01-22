@@ -185,7 +185,7 @@ void error( const int code, const char* msg, const char* message )
 #define NOT_YET_IMPLEMENTED puts( "Not yet implemented" )
 
 // search the music database for entries matching the given search term
-void searchMusic( const char arg )
+void searchMusic( const char *arg )
 {
     NOT_YET_IMPLEMENTED;
 }
@@ -197,9 +197,9 @@ void sendPlaylists( )
 }
 
 // send content of specific playlist on server
-void sendPlaylist( const char arg )
+void sendPlaylist( const char *arg )
 {
-    mpd_song *song = NULL;
+    struct mpd_song *song = NULL;
 
     if( !mpd_send_list_playlist( conn, arg ) )
         error( 404, "Not found", "Playlist not found" );
@@ -233,7 +233,7 @@ void sendPlaylist( const char arg )
 }
 
 // load the specified playlist into the queue, replacing current queue
-void loadPlaylist( const char arg )
+void loadPlaylist( const char *arg )
 {
     NOT_YET_IMPLEMENTED;
 }
