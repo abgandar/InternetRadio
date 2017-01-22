@@ -196,7 +196,7 @@ void searchMusic( const char *arg )
     NOT_YET_IMPLEMENTED;
 }
 
-// play/pause playback
+// add song to playlist
 void add( const char *arg )
 {
     NOT_YET_IMPLEMENTED;
@@ -302,9 +302,8 @@ void skip( int where )
 // play given song position
 void play( int position )
 {
-    if( position >= 0 )
-        if( !mpd_send_play_pos( conn, position ) )
-            error( 404, "Not found", "Invalid song position" );
+    if( position >= 0 && !mpd_run_play_pos( conn, position ) )
+        error( 404, "Not found", "Invalid song position" );
 
     output_start( );
 }
@@ -312,9 +311,8 @@ void play( int position )
 // play given song id
 void playid( int id )
 {
-    if( id >= 0 )
-        if( !mpd_send_play_id( conn, id ) )
-            error( 404, "Not found", "Invalid song id" );
+    if( id >= 0 && !mpd_run_play_id( conn, id ) )
+        error( 404, "Not found", "Invalid song id" );
 
     output_start( );
 }
