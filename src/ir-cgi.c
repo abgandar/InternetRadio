@@ -171,7 +171,7 @@ void output_end( )
     }
     else
     {
-        puts( "stat:{}" );  // need to put this to prevent trailing comma
+        puts( "state:{}" );  // need to put this to prevent trailing comma
     }
 
     puts( "}" );  // end JSON output
