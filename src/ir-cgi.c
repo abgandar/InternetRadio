@@ -207,19 +207,14 @@ void sendPlaylist( const char *arg )
 
     // print the playlist
     puts( "playlist:[" );
-    int first = true;
+    int i = 0;
     while( (song = mpd_recv_song( conn ) ) )
     {
-        if( first )
-        {
-            puts( "{" );
-            first = false;
-        }
-        else
-        {
+        if( i )
             puts( ",{" );
-        }
-        printf( "\"position\":%i,\n", mpd_status_get_song_pos( status ) );
+        else
+            puts( "{" );
+        printf( "\"position\":%i,\n", i );
         printf( "\"id\":%i,\n", mpd_song_get_id( song ) );
         printf( "\"title\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ) );
         printf( "\"name\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ) );
@@ -227,6 +222,7 @@ void sendPlaylist( const char *arg )
         printf( "\"uri\":\"%s\"\n", mpd_song_get_uri( song ) );
         puts( "}" );
         mpd_song_free( song );
+        i++;
     }
     puts( "]," );
 
