@@ -88,14 +88,15 @@
         var old = list.getElementsByClassName('playlist');
         while( old[0] ) list.removeChild( old[0] );
 
-        // add new entries
-        for( var i = 0; i < this.response.playlists.length; i++ )
+        // sort and add new entries
+        var playlists = this.response.playlists.sort( function( a, b ) { return a.name.localCompare( a.name ); } )
+        for( var i = 0; i < playlists.length; i++ )
         {
             var li = document.createElement( 'li' );
             li.className = 'playlist';
             var a = document.createElement('a');
-            a.href = "javascript:loadPlaylist('"+this.response.playlists[i].name+"');";
-            var text = document.createTextNode(this.response.playlists[i].name+"    \uD83D\uDCFB");
+            a.href = "javascript:loadPlaylist('"+playlists[i].name+"');";
+            var text = document.createTextNode(playlists[i].name+"    \uD83D\uDCFB");
             a.appendChild(text);
             li.appendChild(a);
             list.appendChild(li);
