@@ -177,8 +177,8 @@ void output_end( )
 // output an error and exit
 void error( const int code, const char* msg, const char* message )
 {
-    fprint( "Status: %d %s\nContent-type: application/json\n\n", code, msg );               // header
-    fprint( "{\"status\":%d,\"message\":\"%s\"}", code, message != NULL ? message : msg );  // JSON
+    printf( "Status: %d %s\nContent-type: application/json\n\n", code, msg );               // header
+    printf( "{\"status\":%d,\"message\":\"%s\"}", code, message != NULL ? message : msg );  // JSON
     if( conn ) mpd_connection_free( conn );
     exit( code );
 }
