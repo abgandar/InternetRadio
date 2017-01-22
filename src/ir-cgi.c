@@ -220,7 +220,7 @@ void sendPlaylists( )
             puts( ",{" );
         else
             puts( "{" );
-        printf( "\"name\":\"%s\",\n", mpd_playlist_get_path( list ) );
+        printf( "\"name\":\"%s\"", mpd_playlist_get_path( list ) );
         puts( "}" );
         mpd_playlist_free( list );
         i++;
