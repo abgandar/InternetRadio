@@ -202,6 +202,77 @@ void add( const char *arg )
     NOT_YET_IMPLEMENTED;
 }
 
+// skip by the given amount
+void skip( int where )
+{
+    bool res = false;
+    switch( where )
+    {
+        case 1:
+            res = mpd_run_next( conn );
+            break;
+
+        case -1:
+            res = mpd_run_previous( conn );
+            break;
+
+        case 0:
+            res = mpd_run_play( conn );
+            break;
+    }
+
+    if( !res )
+        error( 500, "Internal Server Error", "Error skipping songs" );
+
+    output_start( );
+}
+
+// play given song position
+void play( int position )
+{
+    if( position >= 0 && !mpd_run_play_pos( conn, position ) )
+        error( 404, "Not found", "Invalid song position" );
+
+    output_start( );
+}
+
+// play given song id
+void playid( int id )
+{
+    if( id >= 0 && !mpd_run_play_id( conn, id ) )
+        error( 404, "Not found", "Invalid song id" );
+
+    output_start( );
+}
+
+// pause / unpause playback
+void pausemusic( int position )
+{
+    struct mpd_status *status = NULL;
+	if( !(status = mpd_run_status( conn )) )
+        error( 500, "Internal Server Error", "Error getting status" );
+
+    switch( mpd_status_get_state( status ) )
+    {
+        case MPD_STATE_PLAY:
+            // pause
+            mpd_run_pause( conn, 1 );
+            break;
+
+        case MPD_STATE_PAUSE:
+            // unpause
+            mpd_run_pause( conn, 0 );
+            break;
+
+        default:
+            // start playing the given song id
+            play( position );
+            return;
+    }
+
+    output_start( );
+}
+
 // send list of all playlists on the server
 void sendPlaylists( )
 {
@@ -279,77 +350,6 @@ void sendPlaylist( const char *arg )
     puts( "]," );
 
     mpd_response_finish( conn );
-}
-
-// skip by the given amount
-void skip( int where )
-{
-    bool res = false;
-    switch( where )
-    {
-        case 1:
-            res = mpd_run_next( conn );
-            break;
-
-        case -1:
-            res = mpd_run_previous( conn );
-            break;
-
-        case 0:
-            res = mpd_run_play( conn );
-            break;
-    }
-
-    if( !res )
-        error( 500, "Internal Server Error", "Error skipping songs" );
-
-    output_start( );
-}
-
-// play given song position
-void play( int position )
-{
-    if( position >= 0 && !mpd_run_play_pos( conn, position ) )
-        error( 404, "Not found", "Invalid song position" );
-
-    output_start( );
-}
-
-// play given song id
-void playid( int id )
-{
-    if( id >= 0 && !mpd_run_play_id( conn, id ) )
-        error( 404, "Not found", "Invalid song id" );
-
-    output_start( );
-}
-
-// pause / unpause playback
-void pausemusic( int position )
-{
-    struct mpd_status *status = NULL;
-	if( !(status = mpd_run_status( conn )) )
-        error( 500, "Internal Server Error", "Error getting status" );
-
-    switch( mpd_status_get_state( status ) )
-    {
-        case MPD_STATE_PLAY:
-            // pause
-            mpd_run_pause( conn, 1 );
-            break;
-
-        case MPD_STATE_PAUSE:
-            // unpause
-            mpd_run_pause( conn, 0 );
-            break;
-
-        default:
-            // start playing the given song id
-            play( position );
-            return;
-    }
-
-    output_start( );
 }
 
 // Main program entry point
