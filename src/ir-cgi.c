@@ -247,6 +247,12 @@ void play( int state )
     NOT_YET_IMPLEMENTED;
 }
 
+// play/pause playback
+void add( const char *arg )
+{
+    NOT_YET_IMPLEMENTED;
+}
+
 // Main program entry point
 int main( int argc, char *argv[] )
 {

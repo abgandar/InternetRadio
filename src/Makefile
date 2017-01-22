@@ -1,4 +1,4 @@
-LD_FLAGS += -lmpdclient
+LDFLAGS += -lmpdclient
 
 all: ir.cgi
 
