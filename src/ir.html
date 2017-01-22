@@ -108,37 +108,24 @@
 
       function pause( )
       {
-        if( document.getElementById('pause-li').className == 'stop' )
-        {
-            // stop playback (pause?)
-            var url = "http://"+location.host+"/cgi-bin/ir.cgi?stop";
-            var xhr = new XMLHttpRequest( );
-            xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'play'; } );
-            xhr.responseType = 'json';
-            xhr.open( 'GET', url, true );
-            xhr.send( );
-        }
-        else
-        {
-            // find song to start playing
-            var nr = -1;
-            var ch = document.getElementById('sender').children;
-            for( i = 0; i < ch.length; i++ )
-                if( ch[i].classList.contains('aktiv') )
-                {
-                    nr = i;
-                    break;
-                }
-            if( nr == -1 ) return;  // no song selected => no-op
+        // Pause or unpause. If we're stopped, start playing at the selected song
+        // find selected song
+        var nr = -1;
+        var ch = document.getElementById('sender').children;
+        for( i = 0; i < ch.length; i++ )
+            if( ch[i].classList.contains('aktiv') )
+            {
+                nr = i;
+                break;
+            }
 
-            // send request to server
-            var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "play:"+nr );
-            var xhr = new XMLHttpRequest( );
-            xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'stop'; } );
-            xhr.responseType = 'json';
-            xhr.open( 'GET', url, true );
-            xhr.send( );
-        }
+        // send request to server
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "pause:"+i );
+        var xhr = new XMLHttpRequest( );
+        xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = this.response.state.playing ? 'stop' : 'play'; } );
+        xhr.responseType = 'json';
+        xhr.open( 'GET', url, true );
+        xhr.send( );
       }
 
       function toggleMenu()
@@ -152,16 +139,12 @@
     <ul id="sidebar">
       <li id="menu-li"><a id="menu" href="javascript:toggleMenu()">Internet Radio &nbsp;&nbsp; &#9776;</a></li>
       <li id="pause-li" class="play">
-        <span id="start"><a href="javascript:pause()">Abspielen &nbsp;&nbsp; &#x25b6;</a></span>
-        <span id="stop"><a href="javascript:pause()">Pause &nbsp;&nbsp; &#x23f8;</a></span>
+        <a id="start" href="javascript:pause( )">Abspielen &nbsp;&nbsp; &#x25b6;</a>
+        <a id="stop" href="javascript:pause( )">Pause &nbsp;&nbsp; &#x23f8;</a>
       </li>
       <li id="laden-li"><a id="laden" href="javascript:loadSender()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
     </ul>
     <ul id="sender">
-        <li class="aktiv"><a href="javascript:play(0)">SWR1 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
-        <li><a href="javascript:play(1)">Klassik Radio - Hamburg (Deutschland)</a></li>
-        <li><a href="javascript:play(2)">SWR2 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
-        <li><a href="javascript:play(3)">SWR3 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
     </ul>
     </div>
   </body>
