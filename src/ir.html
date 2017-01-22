@@ -45,7 +45,7 @@
       function populateSender( )
       {
         var response = this.response;   // JSON data
-        var songs = response.data.songs;
+        var songs = response.playlist;
         var list = document.getElementById('sender');
 
         // remove previous entries
@@ -57,24 +57,19 @@
             var li = document.createElement( 'li' );
             var a = document.createElement('a');
             a.href = "javascript:play("+i+");";
-            var text = document.createTextNode(songs[i].title);
+            var text = document.createTextNode(songs[i].name);
             a.appendChild(text);
             li.appendChild(a);
             list.appendChild(li);
         }
 
         // set state
-        if( response.data.state.playing )
-        {
-            document.getElementById('pause-li').className = 'stop';
-            if( response.data.state.song )
-                list.children[response.data.state.song].className = "aktiv";
-        }
+        if( response.state.song )
+            list.children[response.state.song.position].className = "aktiv";
         else
-        {
-            document.getElementById('pause-li').className = 'play';
             list.children[0].className = "aktiv";
-        }
+
+        document.getElementById('pause-li').className = response.state.playing ? 'stop' : 'play';
       }
 
       function loadSender( )

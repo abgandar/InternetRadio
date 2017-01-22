@@ -121,7 +121,7 @@ void output_end( )
     struct mpd_song *song = NULL;
 	if( mpd_command_list_begin( conn, true ) && mpd_send_status( conn ) && mpd_send_current_song( conn ) && mpd_command_list_end( conn ) && (status = mpd_recv_status( conn )) )
     {
-        puts( "\"stat\":{" );
+        puts( "\"state\":{" );
 
         if( mpd_status_get_state( status ) == MPD_STATE_PLAY || mpd_status_get_state( status ) == MPD_STATE_PAUSE )
         {
