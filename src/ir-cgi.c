@@ -109,8 +109,13 @@ char* urldecode( const char *str )
 // start outputting results
 void output_start( )
 {
+    static bool started = false;
+
+    if( started ) return;   // only send once
+
     puts( "Content-type: application/json\n" );               // header
     puts( "{\"status\":200,\"message\":\"Request successfull\"," );  // start JSON output
+    started = true;
 }
 
 // finish outputting results and end program
