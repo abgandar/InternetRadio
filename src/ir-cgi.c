@@ -202,7 +202,7 @@ void sendPlaylists( )
 {
     struct mpd_playlist *list = NULL;
 
-    if( !mpd_send_list_playlists( conn, arg ) )
+    if( !mpd_send_list_playlists( conn ) )
         error( 500, "Internal Server Error", "Error listing playlists" );
 
     // print all playlists
@@ -287,7 +287,7 @@ void playid( int id )
 }
 
 // pause / unpause playback
-void pause( int state )
+void pausemusic( int state )
 {
     NOT_YET_IMPLEMENTED;
 }
@@ -373,7 +373,7 @@ int main( int argc, char *argv[] )
     {
         // Pause playback
         int i = strtol( argdec+6, NULL, 10 );
-        pause( i );
+        pausemusic( i );
     }
     else if( strncmp( argdec, "add:", 4 ) == 0 )
     {
