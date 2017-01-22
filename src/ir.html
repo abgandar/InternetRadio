@@ -42,6 +42,8 @@
       #sender li.aktiv { background: lightblue; border-width: 2px; }
     </style>
     <script type="text/javascript">
+      DEFAULT_PLAYLIST = 'Radio';
+
       function updateState( state )
       {
         // set state
@@ -55,6 +57,10 @@
 
       function populateQueue( )
       {
+        // if the queu is empty, populate it with the default playlist now
+        if( this.response.playlist.length == 0 )
+            loadPlaylist( DEFAULT_PLAYLIST );
+
         var list = document.getElementById('sender');
 
         // remove previous entries
@@ -132,6 +138,12 @@
         xhr.send( );
       }
 
+      function refresh( )
+      {
+        refreshPlaylists( );
+        refreshQueue( );
+      }
+
       function play( nr )
       {
         var ch = document.getElementById('sender').children;
@@ -183,7 +195,7 @@
       }
     </script>
   </head>
-  <body onload="loadSender()">
+  <body onload="refresh()">
     <div id="container">
     <ul id="sidebar">
       <li id="menu-li"><a id="menu" href="javascript:toggleMenu()">Internet Radio &nbsp;&nbsp; &#9776;</a></li>
@@ -191,7 +203,7 @@
         <a id="start" href="javascript:pause( )">Abspielen &nbsp;&nbsp; &#x25b6;</a>
         <a id="stop" href="javascript:pause( )">Pause &nbsp;&nbsp; &#x23f8;</a>
       </li>
-      <li id="laden-li"><a id="laden" href="javascript:loadSender()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
+      <li id="laden-li"><a id="laden" href="javascript:refresh()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
     </ul>
     <ul id="sender">
     </ul>
