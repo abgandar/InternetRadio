@@ -18,102 +18,152 @@
      Creative Commons Attribution-Noncommercial-No Derivate Works 3.0 Unported
      http://icon-icons.com/de/symbol/Alarm-Glocke/20783   -->
     <style>
-      body { font-family: Helvetica, Arial, sans;
+      body { font-family: Helvetica Neue, Helvetica, Arial, sans;
         -webkit-touch-callout: none; /* iOS Safari */
           -webkit-user-select: none; /* Chrome/Safari/Opera */
            -khtml-user-select: none; /* Konqueror */
              -moz-user-select: none; /* Firefox */
               -ms-user-select: none; /* Internet Explorer/Edge */
                   user-select: none; /* Non-prefixed version */ }
-      #keypad { position: fixed; top: 0px; left: 0px; height: 101%; width: 100%; border: none; border-collapse: collapse; }
-      .success { background: lightgreen; }
-      .error { background: pink; }
-      .number:active { background: lightgrey; }
-      .number { height: 21.25%; width: 33.3333%; background: #eeeeee; padding: 2px; text-align: center; font-size: 24px; cursor: default; }
-      #code { height: 15%; border: solid 1px black; padding: 2px; text-align: center; font-size: 48px; overflow: hidden; -webkit-transition: background 250ms; transition: background 250ms; }
-      #star { background: green; color: white; }
-      #hash { background: red; color: white; }
+      #container { position: fixed; top: 0px; left: 0px; height: 100%; width: 100%; overflow: hidden; padding: 0px; margin: 0px; }
+
+      #sidebar { z-index: 10; position: absolute; left: -260px; width: 300px; transition: left 300ms; -webkit-transition: left 300ms; margin: 0px; padding: 0px; }
+      #sidebar.aktiv { left: 0%; }
+      #sidebar li { border: 1px solid black; font-size: 20pt; display: block; background: #DDDDDD; white-space: nowrap; }
+      #sidebar a { margin: 0px; padding: 15px 5px; display: block; text-decoration: none; color: black; text-align: right; }
+      #pause-li.play { background: green; }
+      #pause-li.play #stop { display: none; }
+      #pause-li.stop { background: red; }
+      #pause-li.stop #start { display: none; }
+
+      #sender { position: absolute; bottom: 0px; left: 0px; right: 0px; height: 100%; overflow-x: hidden; overflow-y: scroll; padding: 0px; margin: 0px; box-sizing: border-box; }
+      #sender li { border: 1px solid black; width: 100%; box-sizing: border-box; display: block; padding: 0px; }
+      #sender li a { margin: 0px; padding-top: 30px; padding-bottom: 30px; padding-left: 45px; padding-right: 10px; display: block; text-decoration: none; color: black; font-size: 16pt; box-sizing: border-box; }
+      #sender li.aktiv { background: lightblue; border-width: 2px; }
     </style>
     <script type="text/javascript">
-      code = "";
-
-      function key( ev )
+      function populateSender( )
       {
-        ev = ev || window.event;
-        switch( ev.keyCode )
+        var response = this.response;   // JSON data
+        var songs = response.data.songs;
+        var list = document.getElementById('sender');
+
+        // remove previous entries
+        while( list.firstChild ) list.removeChild( list.firstChild );
+
+        // add new entries
+        for( var i = 0; i < songs.length; i++ )
         {
-          case '1'.charCodeAt( 0 ):
-          case '2'.charCodeAt( 0 ):
-          case '3'.charCodeAt( 0 ):
-          case '4'.charCodeAt( 0 ):
-          case '5'.charCodeAt( 0 ):
-          case '6'.charCodeAt( 0 ):
-          case '7'.charCodeAt( 0 ):
-          case '8'.charCodeAt( 0 ):
-          case '9'.charCodeAt( 0 ):
-          case '0'.charCodeAt( 0 ):
-            input( String.fromCharCode( ev.keyCode ) );
-            break;
-          case 27:    // escape
-            clear_inp( );
-            break;
-          case 13:    // enter
-            send( );
-            break;
+            var li = document.createElement( 'li' );
+            var a = document.createElement('a');
+            a.href = "javascript:play("+i+");";
+            var text = document.createTextNode(songs[i].title);
+            a.appendChild(text);
+            li.appendChild(a);
+            list.appendChild(li);
+        }
+
+        // set state
+        if( response.data.state.playing )
+        {
+            document.getElementById('pause-li').className = 'stop';
+            if( response.data.state.song )
+                list.children[response.data.state.song].className = "aktiv";
+        }
+        else
+        {
+            document.getElementById('pause-li').className = 'play';
+            list.children[0].className = "aktiv";
         }
       }
 
-      function input( nr )
+      function loadSender( )
       {
-        code += nr;
-        document.getElementById( "code" ).innerHTML += "•&nbsp;";
-        document.getElementById( "star" ).innerHTML = "&#x2713;";
-      }
-
-      function clear_inp( )
-      {
-        code = "";
-        document.getElementById( "code" ).innerHTML = "&nbsp;";
-        document.getElementById( "star" ).innerHTML = "&#x1f514;";
-      }
-
-      function send( )
-      {
-        var cell = document.getElementById( "code" );
-        var url = (code == "") ? "https://klingel/cgi-bin/klingel.cgi?ring" : "https://klingel/cgi-bin/klingel.cgi?"+encodeURIComponent( "open:"+code );
+        // send request to server
+        var url = "https://"+location.href.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "playlist:Radio" );
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load',  function( ) { cell.className = "success"; setTimeout( function( ) { cell.className = ""; }, 250 ); } );
-        xhr.addEventListener( 'error', function( ) { cell.className = "error";   setTimeout( function( ) { cell.className = ""; }, 250 ); } );
+        xhr.addEventListener( 'load',  populateSender );
         xhr.open( 'GET', url, true );
         xhr.send( );
-        clear_inp( );
+      }
+
+      function play( nr )
+      {
+        var ch = document.getElementById('sender').children;
+
+        // if we're already playing the right song this is a no-op
+        if( ch[nr].classList.contains('aktiv') && document.getElementById('pause').className == 'stop' )
+            return;
+
+        // deselect old songs, and highlight new
+        for( i = 0; i < ch.length; i++ )
+            ch[i].classList.remove('aktiv');
+        ch[nr].classList.add('aktiv');
+
+        // send request to server
+        var url = "https://"+location.href.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "play:"+nr );
+        var xhr = new XMLHttpRequest( );
+        xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'stop'; } );
+//        xhr.addEventListener( 'error', function( ) { cell.className = "error";   setTimeout( function( ) { cell.className = ""; }, 250 ); } );
+        xhr.open( 'GET', url, true );
+        xhr.send( );
+      }
+
+      function pause( )
+      {
+        if( document.getElementById('pause').className == 'stop' )
+        {
+            // stop playback (pause?)
+            var url = "https://"+location.href.host+"/cgi-bin/ir.cgi?stop";
+            var xhr = new XMLHttpRequest( );
+            xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'play'; } );
+            xhr.open( 'GET', url, true );
+            xhr.send( );
+        }
+        else
+        {
+            // find song to start playing
+            var nr = -1;
+            var ch = document.getElementById('sender').children;
+            for( i = 0; i < ch.length; i++ )
+                if( ch[i].classList.contains('aktiv') )
+                {
+                    nr = i;
+                    break;
+                }
+            if( nr == -1 ) return;  // no song selected => no-op
+
+            // send request to server
+            var url = "https://"+location.href.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "play:"+nr );
+            var xhr = new XMLHttpRequest( );
+            xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'stop'; } );
+            xhr.open( 'GET', url, true );
+            xhr.send( );
+        }
+      }
+
+      function toggleMenu()
+      {
+        document.getElementById('sidebar').classList.toggle('aktiv');
       }
     </script>
   </head>
-  <body onkeydown="key( )">
-    <table id="keypad">
-      <tr>
-        <td colspan="3" id="code">&nbsp;</td>
-      </tr>
-      <tr>
-        <td class="number" id="1" onclick="input( 1 );">1</td>
-        <td class="number" id="2" onclick="input( 2 );">2</td>
-        <td class="number" id="3" onclick="input( 3 );">3</td>
-      </tr>
-      <tr>
-        <td class="number" id="4" onclick="input( 4 );">4</td>
-        <td class="number" id="5" onclick="input( 5 );">5</td>
-        <td class="number" id="6" onclick="input( 6 );">6</td>
-      </tr>
-      <tr>
-        <td class="number" id="7" onclick="input( 7 );">7</td>
-        <td class="number" id="8" onclick="input( 8 );">8</td>
-        <td class="number" id="9" onclick="input( 9 );">9</td>
-      </tr>
-      <tr>
-        <td class="number" id="star" onclick="send( );">&#x1f514;</td>
-        <td class="number" id="0" onclick="input( 0 );">0</td>
-        <td class="number" id="hash" onclick="clear_inp( );">&#x232b;</td>
-      </tr>
+  <body onload="loadSender">
+    <div id="container">
+    <ul id="sidebar">
+      <li id="menu-li"><a id="menu" href="javascript:toggleMenu()">Internet Radio &nbsp;&nbsp; &#9776;</a></li>
+      <li id="pause-li" class="play">
+        <span id="start"><a href="javascript:pause()">Abspielen &nbsp;&nbsp; &#x25b6;</a></span>
+        <span id="stop"><a href="javascript:pause()">Pause &nbsp;&nbsp; &#x23f8;</a></span>
+      </li>
+      <li id="laden-li"><a id="laden" href="javascript:loadSender()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
+    </ul>
+    <ul id="sender">
+        <li class="aktiv"><a href="javascript:play(0);">SWR1 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
+        <li><a href="javascript:play(1);">Klassik Radio - Hamburg (Deutschland)</a></li>
+        <li><a href="javascript:play(2);">SWR2 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
+        <li><a href="javascript:play(3);">SWR3 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
+    </ul>
+    </div>
   </body>
 </html>

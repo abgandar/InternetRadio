@@ -32,7 +32,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <mpd/client.h>
+
 #include "config.h"
+
+static struct mpd_connection *conn = NULL;
 
 // convert single hex digit to binary number
 char hex_to_char( const char c )
@@ -105,22 +109,68 @@ char* urldecode( const char *str )
 void output_start( )
 {
     puts( "Content-type: application/json\n" );               // header
-    puts( "{\"status\":200,\"message\":\"Request successfull\",\"data\":{" );  // start JSON output
+    puts( "{\"status\":200,\"message\":\"Request successfull\"," );  // start JSON output
 }
 
 // finish outputting results and end program
 void output_end( )
 {
-    puts( "}}" );  // end JSON output
-    exit( 0 );
-}
+    // always attach current status to output (no error if status command fails since we already sent output before!)
+    struct mpd_status *status = NULL;
+    struct mpd_song *song = NULL;
+	if( mpd_command_list_begin( conn, TRUE ) && mpd_send_status( conn ) && mpd_send_current_song( conn ) && mpd_command_list_end( conn ) && (status = mpd_recv_status( conn )) )
+    {
+        puts( "\"stat\":{" );
 
-// output result
-void output( const char* data )
-{
-    output_start( );
-    if( data ) puts( data );
-    output_end( );
+        if( mpd_status_get_state( status ) == MPD_STATE_PLAY || mpd_status_get_state( status ) == MPD_STATE_PAUSE )
+        {
+            mpd_response_next( conn );
+            song = mpd_recv_song( conn );
+            puts( "\"song\":{" );
+            printf( "\"position\":%i,\n", mpd_status_get_song_pos( status ) );
+            printf( "\"id\":%i,\n", mpd_song_get_id( song ) );
+            printf( "\"title\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ) );
+            printf( "\"name\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ) );
+            printf( "\"artist\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ) );
+            printf( "\"uri\":\"%s\"\n", mpd_song_get_uri( song ) );
+            puts( "}," );
+            mpd_song_free( song );
+        }
+
+		switch( mpd_status_get_state( status ) )
+        {
+            case MPD_STATE_PLAY:
+                puts( "\"playing\":1,");
+                break;
+            case MPD_STATE_PAUSE:
+                puts( "\"playing\":0,");
+                break;
+            default:
+                puts( "\"playing\":0,");
+        }
+
+        printf( "\"repeat\":%i,", mpd_status_get_repeat( status ) ? 1 : 0 );
+        printf( "\"random\":%i,", mpd_status_get_random( status ) ? 1 : 0 );
+        printf( "\"single\":%i,", mpd_status_get_single( status ) ? 1 : 0 );
+        printf( "\"consume\":%i,", mpd_status_get_consume( status ) ? 1 : 0 );
+
+        if( mpd_status_get_error( status ) != NULL )
+            printf( "\"error\":\"%s\",", mpd_status_get_error( status ) );
+
+        printf( "\"volume\":%i", mpd_status_get_volume( status ));  // no trailing comma for last entry
+
+        puts( "}" );
+		mpd_status_free( status );
+        mpd_response_finish( conn );
+    }
+    else
+    {
+        puts( "stat:{}" );  // need to put this to prevent trailing comma
+    }
+
+    puts( "}" );  // end JSON output
+    if( conn ) mpd_connection_free( conn );
+    exit( 0 );
 }
 
 // output an error and exit
@@ -128,7 +178,88 @@ void error( const int code, const char* msg, const char* message )
 {
     fprint( "Status: %d %s\nContent-type: application/json\n\n", code, msg );               // header
     fprint( "{\"status\":%d,\"message\":\"%s\"}", code, message != NULL ? message : msg );  // JSON
+    if( conn ) mpd_connection_free( conn );
     exit( code );
+}
+
+#define NOT_YET_IMPLEMENTED puts( "Not yet implemented" )
+
+// search the music database for entries matching the given search term
+void searchMusic( const char arg )
+{
+    NOT_YET_IMPLEMENTED;
+}
+
+// send list of all playlists on the server
+void sendPlaylists( )
+{
+    NOT_YET_IMPLEMENTED;
+}
+
+// send content of specific playlist on server
+void sendPlaylist( const char arg )
+{
+    mpd_song *song = NULL;
+
+    if( !mpd_send_list_playlist( conn, arg ) )
+        error( 404, "Not found", "Playlist not found" );
+
+    // print the playlist
+    puts( "playlist:[" );
+    int first = TRUE;
+    while( (song = mpd_recv_song( conn ) )
+    {
+        if( first )
+        {
+            puts( "{" );
+            first = FALSE;
+        }
+        else
+        {
+            puts( ",{" );
+        }
+        printf( "\"position\":%i,\n", mpd_status_get_song_pos( status ) );
+        printf( "\"id\":%i,\n", mpd_song_get_id( song ) );
+        printf( "\"title\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ) );
+        printf( "\"name\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ) );
+        printf( "\"artist\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ) );
+        printf( "\"uri\":\"%s\"\n", mpd_song_get_uri( song ) );
+        puts( "}" );
+        mpd_song_free( song );
+    }
+    puts( "]," );
+
+    mpd_response_finish( conn );
+}
+
+// load the specified playlist into the queue, replacing current queue
+void loadPlaylist( const char arg )
+{
+    NOT_YET_IMPLEMENTED;
+}
+
+// skip by the given amount
+void skip( int where )
+{
+    NOT_YET_IMPLEMENTED;
+}
+
+// play/pause playback
+void play( int state )
+{
+    NOT_YET_IMPLEMENTED;
+}
+
+// send current status (queue, current song, position, playback state)
+void sendStatus( )
+{
+    NOT_YET_IMPLEMENTED;
+}
+
+// add given song to current playlist
+void sendStatus( )
+{
+    NOT_YET_IMPLEMENTED;
 }
 
 // Main program entry point
@@ -144,6 +275,20 @@ int main( int argc, char *argv[] )
     if( argdec == NULL )
         error( 500, "Internal Server Error", "Request failed" );
 
+    // Open connection to MPD
+    conn = mpd_connection_new( SOCKET_PFAD, 0, 0 );
+    if( conn == NULL || mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS )
+        error( 500, "Internal Server Error", "No connection to MPD" );
+
+#ifdef MPD_PASSWORT
+    // send password if there is one (unencrypted clear text, mostly window dressing)
+    if( !mpd_run_password( conn, MPD_PASSWORT ) )
+    {
+        mpd_connection_free( conn );
+        error( 500, "Internal Server Error", "MPD connection rejected" );
+    }
+#endif
+
     // decode command
     if( strncmp( argdec, "search:", 7 ) == 0 )
     {
@@ -158,6 +303,12 @@ int main( int argc, char *argv[] )
     else if( strncmp( argdec, "playlist:", 9 ) == 0 )
     {
         // Send content of given playlist
+        sendPlaylist( argdec+9 );
+    }
+    else if( strncmp( argdec, "load:", 5 ) == 0 )
+    {
+        // Load the given playlist to replace the current queue and send its content
+        loadPlaylist( argdec+5 );
         sendPlaylist( argdec+9 );
     }
     else if( strcmp( argdec, "forward" ) == 0 )
@@ -179,23 +330,32 @@ int main( int argc, char *argv[] )
     else if( strcmp( argdec, "play" ) == 0 )
     {
         // Start playback
-        play( );
+        play( TRUE );
     }
     else if( strcmp( argdec, "pause" ) == 0 )
     {
         // Pause playback
-        pause( );
+        play( FALSE );
+    }
+    else if( strcmp( argdec, "add:", 4 ) == 0 )
+    {
+        // Send current state (current queue, current song, ...)
+        add( argdec+4 );
     }
     else if( strcmp( argdec, "status" ) == 0 )
     {
         // Send current state (current queue, current song, ...)
-        sendStatus( );
+        // This is automatically added at the end to every successful request, so we do nothing
+    }
+    else
+    {
+        error( 400, "Bad Request", "Requested action not understood" );
     }
 
     // cleanup
     free( argdec );
 
-    // success, no data to send
-    output( NULL );
+    // if we reach here everything is OK
+    output_end( );
     return 0;
 }
