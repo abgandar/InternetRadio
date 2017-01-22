@@ -128,12 +128,12 @@ void output_end( )
             mpd_response_next( conn );
             song = mpd_recv_song( conn );
             puts( "\"song\":{" );
-            printf( "\"position\":%i,\n", mpd_status_get_song_pos( status ) );
-            printf( "\"id\":%i,\n", mpd_song_get_id( song ) );
-            printf( "\"title\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ) );
-            printf( "\"name\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ) );
-            printf( "\"artist\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ) );
-            printf( "\"uri\":\"%s\"\n", mpd_song_get_uri( song ) );
+            printf( "\"position\":%i,", mpd_status_get_song_pos( status ) );
+            printf( "\"id\":%i,", mpd_song_get_id( song ) );
+            printf( "\"title\":\"%s\",", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ) );
+            printf( "\"name\":\"%s\",", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ) );
+            printf( "\"artist\":\"%s\",", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ) );
+            printf( "\"uri\":\"%s\"", mpd_song_get_uri( song ) );
             puts( "}," );
             mpd_song_free( song );
         }
@@ -206,6 +206,7 @@ void sendPlaylist( const char *arg )
         error( 404, "Not found", "Playlist not found" );
 
     // print the playlist
+    output_start( );
     puts( "playlist:[" );
     int i = 0;
     while( (song = mpd_recv_song( conn ) ) )
@@ -336,7 +337,8 @@ int main( int argc, char *argv[] )
     else if( strcmp( argdec, "status" ) == 0 )
     {
         // Send current state (current queue, current song, ...)
-        // This is automatically added at the end to every successful request, so we do nothing
+        // This is automatically added at the end to every successful request, so we do nothing except starting the output
+        output_start( );
     }
     else
     {
