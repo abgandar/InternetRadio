@@ -197,7 +197,7 @@ void sendPlaylists( )
     NOT_YET_IMPLEMENTED;
 }
 
-// send content of specific playlist on server
+// send content of specific playlist on server and simultaneously load it into queue
 void sendPlaylist( const char *arg )
 {
     struct mpd_song *song = NULL;
@@ -228,12 +228,18 @@ void sendPlaylist( const char *arg )
     puts( "]," );
 
     mpd_response_finish( conn );
+
+    loadPlaylist( arg );    // ensure the playlist is loaded
 }
 
 // load the specified playlist into the queue, replacing current queue
 void loadPlaylist( const char *arg )
 {
-    NOT_YET_IMPLEMENTED;
+    if( !mpd_run_clear( conn ) )
+        error( 500, "Internal Server Error", "Error clearing queue" );
+
+    if( !mpd_run_load( conn, arg ) )
+        error( 404, "Not found", "Playlist not found" );
 }
 
 // skip by the given amount
