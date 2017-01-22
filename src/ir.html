@@ -35,6 +35,8 @@
       #pause-li.play #stop { display: none; }
       #pause-li.stop { background: red; }
       #pause-li.stop #start { display: none; }
+      #laden-li { border-bottom: 2px double; }
+      #sidebar .playlist { background: lightyellow; }
 
       #sender { position: absolute; bottom: 0px; left: 0px; right: 0px; height: 100%; overflow-x: hidden; overflow-y: scroll; padding: 0px; margin: 0px; box-sizing: border-box; }
       #sender li { border: 1px solid black; width: 100%; box-sizing: border-box; display: block; padding: 0px; }
@@ -93,7 +95,7 @@
             li.className = 'playlist';
             var a = document.createElement('a');
             a.href = "javascript:loadPlaylist('"+this.response.playlists[i].name+"');";
-            var text = document.createTextNode(this.response.playlists[i].name);
+            var text = document.createTextNode(this.response.playlists[i].name+" &nbsp;&nbsp; &#x1f4fb;");
             a.appendChild(text);
             li.appendChild(a);
             list.appendChild(li);
