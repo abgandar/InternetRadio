@@ -100,10 +100,8 @@
             var span = document.createElement('span');
             var text = document.createTextNode(playlists[i].name);
             var symbol = document.createTextNode(" \u00A0\u00A0 \uD83D\uDCFB");
-            span.appendChild(text);
-            a.appendChild(span).appendChild(symbol);
-            li.appendChild(a);
-            list.appendChild(li);
+            list.appendChild(li).appendChild(a).appendChild(span).appendChild(text);
+            a.appendChild(symbol);
         }
 
         updateState( this.response.state );
