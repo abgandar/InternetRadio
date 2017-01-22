@@ -246,8 +246,16 @@ void sendPlaylist( const char *arg )
 {
     struct mpd_song *song = NULL;
 
-    if( !mpd_send_list_playlist_meta( conn, arg ) )
-        error( 404, "Not found", "Playlist not found" );
+    if( arg )
+    {
+        if( !mpd_send_list_playlist_meta( conn, arg ) )
+            error( 404, "Not found", "Playlist not found" );
+    }
+    else
+    {
+        if( !mpd_send_list_queue_meta( conn ) )
+            error( 500, "Internal Server Error", "Error listing queue" );
+    }
 
     // print the playlist
     output_start( );
@@ -387,6 +395,11 @@ int main( int argc, char *argv[] )
     {
         // Send content of given playlist
         sendPlaylist( argdec+9 );
+    }
+    else if( strcmp( argdec, "queue" ) == 0 )
+    {
+        // Send content of current queue
+        sendPlaylist( NULL );
     }
     else if( strncmp( argdec, "load:", 5 ) == 0 )
     {

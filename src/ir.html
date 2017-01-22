@@ -42,42 +42,91 @@
       #sender li.aktiv { background: lightblue; border-width: 2px; }
     </style>
     <script type="text/javascript">
-      function populateSender( )
+      function updateState( state )
       {
-        var response = this.response;   // JSON data
-        var songs = response.playlist;
+        // set state
+        if( state.song )
+            list.children[response.state.song.position].className = "aktiv";
+        else
+            list.children[0].className = "aktiv";
+
+        document.getElementById('pause-li').className = state.playing ? 'stop' : 'play';
+      }
+
+      function populateQueue( )
+      {
         var list = document.getElementById('sender');
 
         // remove previous entries
         while( list.firstChild ) list.removeChild( list.firstChild );
 
         // add new entries
-        for( var i = 0; i < songs.length; i++ )
+        for( var i = 0; i < this.response.playlist.length; i++ )
         {
             var li = document.createElement( 'li' );
             var a = document.createElement('a');
             a.href = "javascript:play("+i+");";
-            var text = document.createTextNode(songs[i].name);
+            var text = document.createTextNode(this.response.playlist[i].name);
             a.appendChild(text);
             li.appendChild(a);
             list.appendChild(li);
         }
 
-        // set state
-        if( response.state.song )
-            list.children[response.state.song.position].className = "aktiv";
-        else
-            list.children[0].className = "aktiv";
-
-        document.getElementById('pause-li').className = response.state.playing ? 'stop' : 'play';
+        updateState( this.response.state );
       }
 
-      function loadSender( )
+      function populatePlaylists( )
+      {
+        var list = document.getElementById('sidebar');
+
+        // remove previous entries
+        var old = list.getElementsByClassName('playlist');
+        while( old[0] ) list.removeChild( old[0] );
+
+        // add new entries
+        for( var i = 0; i < this.response.playlists.length; i++ )
+        {
+            var li = document.createElement( 'li' );
+            li.className = 'playlist';
+            var a = document.createElement('a');
+            a.href = "javascript:loadPlaylist('"+this.response.playlists[i].name+"');";
+            var text = document.createTextNode(this.response.playlists[i].name);
+            a.appendChild(text);
+            li.appendChild(a);
+            list.appendChild(li);
+        }
+
+        updateState( this.response.state );
+      }
+
+      function refreshQueue( )
       {
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "load:Radio" );
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?queue" );
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load',  populateSender );
+        xhr.addEventListener( 'load',  populateQueue );
+        xhr.responseType = 'json';
+        xhr.open( 'GET', url, true );
+        xhr.send( );
+      }
+
+      function loadPlaylist( name )
+      {
+        // send request to server
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "load:"+name );
+        var xhr = new XMLHttpRequest( );
+        xhr.addEventListener( 'load',  populateQueue );
+        xhr.responseType = 'json';
+        xhr.open( 'GET', url, true );
+        xhr.send( );
+      }
+
+      function refreshPlaylists( )
+      {
+        // send request to server
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?playlists" );
+        var xhr = new XMLHttpRequest( );
+        xhr.addEventListener( 'load',  populatePlaylists );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
@@ -99,7 +148,7 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "play:"+nr );
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'stop'; } );
+        xhr.addEventListener( 'load',  function( ) { updateState( this.response.state ); } );
 //        xhr.addEventListener( 'error', function( ) { cell.className = "error";   setTimeout( function( ) { cell.className = ""; }, 250 ); } );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
@@ -122,7 +171,7 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "pause:"+i );
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = this.response.state.playing ? 'stop' : 'play'; } );
+        xhr.addEventListener( 'load',  function( ) { updateState( this.response.state ); } );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
