@@ -301,8 +301,8 @@ void play( int position )
 // play given song id
 void playid( int id )
 {
-    if( position >= 0 )
-        if( !mpd_send_play_id( conn, position ) )
+    if( id >= 0 )
+        if( !mpd_send_play_id( conn, id ) )
             error( 404, "Not found", "Invalid song id" );
 }
 
