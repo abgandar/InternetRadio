@@ -228,8 +228,7 @@ void sendPlaylists( )
 // load the specified playlist into the queue, replacing current queue
 void loadPlaylist( const char *arg )
 {
-    if( !mpd_run_clear( conn ) )
-        error( 500, "Internal Server Error", "Error clearing queue" );
+    mpd_run_clear( conn );
 
     if( !mpd_run_load( conn, arg ) )
         error( 404, "Not found", "Playlist not found" );
