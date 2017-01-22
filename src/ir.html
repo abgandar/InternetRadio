@@ -78,6 +78,7 @@
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "playlist:Radio" );
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load',  populateSender );
+        xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
       }
@@ -100,6 +101,7 @@
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'stop'; } );
 //        xhr.addEventListener( 'error', function( ) { cell.className = "error";   setTimeout( function( ) { cell.className = ""; }, 250 ); } );
+        xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
       }
@@ -112,6 +114,7 @@
             var url = "http://"+location.host+"/cgi-bin/ir.cgi?stop";
             var xhr = new XMLHttpRequest( );
             xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'play'; } );
+            xhr.responseType = 'json';
             xhr.open( 'GET', url, true );
             xhr.send( );
         }
@@ -132,6 +135,7 @@
             var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "play:"+nr );
             var xhr = new XMLHttpRequest( );
             xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'stop'; } );
+            xhr.responseType = 'json';
             xhr.open( 'GET', url, true );
             xhr.send( );
         }
