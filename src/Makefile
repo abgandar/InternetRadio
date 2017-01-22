@@ -1,9 +1,9 @@
-LDFLAGS += -lmpdclient
+LDLIBS += -lmpdclient
 
 all: ir.cgi
 
 ir.cgi: ir-cgi.c config.h
-	$(CC) -o $@ $< $(CPPFLAGS)
+	$(CC) -o $@ $< $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
 install: ir.cgi ir.html
 	cp ir.cgi /usr/lib/cgi-bin
