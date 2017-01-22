@@ -1,0 +1,289 @@
+#EXTM3U
+#EXTINF:0,.977 - Alternative - North Carolina (USA)
+http://icecast3.977music.com/alternative
+#EXTINF:0,.977 - Classic Rock - North Carolina (USA)
+http://icecast3.977music.com/classicrock
+#EXTINF:0,.977 - Comedy - North Carolina (USA)
+http://icecast3.977music.com/comedy
+#EXTINF:0,.977 - Country - North Carolina (USA)
+http://icecast3.977music.com/country
+#EXTINF:0,.977 - Hitz - North Carolina (USA)
+http://icecast3.977music.com/hitz
+#EXTINF:0,.977 - Jamz - North Carolina (USA)
+http://icecast3.977music.com/jamz
+#EXTINF:0,.977 - Oldies - North Carolina (USA)
+http://icecast3.977music.com/oldies
+#EXTINF:0,.977 - Smooth Jazz - North Carolina (USA)
+http://icecast3.977music.com/smoothjazz
+#EXTINF:0,.977 - The 80's - North Carolina (USA)
+http://icecast3.977music.com/80s
+#EXTINF:0,.977 - The 90's - North Carolina (USA)
+http://icecast3.977music.com/90s
+#EXTINF:0,.977 - The Mix - North Carolina (USA)
+http://icecast3.977music.com/mix
+#EXTINF:0,1.FM - Always Christmas - Alabama (USA)
+http://64.71.184.99:8650
+#EXTINF:0,1.FM - Bay Smooth Jazz Radio - Alabama (USA)
+http://216.218.159.151:9010
+#EXTINF:0,1.FM - Channel X - Alabama (USA)
+http://209.51.161.54:8072
+#EXTINF:0,1.FM - Chill out Lounge - Alabama (USA)
+http://72.13.81.178:8010
+#EXTINF:0,1.FM - Top 40 - Alabama (USA)
+http://64.62.252.132:8075
+#EXTINF:0,181.fm - Classic Buzz - Harrisonburg (USA)
+http://mp3uplink.duplexfx.com:8038
+#EXTINF:0,181.fm - Lite 80s - Harrisonburg (USA)
+http://mp3uplink.duplexfx.com:8040
+#EXTINF:0,1POWER - New York City (USA)
+http://scfire-mtc-aa02.stream.aol.com/stream/1044
+#EXTINF:0,4U Classic Rock - Chatenay Malabry (Frankreich)
+http://str4ushaac.streamakaci.com
+#EXTINF:0,525 Power Tracks - Herndon (USA)
+http://fastcast4u.com:9256
+#EXTINF:0,Absolute Classic Rock - London (England)
+http://icecast.timlradio.co.uk/ac128.mp3
+#EXTINF:0,Absolute Radio 60th - London (England)
+http://icecast.timlradio.co.uk/a6160.ogg
+#EXTINF:0,AVRO Back to the Old School - Hilversum (Niederlande)
+http://shoutcast.omroep.nl:8056
+#EXTINF:0,AVRO Easy Listening - Hilversum (Niederlande)
+http://shoutcast.omroep.nl:8058
+#EXTINF:0,AVRO Film - Hilversum (Niederlande)
+http://shoutcast.omroep.nl:8070
+#EXTINF:0,AVRO Klassiek - Hilversum (Niederlande)
+http://shoutcast.omroep.nl:8072
+#EXTINF:0,AVRO Klassiek Baroque - Hilversum (Niederlande)
+http://shoutcast.omroep.nl:8068
+#EXTINF:0,AVRO Klassiek Operette - Hilversum (Niederlande)
+http://shoutcast.omroep.nl:8060
+#EXTINF:0,AVRO Klassiek Ziel & Zaligheid - Hilversum (Niederlande)
+http://shoutcast.omroep.nl:8074
+#EXTINF:0,AVRO Steenen Tijdperk 50ies - Hilversum (Niederlande)
+http://shoutcast.omroep.nl:8064
+#EXTINF:0,AVRO Steenen Tijdperk 60ies - Hilversum (Niederlande)
+http://shoutcast.omroep.nl:8066
+#EXTINF:0,AVRO Toppers van Toen - Hilversum (Niederlande)
+http://shoutcast.omroep.nl:8062
+#EXTINF:0,BBC Radio 1 - London (England)
+mms://wmlive.bbc.net.uk/wms/bbc_ami/radio1/radio1_bb_live_int_eq1_sl0
+#EXTINF:0,BBC Radio 2 - London (England)
+mms://wmlive.bbc.net.uk/wms/bbc_ami/radio2/radio2_bb_live_int_eq1_sl0
+#EXTINF:0,BBC Radio 3 - London (England)
+mms://wmlive.bbc.net.uk/wms/bbc_ami/radio3/radio3_bb_live_int_eq1_sl0
+#EXTINF:0,BBC Radio 4 - London (England)
+mms://wmlive.bbc.net.uk/wms/bbc_ami/radio4/radio4_bb_live_int_eq1_sl0
+#EXTINF:0,BBC Radio 5 live (International) - London (England)
+mms://wmlive.bbc.net.uk/wms/bbc_ami/radio5/radio5_bb_live_int_eq1_sl0
+#EXTINF:0,BBC Radio 5 live Sports Extra - London (England)
+mms://wmlive.bbc.net.uk/wms/bbc_ami/radio5/5spxtra_bb_live_int_eq1_sl0
+#EXTINF:0,BBC Radio 6 Music - London (England)
+mms://wmlive.bbc.net.uk/wms/bbc_ami/6music/6music_bb_live_int_eq1_sl0
+#EXTINF:0,BBC Radio 7 - London (England)
+mms://wmlive.bbc.net.uk/wms/bbc_ami/bbc7/bbc7_bb_live_int_eq1_sl0
+#EXTINF:0,BBC World Service - London (England)
+mms://livewmstream-ws.bbc.co.uk.edgestreams.net/reflector:38972
+#EXTINF:0,BBC World Service - London (England)
+mms://livewmstream-ws.bbc.co.uk.edgestreams.net/reflector:43021
+#EXTINF:0,BBC World Service - London (England)
+mms://livewmstream-ws.bbc.co.uk.edgestreams.net/reflector:47971
+#EXTINF:0,BBC World Service - London (England)
+mms://livewmstream-ws.bbc.co.uk.edgestreams.net/reflector:48278
+#EXTINF:0,Bear Radio Network - New York (USA)
+http://72.13.80.42:8144
+#EXTINF:0,BellyUp4Blues - Poway (USA)
+http://64.62.252.134:5100
+#EXTINF:0,Candle Light - Hilversum (Niederlande)
+http://ice1.streamzilla.jet-stream.nl:8000/ilsemedia=ice7
+#EXTINF:0,chroniX AGGRESSION - Denver (USA)
+http://wm3.spacialnet.com/aggro
+#EXTINF:0,chroniX Grit - Denver (USA)
+http://205.188.215.225:8012
+#EXTINF:0,Cocoradio - Accra (Ghana)
+http://67.159.26.177:23002
+#EXTINF:0,CROOZE.fm - Antwerpen (Belgien)
+http://streams.lazernet.be:2580
+#EXTINF:0,Deep Mix Moscow Radio - Moskau (Russland)
+http://89.179.179.5:8040
+#EXTINF:0,DEFJAY - Beverly Hills (USA)
+http://sc2.netstreamer.net:8008
+#EXTINF:0,Digitally Imported - Minimal - New York City (USA)
+mms://88.191.102.239/minimal
+#EXTINF:0,Digitally Imported - Vocal Trance - New York City (USA)
+http://scfire-mtc-aa01.stream.aol.com/stream/1065
+#EXTINF:0,Dinner Jazz Excursion Radio - Springfield (USA)
+http://sc01.warpradio.com:8240
+#EXTINF:0,ENJOYSTATION.NET - Vichy (Frankreich)
+http://91.121.8.6
+#EXTINF:0,enSONIC.FM - Varennes (Kanada)
+http://stream5.ensonicradio.com:8500
+#EXTINF:0,FANTASY Dance FM 96.7 - Raeren (Belgien)
+http://dancefmwebradio.de:8000/dsl_stream.mp3
+#EXTINF:0,GAY FM - Mailand (Italien)
+http://stream.gayfm.de
+#EXTINF:0,GermanMetal.com - (USA)
+http://209.222.239.40:8000
+#EXTINF:0,Golden Hit Radio - Vicenza (Italien)
+http://87.117.203.226:8014
+#EXTINF:0,Golden Radio 80s - Vicenza (Italien)
+http://83.170.89.19:8526
+#EXTINF:0,HOT 108 JAMZ - New York City (USA)
+http://scfire-ntc-aa02.stream.aol.com/stream/1071
+#EXTINF:0,Ibiza Global Radio - Ibiza (Spanien)
+http://ibizaglobalradio.radio.de:8000/relay-1645
+#EXTINF:0,Jazz24 - Seattle (USA)
+http://sc1.abacast.com:8236
+#EXTINF:0,Love Radio Moskau - Moskau (Russland)
+http://stream.loveradio.ru:8000/loveradio_high.mp3
+#EXTINF:0,M2 digital - Paris (Frankreich)
+http://100.m2radio.fr:80
+#EXTINF:0,Martini in the Morning - North Hollywood (USA)
+http://mitm.streamguys.us
+#EXTINF:0,METROPOL FM - Berlin (Deutschland)
+http://metropolfm2.webradiostreaming.de:8200
+#EXTINF:0,Planet Chomsky - New York City (USA)
+http://Hee-La.serverroom.us:4048
+#EXTINF:0,PulsRadio - Morschwiller Le Bas (Frankreich)
+http://87.98.131.132:5000
+#EXTINF:0,Radio 101 90's Dance - Moskau (Russland)
+mms://mms.online.ru/c7_8_128
+#EXTINF:0,Radio 101 90's Gold - Moskau (Russland)
+mms://mms.online.ru/c6_2_128
+#EXTINF:0,Radio 101 Alla - Moskau (Russland)
+mms://mms.online.ru/c3_4_128
+#EXTINF:0,Radio 101 Ambient - Moskau (Russland)
+mms://mms.online.ru/c16_3_128
+#EXTINF:0,Radio 101 Autoradio Music - Moskau (Russland)
+mms://mms.online.ru/c3_2_128
+#EXTINF:0,Radio 101 BG and Aquarium - Moskau (Russland)
+mms://mms.online.ru/c16_15_128
+#EXTINF:0,Radio 101 Blues - Moskau (Russland)
+mms://mms.online.ru/c5_2_128
+#EXTINF:0,Radio 101 Breath of Nature - Moskau (Russland)
+mms://mms.online.ru/c17_2_128
+#EXTINF:0,Radio 101 Cats and Dogs - Moskau (Russland)
+mms://mms.online.ru/c17_4_128
+#EXTINF:0,Radio 101 Chill out - Moskau (Russland)
+mms://mms.online.ru/c15_3_128
+#EXTINF:0,Radio 101 Cinema Music - Moskau (Russland)
+mms://mms.online.ru/c2_2_128
+#EXTINF:0,Radio 101 Country - Moskau (Russland)
+mms://mms.online.ru/c14_1_128
+#EXTINF:0,Radio 101 Cyber Space - Moskau (Russland)
+mms://mms.online.ru/c10_4_128
+#EXTINF:0,Radio 101 Disco - Moskau (Russland)
+mms://mms.online.ru/c17_5_128
+#EXTINF:0,Radio 101 Disco Of The 80's - Moskau (Russland)
+mms://mms.online.ru/c7_3_128
+#EXTINF:0,Radio 101 Easy Listening - Moskau (Russland)
+mms://mms.online.ru/c11_2_128
+#EXTINF:0,Radio 101 Emo - Moskau (Russland)
+mms://mms.online.ru/c16_5_128
+#EXTINF:0,Radio 101 Erotic - Moskau (Russland)
+mms://mms.online.ru/c14_13_128
+#EXTINF:0,Radio 101 Euro Hits - Moskau (Russland)
+mms://mms.online.ru/c16_13_128
+#EXTINF:0,Radio 101 Experimental - Moskau (Russland)
+mms://mms.online.ru/c12_2_128
+#EXTINF:0,Radio 101 Funk and Soul - Moskau (Russland)
+mms://mms.online.ru/c9_4_128
+#EXTINF:0,Radio 101 Instrumental - Moskau (Russland)
+mms://mms.online.ru/c11_4_128
+#EXTINF:0,Radio 101 Jazz - Moskau (Russland)
+mms://mms.online.ru/c10_5_128
+#EXTINF:0,Radio 101 Live Hits - Moskau (Russland)
+mms://mms.online.ru/c15_5_128
+#EXTINF:0,Radio 101 Live! - Moskau (Russland)
+mms://mms.online.ru/c11_5_128
+#EXTINF:0,Radio 101 Love Songs - Moskau (Russland)
+mms://mms.online.ru/c9_1_128
+#EXTINF:0,Radio 101 Mainstream - Moskau (Russland)
+mms://mms.online.ru/c7_2_128
+#EXTINF:0,Radio 101 Military Songs - Moskau (Russland)
+mms://mms.online.ru/c7_6_128
+#EXTINF:0,Radio 101 Musicals - Moskau (Russland)
+mms://mms.online.ru/c12_5_128
+#EXTINF:0,Radio 101 Office Lounge - Moskau (Russland)
+mms://mms.online.ru/c2_1_128
+#EXTINF:0,Radio 101 Opera - Moskau (Russland)
+mms://mms.online.ru/c15_4_128
+#EXTINF:0,Radio 101 Pink Floyd - Moskau (Russland)
+mms://mms.online.ru/c8_2_128
+#EXTINF:0,Radio 101 Pop Classical Music - Moskau (Russland)
+mms://mms.online.ru/c16_4_128
+#EXTINF:0,Radio 101 Queen - Moskau (Russland)
+mms://mms.online.ru/c13_1_128
+#EXTINF:0,Radio 101 Regggggey - Moskau (Russland)
+mms://mms.online.ru/c5_5_128
+#EXTINF:0,Radio 101 Rock - Moskau (Russland)
+mms://mms.online.ru/c1_4_128
+#EXTINF:0,Radio 101 Rock Guitar - Moskau (Russland)
+mms://mms.online.ru/c15_1_128
+#EXTINF:0,Radio 101 Rock Remakes - Moskau (Russland)
+mms://mms.online.ru/c7_9_128
+#EXTINF:0,Radio 101 Rock-Koleso - Moskau (Russland)
+mms://mms.online.ru/c7_5_128
+#EXTINF:0,Radio 101 Rock'n'Roll - Moskau (Russland)
+mms://mms.online.ru/c5_4_128
+#EXTINF:0,Radio 101 Russian Ethnics - Moskau (Russland)
+mms://mms.online.ru/c9_3_128
+#EXTINF:0,Radio 101 Russian Folk - Moskau (Russland)
+mms://mms.online.ru/c15_19_128
+#EXTINF:0,Radio 101 Russian Pop Ballads - Moskau (Russland)
+mms://mms.online.ru/c16_2_128
+#EXTINF:0,Radio 101 Russian Rap - Moskau (Russland)
+mms://mms.online.ru/c1_3_128
+#EXTINF:0,Radio 101 Russian Reggae - Moskau (Russland)
+mms://mms.online.ru/c14_4_128
+#EXTINF:0,Radio 101 Russian Rock - Moskau (Russland)
+mms://mms.online.ru/c1_2_128
+#EXTINF:0,Radio 101 Russian Songs - Moskau (Russland)
+mms://mms.online.ru/c1_1_128
+#EXTINF:0,Radio 101 Smooth Jazz - Moskau (Russland)
+mms://mms.online.ru/c2_3_128
+#EXTINF:0,Radio 101 Spivakov Classic - Moskau (Russland)
+mms://mms.online.ru/c7_1_128
+#EXTINF:0,Radio 101 Swing - Moskau (Russland)
+mms://mms.online.ru/c13_4_128
+#EXTINF:0,Radio 101 The Beatles - Moskau (Russland)
+mms://mms.online.ru/c10_3_128
+#EXTINF:0,Radio 101 Thrash Zone - Moskau (Russland)
+mms://mms.online.ru/c8_3_128
+#EXTINF:0,Radio 101 Time Machine - Moskau (Russland)
+mms://mms.online.ru/c7_7_128
+#EXTINF:0,Radio 101 Vladimir Visotsky - Moskau (Russland)
+mms://mms.online.ru/c11_3_128
+#EXTINF:0,Radio Boracay - Hamburg (Philippines (english))
+http://80.237.210.25:8080/listen.pls
+#EXTINF:0,Radio Boracay - Hamburg (Philippines (english))
+http://80.237.210.25:8130/listen.pls
+#EXTINF:0,Radio Memories - Ruislip / Middlesex (England)
+http://streamplus16.ameus.de:12348
+#EXTINF:0,Radio Nova (Novaplanet) - Paris (Frankreich)
+http://broadcast.infomaniak.net:80/radionova-high.mp3
+#EXTINF:0,Seatle's HotJamz - Seattle (USA)
+http://stream-high.kmih.org:8000
+#EXTINF:0,ShoutedFM mth.Alternativ - Amsterdam (Niederlande)
+http://alternative.mthn.net:8700
+#EXTINF:0,ShoutedFM mth.Black - Amsterdam (Niederlande)
+http://black.mthn.net:8300
+#EXTINF:0,ShoutedFM mth.Break - Amsterdam (Niederlande)
+http://break.mthn.net:8800
+#EXTINF:0,ShoutedFM mth.Club - Amsterdam (Niederlande)
+http://club.mthn.net:8200
+#EXTINF:0,ShoutedFM mth.Elektro - Amsterdam (Niederlande)
+http://electro.mthn.net:8400
+#EXTINF:0,ShoutedFM mth.House - Amsterdam (Niederlande)
+http://house.mthn.net:8500
+#EXTINF:0,ShoutedFM mth.Main - Amsterdam (Niederlande)
+http://main.mthn.net:8000
+#EXTINF:0,SKY.fm - Bossa Nova Jazz - New York City (USA)
+mms://wstream5g.di.fm/bossanova
+#EXTINF:0,SKY.fm - Solo Piano - New York City (USA)
+http://scfire-ntc-aa04.stream.aol.com:80/stream/1004
+#EXTINF:0,Subflow Minimal Techno - Paris (Frankreich)
+http://www.subflow.net:8000
+#EXTINF:0,WGUC Live - Ohio (USA)
+http://cpr2.streamguys.net/wguc
+#EXTINF:0,Women Rock Radio - (USA)
+http://96.31.83.87:8065
