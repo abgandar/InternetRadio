@@ -36,7 +36,8 @@
       #pause-li.stop { background: pink; }
       #pause-li.stop #start { display: none; }
       #sidebar #laden-li { border-bottom: 4px solid black; background: #9060A0; }
-      #sidebar .playlist { background: lightyellow; font-size: 16pt; }
+      #sidebar .playlist { background: lightyellow; }
+      #sidebar .playlist span { font-size: 16pt; }
 
       #sender { position: absolute; bottom: 0px; left: 0px; right: 0px; height: 100%; overflow-x: hidden; overflow-y: scroll; padding: 0px; margin: 0px; box-sizing: border-box; }
       #sender li { border: 1px solid black; width: 100%; box-sizing: border-box; display: block; padding: 0px; }
@@ -96,8 +97,11 @@
             li.className = 'playlist';
             var a = document.createElement('a');
             a.href = "javascript:loadPlaylist('"+playlists[i].name+"');";
-            var text = document.createTextNode(playlists[i].name+" \u00A0\u00A0 \uD83D\uDCFB");
-            a.appendChild(text);
+            var span = document.createElement('span');
+            var text = document.createTextNode(playlists[i].name);
+            var symbol = document.createTextNode(" \u00A0\u00A0 \uD83D\uDCFB");
+            span.appendChild(text);
+            a.appendChild(span).appendChild(symbol);
             li.appendChild(a);
             list.appendChild(li);
         }
