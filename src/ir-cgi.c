@@ -337,8 +337,8 @@ int main( int argc, char *argv[] )
     else if( strncmp( argdec, "load:", 5 ) == 0 )
     {
         // Load the given playlist to replace the current queue and send its content
-        sendPlaylist( argdec+9 );
         loadPlaylist( argdec+5 );
+        sendPlaylist( argdec+5 );
     }
     else if( strcmp( argdec, "forward" ) == 0 )
     {
