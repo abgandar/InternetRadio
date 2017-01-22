@@ -108,7 +108,7 @@
       function refreshQueue( )
       {
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?queue" );
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?queue";
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load',  populateQueue );
         xhr.responseType = 'json';
@@ -130,7 +130,7 @@
       function refreshPlaylists( )
       {
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?playlists" );
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?playlists";
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load',  populatePlaylists );
         xhr.responseType = 'json';
