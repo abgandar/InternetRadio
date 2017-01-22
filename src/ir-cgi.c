@@ -191,10 +191,38 @@ void searchMusic( const char *arg )
     NOT_YET_IMPLEMENTED;
 }
 
+// play/pause playback
+void add( const char *arg )
+{
+    NOT_YET_IMPLEMENTED;
+}
+
 // send list of all playlists on the server
 void sendPlaylists( )
 {
-    NOT_YET_IMPLEMENTED;
+    struct mpd_playlist *list = NULL;
+
+    if( !mpd_send_list_playlists( conn, arg ) )
+        error( 500, "Internal Server Error", "Error listing playlists" );
+
+    // print all playlists
+    output_start( );
+    puts( "\"playlists\":[" );
+    int i = 0;
+    while( (list = mpd_recv_playlist( conn ) ) )
+    {
+        if( i )
+            puts( ",{" );
+        else
+            puts( "{" );
+        printf( "\"name\":\"%s\",\n", mpd_playlist_get_path( list ) );
+        puts( "}" );
+        mpd_playlist_free( list );
+        i++;
+    }
+    puts( "]," );
+
+    mpd_response_finish( conn );
 }
 
 // load the specified playlist into the queue, replacing current queue
@@ -238,8 +266,6 @@ void sendPlaylist( const char *arg )
     puts( "]," );
 
     mpd_response_finish( conn );
-
-    loadPlaylist( arg );    // ensure the playlist is loaded
 }
 
 // skip by the given amount
@@ -248,14 +274,20 @@ void skip( int where )
     NOT_YET_IMPLEMENTED;
 }
 
-// play/pause playback
-void play( int state )
+// play given song position
+void play( int position )
 {
     NOT_YET_IMPLEMENTED;
 }
 
-// play/pause playback
-void add( const char *arg )
+// play given song id
+void playid( int id )
+{
+    NOT_YET_IMPLEMENTED;
+}
+
+// pause / unpause playback
+void pause( int state )
 {
     NOT_YET_IMPLEMENTED;
 }
@@ -306,8 +338,8 @@ int main( int argc, char *argv[] )
     else if( strncmp( argdec, "load:", 5 ) == 0 )
     {
         // Load the given playlist to replace the current queue and send its content
-        loadPlaylist( argdec+5 );
         sendPlaylist( argdec+9 );
+        loadPlaylist( argdec+5 );
     }
     else if( strcmp( argdec, "forward" ) == 0 )
     {
@@ -325,19 +357,27 @@ int main( int argc, char *argv[] )
         int i = strtol( argdec+5, NULL, 10 );
         skip( i );
     }
-    else if( strcmp( argdec, "play" ) == 0 )
+    else if( strncmp( argdec, "play:", 5 ) == 0 )
     {
-        // Start playback
-        play( true );
+        // Start playback at given position
+        int i = strtol( argdec+5, NULL, 10 );
+        play( i );
     }
-    else if( strcmp( argdec, "pause" ) == 0 )
+    else if( strncmp( argdec, "playid:", 7 ) == 0 )
+    {
+        // Start playback at given id
+        int i = strtol( argdec+7, NULL, 10 );
+        playid( i );
+    }
+    else if( strncmp( argdec, "pause:", 6 ) == 0 )
     {
         // Pause playback
-        play( false );
+        int i = strtol( argdec+6, NULL, 10 );
+        pause( i );
     }
     else if( strncmp( argdec, "add:", 4 ) == 0 )
     {
-        // Send current state (current queue, current song, ...)
+        // Add song to queue
         add( argdec+4 );
     }
     else if( strcmp( argdec, "status" ) == 0 )
@@ -348,7 +388,7 @@ int main( int argc, char *argv[] )
     }
     else
     {
-        error( 400, "Bad Request", "Requested action not understood" );
+        error( 400, "Bad Request", "Request not understood" );
     }
 
     // cleanup

@@ -75,7 +75,7 @@
       function loadSender( )
       {
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "playlist:Radio" );
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "load:Radio" );
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load',  populateSender );
         xhr.responseType = 'json';
@@ -108,7 +108,7 @@
 
       function pause( )
       {
-        if( document.getElementById('pause').className == 'stop' )
+        if( document.getElementById('pause-li').className == 'stop' )
         {
             // stop playback (pause?)
             var url = "http://"+location.host+"/cgi-bin/ir.cgi?stop";
