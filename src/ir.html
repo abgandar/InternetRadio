@@ -95,7 +95,7 @@
             li.className = 'playlist';
             var a = document.createElement('a');
             a.href = "javascript:loadPlaylist('"+this.response.playlists[i].name+"');";
-            var text = document.createTextNode(this.response.playlists[i].name+"    \ux1f4fb");
+            var text = document.createTextNode(this.response.playlists[i].name+"    \uD83D\uDCFB");
             a.appendChild(text);
             li.appendChild(a);
             list.appendChild(li);
