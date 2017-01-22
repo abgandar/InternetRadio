@@ -1,3 +1,5 @@
+LD_FLAGS = -lmpdclient
+
 all: ir.cgi
 
 ir.cgi: ir-cgi.c config.h
