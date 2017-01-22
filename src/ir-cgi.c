@@ -445,7 +445,7 @@ int main( int argc, char *argv[] )
         // Add song to queue
         add( argdec+4 );
     }
-    else if( strcmp( argdec, "status" ) == 0 )
+    else if( strcmp( argdec, "status" ) == 0 || strcmp( argdec, "state" ) == 0 )
     {
         // Send current state (current queue, current song, ...)
         // This is automatically added at the end to every successful request, so we do nothing except starting the output
