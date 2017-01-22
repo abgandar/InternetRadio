@@ -31,6 +31,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 #include <mpd/client.h>
 
@@ -118,7 +119,7 @@ void output_end( )
     // always attach current status to output (no error if status command fails since we already sent output before!)
     struct mpd_status *status = NULL;
     struct mpd_song *song = NULL;
-	if( mpd_command_list_begin( conn, TRUE ) && mpd_send_status( conn ) && mpd_send_current_song( conn ) && mpd_command_list_end( conn ) && (status = mpd_recv_status( conn )) )
+	if( mpd_command_list_begin( conn, true ) && mpd_send_status( conn ) && mpd_send_current_song( conn ) && mpd_command_list_end( conn ) && (status = mpd_recv_status( conn )) )
     {
         puts( "\"stat\":{" );
 
@@ -206,13 +207,13 @@ void sendPlaylist( const char *arg )
 
     // print the playlist
     puts( "playlist:[" );
-    int first = TRUE;
-    while( (song = mpd_recv_song( conn ) )
+    int first = true;
+    while( (song = mpd_recv_song( conn ) ) )
     {
         if( first )
         {
             puts( "{" );
-            first = FALSE;
+            first = false;
         }
         else
         {
@@ -246,18 +247,6 @@ void skip( int where )
 
 // play/pause playback
 void play( int state )
-{
-    NOT_YET_IMPLEMENTED;
-}
-
-// send current status (queue, current song, position, playback state)
-void sendStatus( )
-{
-    NOT_YET_IMPLEMENTED;
-}
-
-// add given song to current playlist
-void sendStatus( )
 {
     NOT_YET_IMPLEMENTED;
 }
@@ -330,14 +319,14 @@ int main( int argc, char *argv[] )
     else if( strcmp( argdec, "play" ) == 0 )
     {
         // Start playback
-        play( TRUE );
+        play( true );
     }
     else if( strcmp( argdec, "pause" ) == 0 )
     {
         // Pause playback
-        play( FALSE );
+        play( false );
     }
-    else if( strcmp( argdec, "add:", 4 ) == 0 )
+    else if( strncmp( argdec, "add:", 4 ) == 0 )
     {
         // Send current state (current queue, current song, ...)
         add( argdec+4 );
