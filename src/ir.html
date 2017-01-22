@@ -80,7 +80,7 @@
       function loadSender( )
       {
         // send request to server
-        var url = "https://"+location.href.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "playlist:Radio" );
+        var url = "https://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "playlist:Radio" );
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load',  populateSender );
         xhr.open( 'GET', url, true );
@@ -92,7 +92,7 @@
         var ch = document.getElementById('sender').children;
 
         // if we're already playing the right song this is a no-op
-        if( ch[nr].classList.contains('aktiv') && document.getElementById('pause').className == 'stop' )
+        if( ch[nr].classList.contains('aktiv') && document.getElementById('pause-li').className == 'stop' )
             return;
 
         // deselect old songs, and highlight new
@@ -101,7 +101,7 @@
         ch[nr].classList.add('aktiv');
 
         // send request to server
-        var url = "https://"+location.href.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "play:"+nr );
+        var url = "https://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "play:"+nr );
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'stop'; } );
 //        xhr.addEventListener( 'error', function( ) { cell.className = "error";   setTimeout( function( ) { cell.className = ""; }, 250 ); } );
@@ -114,7 +114,7 @@
         if( document.getElementById('pause').className == 'stop' )
         {
             // stop playback (pause?)
-            var url = "https://"+location.href.host+"/cgi-bin/ir.cgi?stop";
+            var url = "https://"+location.host+"/cgi-bin/ir.cgi?stop";
             var xhr = new XMLHttpRequest( );
             xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'play'; } );
             xhr.open( 'GET', url, true );
@@ -134,7 +134,7 @@
             if( nr == -1 ) return;  // no song selected => no-op
 
             // send request to server
-            var url = "https://"+location.href.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "play:"+nr );
+            var url = "https://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "play:"+nr );
             var xhr = new XMLHttpRequest( );
             xhr.addEventListener( 'load',  function( ) { document.getElementById('pause-li').className = 'stop'; } );
             xhr.open( 'GET', url, true );
@@ -148,7 +148,7 @@
       }
     </script>
   </head>
-  <body onload="loadSender">
+  <body onload="loadSender()">
     <div id="container">
     <ul id="sidebar">
       <li id="menu-li"><a id="menu" href="javascript:toggleMenu()">Internet Radio &nbsp;&nbsp; &#9776;</a></li>
@@ -159,10 +159,10 @@
       <li id="laden-li"><a id="laden" href="javascript:loadSender()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
     </ul>
     <ul id="sender">
-        <li class="aktiv"><a href="javascript:play(0);">SWR1 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
-        <li><a href="javascript:play(1);">Klassik Radio - Hamburg (Deutschland)</a></li>
-        <li><a href="javascript:play(2);">SWR2 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
-        <li><a href="javascript:play(3);">SWR3 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
+        <li class="aktiv"><a href="javascript:play(0)">SWR1 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
+        <li><a href="javascript:play(1)">Klassik Radio - Hamburg (Deutschland)</a></li>
+        <li><a href="javascript:play(2)">SWR2 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
+        <li><a href="javascript:play(3)">SWR3 Baden-Württemberg - Stuttgart (Deutschland)</a></li>
     </ul>
     </div>
   </body>
