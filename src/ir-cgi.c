@@ -207,7 +207,7 @@ void sendPlaylist( const char *arg )
 
     // print the playlist
     output_start( );
-    puts( "playlist:[" );
+    puts( "\"playlist\":[" );
     int i = 0;
     while( (song = mpd_recv_song( conn ) ) )
     {
