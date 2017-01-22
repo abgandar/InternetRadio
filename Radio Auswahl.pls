@@ -1,3 +1,4 @@
+[playlist]
 NumberOfEntries=10
 File1=http://swr-mp3-m-swr1bw.akacast.akamaistream.net/7/245/137133/v1/gnl.akacast.akamaistream.net/swr-mp3-m-swr1bw
 Title1=SWR1 Baden-Württemberg - Stuttgart (Deutschland)
