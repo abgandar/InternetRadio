@@ -43,6 +43,8 @@
       #sender li { border: 1px solid black; width: 100%; box-sizing: border-box; display: block; padding: 0px; }
       #sender li a { margin: 0px; padding-top: 30px; padding-bottom: 30px; padding-left: 45px; padding-right: 10px; display: block; text-decoration: none; color: black; font-size: 16pt; box-sizing: border-box; }
       #sender li.aktiv { background: lightblue; border-width: 2px; }
+      #sender li span { display: none; }
+      #sender li.aktiv span { display: block; font-size: 11pt; }
     </style>
     <script type="text/javascript">
       DEFAULT_PLAYLIST = 'Radio';
@@ -50,8 +52,13 @@
       function updateState( state )
       {
         var id = state.song ? state.song.position : 0;
+        var sender = document.getElementById('sender').children[id];
 
-        document.getElementById('sender').children[id].className = "aktiv";
+        if( sender )
+        {
+            sender.className = "aktiv";
+            if( state.song.title ) sender.state.song.getElementsByClassName('span')[0].innerText = "\n"+state.song.title;
+        }
         document.getElementById('pause-li').className = state.playing ? 'stop' : 'play';
       }
 
@@ -72,10 +79,10 @@
             var li = document.createElement( 'li' );
             var a = document.createElement('a');
             a.href = "javascript:play("+i+");";
+            var span = document.createElement('span');
             var text = document.createTextNode(this.response.playlist[i].name);
-            a.appendChild(text);
-            li.appendChild(a);
-            list.appendChild(li);
+            list.appendChild(li).appendChild(a).appendChild(text);
+            a.append(span);
         }
 
         updateState( this.response.state );
@@ -140,10 +147,22 @@
         xhr.send( );
       }
 
-      function refresh( )
+      function refreshState( )
+      {
+        // send request to server
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?state";
+        var xhr = new XMLHttpRequest( );
+        xhr.addEventListener( 'load', function() { updateState( this.request.state ); } );
+        xhr.responseType = 'json';
+        xhr.open( 'GET', url, true );
+        xhr.send( );
+      }
+
+      function init( )
       {
         refreshPlaylists( );
         refreshQueue( );
+        setInterval( refreshState, 20000 );
       }
 
       function play( nr )
@@ -197,7 +216,7 @@
       }
     </script>
   </head>
-  <body onload="refresh()">
+  <body onload="init()">
     <div id="container">
     <ul id="sidebar">
       <li id="menu-li"><a id="menu" href="javascript:toggleMenu()">Internet Radio &nbsp;&nbsp; &#9776;</a></li>
