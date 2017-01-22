@@ -202,7 +202,7 @@ void sendPlaylist( const char *arg )
 {
     struct mpd_song *song = NULL;
 
-    if( !mpd_send_list_playlist( conn, arg ) )
+    if( !mpd_send_list_playlist_meta( conn, arg ) )
         error( 404, "Not found", "Playlist not found" );
 
     // print the playlist
