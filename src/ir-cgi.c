@@ -285,7 +285,6 @@ void error( const int code, const char* msg, const char* message )
     if( message == NULL )
     {
         struct mpd_status *status;
-        mpd_response_finish( conn );    // in case previous command isn't finished
         status = mpd_run_status( conn );
         if( status )
         {
@@ -407,7 +406,7 @@ void loadPlaylist( const char *arg )
 {
     mpd_run_clear( conn );
     if( !mpd_run_load( conn, arg ) )
-        error( 404, "Not found", NULL );
+        error( 404, "Not found", arg );
     play( 0 );  // start playing the first song (also starts the response output)
 }
 
