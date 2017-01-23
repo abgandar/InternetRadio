@@ -414,9 +414,10 @@ void loadPlaylist( const char *arg )
 void loadMusic( const char *arg )
 {
     mpd_run_clear( conn );
-
-    if( !mpd_command_list_begin( conn, true ) || !mpd_send_clear( conn ) || !mpd_search_add_db_songs( conn, true ) || !mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg ) || !mpd_search_commit( conn ) || !mpd_command_list_end( conn ) );
-        error( 404, "Not found", arg );
+    mpd_search_add_db_songs( conn, true );
+    mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg );
+    if( !mpd_search_commit( conn ) )
+        error( 404, "Not found", NULL );
     mpd_response_finish( conn );
 
     play( 0 );  // start playing the first song (also starts the response output)
