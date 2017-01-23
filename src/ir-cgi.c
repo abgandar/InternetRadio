@@ -76,6 +76,35 @@ char hex_to_char( const char c )
     return -1;
 }
 
+// convert binary number to single hex digit
+char char_to_hex( const char c )
+{
+    switch( c )
+    {
+        case 0:
+        case 1:
+        case 2:
+        case 3:
+        case 4:
+        case 5:
+        case 6:
+        case 7:
+        case 8:
+        case 9:
+            return c+'0';
+
+        case 10:
+        case 11:
+        case 12:
+        case 13:
+        case 14:
+        case 15:
+            return c-10+'a';
+    }
+
+    return 'X';
+}
+
 // URL decode entire string (result must later be free-ed by caller).
 // Invalid %XX escape sequences are ignored and produce no output.
 char* urldecode( const char *str )
@@ -106,6 +135,64 @@ char* urldecode( const char *str )
     return dup;
 }
 
+// JSON encode string (result must later be free-ed by caller).
+char* jsonencode( const char *str )
+{
+    char *c;
+    int len = 1;
+
+    // determine resulting string length
+    for( c = str; c != '\0'; c++ )
+        if( *c == '\\' || *c == '"' )
+            len += 2;
+        else if( *c <= 0x20 )
+            len += 6;
+        else
+            len++;
+
+    // allocate result
+    char *dup = (char*) malloc( len*sizeof(char) );
+    char *p = dup;
+
+    // copy or encode characters
+    for( c = str; c != '\0'; c++, p++ )
+    {
+        if( *c == '\\' || *c == '"')
+        {
+            *p = '\\'; p++;
+            *p = *c;
+        }
+        else if( *c <= 0x20 )
+        {
+            *p = '\\'; p++;
+            *p = 'u'; p++;
+            *p = '0'; p++;
+            *p = '0'; p++;
+            *p = char_to_hex( *c >> 4 ); p++;
+            *p = char_to_hex( *c & 0x0F );
+        }
+        else
+            *p = *c;
+    }
+    *p = '\0';
+
+    return dup;
+}
+
+// output a JSON string attribute
+void json_str( const char name, const char value, const char comma )
+{
+    char *json = jsonencode( value );
+    printf( "\"%s\":\"%s\"%c", name, json, comma );
+    free( json );
+}
+
+// output a JSON int attribute
+void json_int( const char name, const int value, const char comma )
+{
+    printf( "\"%s\":\"%i\"%c", name, value, comma );
+}
+
 // start outputting results
 void output_start( )
 {
@@ -124,6 +211,7 @@ void output_end( )
     // always attach current status to output (no error if status command fails since we already sent output before!)
     struct mpd_status *status = NULL;
     struct mpd_song *song = NULL;
+    char *json = NULL;
 	if( mpd_command_list_begin( conn, true ) && mpd_send_status( conn ) && mpd_send_current_song( conn ) && mpd_command_list_end( conn ) && (status = mpd_recv_status( conn )) )
     {
         puts( "\"state\":{" );
@@ -133,12 +221,12 @@ void output_end( )
             mpd_response_next( conn );
             song = mpd_recv_song( conn );
             puts( "\"song\":{" );
-            printf( "\"position\":%i,", mpd_status_get_song_pos( status ) );
-            printf( "\"id\":%i,", mpd_song_get_id( song ) );
-            printf( "\"title\":\"%s\",", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ) );
-            printf( "\"name\":\"%s\",", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ) );
-            printf( "\"artist\":\"%s\",", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ) );
-            printf( "\"uri\":\"%s\"", mpd_song_get_uri( song ) );
+            json_int( "position", mpd_status_get_song_pos( status ), ',' );
+            json_int( "id", mpd_song_get_id( song ), ',' );
+            json_str( "title", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ), ',' );
+            json_str( "name", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ), ',' );
+            json_str( "artist", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ), ',' );
+            json_str( "uri", mpd_song_get_uri( song ), ' ' );
             puts( "}," );
             mpd_song_free( song );
         }
@@ -155,15 +243,15 @@ void output_end( )
                 puts( "\"playing\":0,");
         }
 
-        printf( "\"repeat\":%i,", mpd_status_get_repeat( status ) ? 1 : 0 );
-        printf( "\"random\":%i,", mpd_status_get_random( status ) ? 1 : 0 );
-        printf( "\"single\":%i,", mpd_status_get_single( status ) ? 1 : 0 );
-        printf( "\"consume\":%i,", mpd_status_get_consume( status ) ? 1 : 0 );
+        json_int( "repeat", mpd_status_get_repeat( status ) ? 1 : 0, ',' );
+        json_int( "random", mpd_status_get_random( status ) ? 1 : 0, ',' );
+        json_int( "single", mpd_status_get_single( status ) ? 1 : 0, ',' );
+        json_int( "consume", mpd_status_get_consume( status ) ? 1 : 0, ',' );
 
         if( mpd_status_get_error( status ) != NULL )
-            printf( "\"error\":\"%s\",", mpd_status_get_error( status ) );
+            json_str( "error", mpd_status_get_error( status ), ',' );
 
-        printf( "\"volume\":%i", mpd_status_get_volume( status ));  // no trailing comma for last entry
+        json_int( "volume", mpd_status_get_volume( status ), ' ' );
 
         puts( "}" );
 		mpd_status_free( status );
@@ -186,20 +274,6 @@ void error( const int code, const char* msg, const char* message )
     printf( "{\"status\":%d,\"message\":\"%s\"}", code, message != NULL ? message : msg );  // JSON
     if( conn ) mpd_connection_free( conn );
     exit( code );
-}
-
-#define NOT_YET_IMPLEMENTED puts( "Not yet implemented" )
-
-// search the music database for entries matching the given search term
-void searchMusic( const char *arg )
-{
-    NOT_YET_IMPLEMENTED;
-}
-
-// add song to playlist
-void add( const char *arg )
-{
-    NOT_YET_IMPLEMENTED;
 }
 
 // skip by the given amount
@@ -291,7 +365,7 @@ void sendPlaylists( )
             puts( ",{" );
         else
             puts( "{" );
-        printf( "\"name\":\"%s\"", mpd_playlist_get_path( list ) );
+        json_str( "name", mpd_playlist_get_path( list ), ' ' );
         puts( "}" );
         mpd_playlist_free( list );
         i++;
@@ -337,12 +411,12 @@ void sendPlaylist( const char *arg )
             puts( ",{" );
         else
             puts( "{" );
-        printf( "\"position\":%i,\n", i );
-        printf( "\"id\":%i,\n", mpd_song_get_id( song ) );
-        printf( "\"title\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ) );
-        printf( "\"name\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ) );
-        printf( "\"artist\":\"%s\",\n", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ) );
-        printf( "\"uri\":\"%s\"\n", mpd_song_get_uri( song ) );
+        json_int( "position", i, ',' );
+        json_int( "id", mpd_song_get_id( song ), ',' );
+        json_str( "title", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ), ',' );
+        json_str( "name", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ), ',' );
+        json_str( "artist", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ), ',' );
+        json_str( "uri", mpd_song_get_uri( song ), ' ' );
         puts( "}" );
         mpd_song_free( song );
         i++;
@@ -350,6 +424,32 @@ void sendPlaylist( const char *arg )
     puts( "]," );
 
     mpd_response_finish( conn );
+}
+
+// add song(s) to playlist and send new queue
+void add( char *arg )
+{
+	if( !mpd_command_list_begin( conn, true ) )
+        error( 500, "Internal Server Error", "Error adding song" );
+
+    char *url = strtok( arg, ":" );
+    while( url )
+    {
+        if( !mpd_send_add( conn, url ) )
+            error( 404, "Not found", "Song not found" );
+        url = strtok( NULL, ":" );
+    }
+
+	if( !mpd_command_list_end( conn ) )
+        error( 404, "Not found", "Song not found" );
+
+    mpd_response_finish( conn );
+    sendPlaylist( NULL );
+}
+
+// search the music database for entries matching the given search term
+void searchMusic( const char *arg )
+{
 }
 
 // Main program entry point
@@ -380,10 +480,11 @@ int main( int argc, char *argv[] )
 #endif
 
     // decode command
-    if( strncmp( argdec, "search:", 7 ) == 0 )
+    if( strcmp( argdec, "status" ) == 0 || strcmp( argdec, "state" ) == 0 )
     {
-        // Search a song in the music list
-        searchMusic( argdec+7 );
+        // Send current state (current queue, current song, ...)
+        // This is automatically added at the end to every successful request, so we do nothing except starting the output
+        output_start( );
     }
     else if( strcmp( argdec, "playlists" ) == 0 )
     {
@@ -416,12 +517,6 @@ int main( int argc, char *argv[] )
         // Jump to previous item on playlist
         skip( -1 );
     }
-    else if( strncmp( argdec, "skip:", 5 ) == 0 )
-    {
-        // Jump a given number of songs in current playlist
-        int i = strtol( argdec+5, NULL, 10 );
-        skip( i );
-    }
     else if( strncmp( argdec, "play:", 5 ) == 0 )
     {
         // Start playback at given position
@@ -445,11 +540,10 @@ int main( int argc, char *argv[] )
         // Add song to queue
         add( argdec+4 );
     }
-    else if( strcmp( argdec, "status" ) == 0 || strcmp( argdec, "state" ) == 0 )
+    else if( strncmp( argdec, "search:", 7 ) == 0 )
     {
-        // Send current state (current queue, current song, ...)
-        // This is automatically added at the end to every successful request, so we do nothing except starting the output
-        output_start( );
+        // Search a song in the music list
+        searchMusic( argdec+7 );
     }
     else
     {

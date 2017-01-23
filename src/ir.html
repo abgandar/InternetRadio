@@ -49,6 +49,34 @@
     <script type="text/javascript">
       DEFAULT_PLAYLIST = 'Radio';
 
+      function getIcon( name )
+      {
+        var icons = [
+                    { keyword: "radio", symbol: "\uD83D\uDCFB"},
+                    { keyword: "weihnachten", symbol: "\uD83C\uDF84"},
+                    { keyword: "karaoke", symbol: "\uD83C\uDFA4"},
+                    { keyword: "film", symbol: "\uD83C\uDFA5"},
+                    { keyword: "theater", symbol: "\uD83C\uDFAD"},
+                    { keyword: "oper", symbol: "\uD83C\uDFAD"},
+                    { keyword: "klavier", symbol: "\uD83C\uDFB9"},
+                    { keyword: "piano", symbol: "\uD83C\uDFB9"},
+                    { keyword: "gitarre", symbol: "\uD83C\uDFB8"},
+                    { keyword: "jazz", symbol: "\uD83C\uDFB7"},
+                    { keyword: "klassik", symbol: "\uD83C\uDFBB"},
+                    { keyword: "violine", symbol: "\uD83C\uDFBB"},
+                    { keyword: "laufen", symbol: "\uD83C\uDFC3"},
+                    { keyword: "sport", symbol: "\uD83C\uDFC3"},
+                    { keyword: "alex", symbol: "\uD83C\uDF83"},
+                    { keyword: "musik", symbol: "\uD83C\uDFBC"},
+                    { keyword: "", symbol: "\uD83C\uDFB6"},     // default
+                  ];
+
+        var lname = name.toLowercase( );
+        for( i = 0; i < icons.length; i++ )
+            if( lname.indexOf( icons[i].keyword ) >= 0 )
+                return( icons[i].symbol );
+      }
+
       function updateState( state )
       {
         var id = state.song ? state.song.position : 0;
@@ -106,7 +134,7 @@
             a.href = "javascript:loadPlaylist('"+playlists[i].name+"');";
             var span = document.createElement('span');
             var text = document.createTextNode(playlists[i].name);
-            var symbol = document.createTextNode(" \u00A0\u00A0 \uD83D\uDCFB");
+            var symbol = document.createTextNode(" \u00A0\u00A0 "+getIcon( playlists[i].name ));
             list.appendChild(li).appendChild(a).appendChild(span).appendChild(text);
             a.appendChild(symbol);
         }
@@ -225,6 +253,7 @@
         <a id="stop" href="javascript:pause( )">Pause &nbsp;&nbsp; &#x23f8;</a>
       </li>
       <li id="laden-li"><a id="laden" href="javascript:refresh()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
+      <li id="musik-li"><a id="musik" href="javascript:refresh()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
     </ul>
     <ul id="sender">
     </ul>
