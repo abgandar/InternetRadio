@@ -154,7 +154,7 @@ char* jsonencode( const unsigned char *str )
     {
         if( *c == '\\' || *c == '"' )
             len += 2;
-        else if( *c <= 0x20 )
+        else if( *c < 0x20 )
             len += 6;
         else
             len++;
@@ -172,7 +172,7 @@ char* jsonencode( const unsigned char *str )
             *(p++) = '\\';
             *(p++) = *c;
         }
-        else if( *c <= 0x20 )
+        else if( *c < 0x20 )
         {
             *(p++) = '\\';
             *(p++) = 'u';
