@@ -286,6 +286,7 @@ void error( const int code, const char* msg, const char* message )
     {
         struct mpd_status *status;
         status = mpd_run_status( conn );
+    printf( "hi\n" );
         if( status && mpd_status_get_error( status ) != NULL )
             m = jsonencode( mpd_status_get_error( status ) );
         mpd_status_free( status );
@@ -293,7 +294,7 @@ void error( const int code, const char* msg, const char* message )
 
     __fpurge( stdout );
     printf( "Status: %d %s\nContent-type: application/json\n\n", code, msg );
-    printf( "{\"status\":%d,\"message\":\"%s\"}", code, m == NULL ? message : m );
+    printf( "{\"status\":%d,\"message\":\"%s\"}", code, message == NULL ? m : message );
     fflush( stdout );
     if( m ) free( m );
     if( conn ) mpd_connection_free( conn );
