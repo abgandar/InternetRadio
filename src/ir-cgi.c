@@ -200,7 +200,7 @@ void json_str( const char *name, const char *value, const char comma )
 // output a JSON int attribute
 void json_int( const char *name, const int value, const char comma )
 {
-    printf( "\"%s\":\"%i\"%c", name, value, comma );
+    printf( "\"%s\":%i%c", name, value, comma );
 }
 
 // start outputting results
