@@ -392,7 +392,7 @@ void sendPlaylists( )
 void loadPlaylist( const char *arg )
 {
     mpd_run_clear( conn );
-
+printf("%s\n",arg);
     if( !mpd_run_load( conn, arg ) )
         error( 404, "Not found", "Playlist not found" );
     play( 0 );  // start playing the first song (also starts the response output)
