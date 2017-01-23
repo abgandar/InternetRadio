@@ -479,11 +479,6 @@ void add( char *arg )
     sendPlaylist( NULL );
 }
 
-// search the music database for entries matching the given search term
-void searchMusic( const char *arg )
-{
-}
-
 // send password (unencrypted clear text, mostly window dressing)
 void sendPassword( const char *arg )
 {
@@ -564,11 +559,6 @@ void parseCommand( char *cmd )
     {
         // Add song to queue
         add( cmd+4 );
-    }
-    else if( strncmp( cmd, "search=", 7 ) == 0 )
-    {
-        // Search a song in the music list
-        searchMusic( cmd+7 );
     }
     else
     {
