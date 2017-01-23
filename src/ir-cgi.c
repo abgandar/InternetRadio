@@ -281,17 +281,9 @@ void output_end( )
 // output an error and exit
 void error( const int code, const char* msg, const char* message )
 {
-    char *m = NULL;
-    if( message == NULL )
-    {
-        struct mpd_status *status;
-        status = mpd_run_status( conn );
-        if( status )
-        {
-            m = jsonencode( mpd_status_get_error( status ) );
-            mpd_status_free( status );
-        }
-    }
+    char *m = "";
+    if( message == NULL && mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS )
+        m = jsonencode( mpd_connection_get_error_message( conn ) );
 
     __fpurge( stdout );
     printf( "Status: %d %s\nContent-type: application/json\n\n", code, msg );
