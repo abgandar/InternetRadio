@@ -573,10 +573,6 @@ void parseCommand( char *cmd )
 int main( int argc, char *argv[] )
 {
     // set up a large output buffer to allow errors occuring later to purge previous output
-//    char *buf = (char*)malloc( OUTPUT_BUFFER_SIZE );
-//    if( buf == NULL )
-//        error( 500, "Internal Server Error", "Request failed" );
-//    setvbuf( stdout, buf, _IOFBF, OUTPUT_BUFFER_SIZE );
     setvbuf( stdout, NULL, _IOFBF, OUTPUT_BUFFER_SIZE );
 
     // get query string from CGI environment
@@ -609,7 +605,5 @@ int main( int argc, char *argv[] )
 
     // if we reach here everything is OK
     output_end( );
-//    fflush( stdout );
-//    free( buf );
     return 0;
 }
