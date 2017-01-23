@@ -164,6 +164,17 @@
         xhr.send( );
       }
 
+      function loadMusic( dir )
+      {
+        // send request to server
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?music="+encodeURIComponent( dir );
+        var xhr = new XMLHttpRequest( );
+        xhr.addEventListener( 'load', populateQueue );
+        xhr.responseType = 'json';
+        xhr.open( 'GET', url, true );
+        xhr.send( );
+      }
+
       function refreshPlaylists( )
       {
         // send request to server
@@ -188,6 +199,14 @@
 
       function refresh( )
       {
+        // send request to server
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?queue&playlists";
+        var xhr = new XMLHttpRequest( );
+        xhr.addEventListener( 'load', function( ) { populateQueue.call( this ); populatePlaylists.call( this ); } );
+        xhr.responseType = 'json';
+        xhr.open( 'GET', url, true );
+        xhr.send( );
+
         refreshPlaylists( );
         refreshQueue( );
       }
@@ -258,7 +277,7 @@
         <a id="stop" href="javascript:pause( )">Pause &nbsp;&nbsp; &#x23f8;</a>
       </li>
       <li id="laden-li"><a id="laden" href="javascript:refresh()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
-      <li id="musik-li"><a id="musik" href="javascript:loadPlaylist('')">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
+      <li id="musik-li"><a id="musik" href="javascript:loadMusic('')">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
     </ul>
     <ul id="sender">
     </ul>
