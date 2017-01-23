@@ -110,7 +110,8 @@
             var a = document.createElement('a');
             a.href = "javascript:play("+i+");";
             var span = document.createElement('span');
-            var text = document.createTextNode(this.response.playlist[i].name);
+            var name = this.response.playlist[i].name || this.response.playlist[i].title || this.response.playlist[i].uri;
+            var text = document.createTextNode(name);
             list.appendChild(li).appendChild(a).appendChild(text);
             a.append(span);
         }
