@@ -136,9 +136,9 @@ char* urldecode( const char *str )
 }
 
 // JSON encode string (result must later be free-ed by caller).
-char* jsonencode( const char *str )
+char* jsonencode( const unsigned char *str )
 {
-    const char *c;
+    const unsigned char *c;
     int len = 1;
 
     // determine resulting string length
@@ -153,7 +153,7 @@ char* jsonencode( const char *str )
     }
 
     // allocate result
-    char *p, *dup = (char*) malloc( len*sizeof(char) );
+    unsigned char *p, *dup = (unsigned char*) malloc( len*sizeof(char) );
     if( dup == NULL ) return NULL;
 
     // copy or encode characters
@@ -170,7 +170,7 @@ char* jsonencode( const char *str )
             *(p++) = 'u';
             *(p++) = '0';
             *(p++) = '0';
-            *(p++) = char_to_hex( *c >> 4 );
+            *(p++) = char_to_hex( (*c >> 4) & 0x0F );
             *(p++) = char_to_hex( *c & 0x0F );
         }
         else
