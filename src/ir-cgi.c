@@ -281,7 +281,7 @@ void output_end( )
 // output an error and exit
 void error( const int code, const char* msg, const char* message )
 {
-    __fpurge( stdout );
+    //__fpurge( stdout );
     printf( "Status: %d %s\nContent-type: application/json\n\n", code, msg );               // header
     printf( "{\"status\":%d,\"message\":\"%s\"}", code, message != NULL ? message : msg );  // JSON
     fflush( stdin );
