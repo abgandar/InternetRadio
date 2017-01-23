@@ -281,10 +281,21 @@ void output_end( )
 // output an error and exit
 void error( const int code, const char* msg, const char* message )
 {
+    const char *m = NULL;
+    if( message == NULL )
+    {
+        struct mpd_status *status;
+        status = mpd_run_status( conn );
+        if( status && mpd_status_get_error( status ) != NULL )
+            m = jsonencode( mpd_status_get_error( status ) );
+        mpd_status_free( status );
+    }
+
     __fpurge( stdout );
-    printf( "Status: %d %s\nContent-type: application/json\n\n", code, msg );               // header
-    printf( "{\"status\":%d,\"message\":\"%s\"}", code, message != NULL ? message : msg );  // JSON
-    fflush( stdin );
+    printf( "Status: %d %s\nContent-type: application/json\n\n", code, msg );
+    printf( "{\"status\":%d,\"message\":\"%s\"}", code, m == NULL ? message : m );
+    fflush( stdout );
+    if( m ) free( m );
     if( conn ) mpd_connection_free( conn );
     exit( code );
 }
@@ -318,7 +329,7 @@ void skip( int where )
 void play( int position )
 {
     if( position >= 0 && !mpd_run_play_pos( conn, position ) )
-        error( 404, "Not found", "Invalid song position" );
+        error( 404, "Not found", NULL );
 
     output_start( );
 }
@@ -327,7 +338,7 @@ void play( int position )
 void playid( int id )
 {
     if( id >= 0 && !mpd_run_play_id( conn, id ) )
-        error( 404, "Not found", "Invalid song id" );
+        error( 404, "Not found", NULL );
 
     output_start( );
 }
@@ -337,7 +348,7 @@ void pausemusic( int position )
 {
     struct mpd_status *status = NULL;
 	if( !(status = mpd_run_status( conn )) )
-        error( 500, "Internal Server Error", "Error getting status" );
+        error( 500, "Internal Server Error", NULL );
 
     switch( mpd_status_get_state( status ) )
     {
@@ -366,7 +377,7 @@ void sendPlaylists( )
     struct mpd_playlist *list = NULL;
 
     if( !mpd_send_list_playlists( conn ) )
-        error( 500, "Internal Server Error", "Error listing playlists" );
+        error( 500, "Internal Server Error", NULL );
 
     // print all playlists
     output_start( );
@@ -393,7 +404,7 @@ void loadPlaylist( const char *arg )
 {
     mpd_run_clear( conn );
     if( !mpd_run_load( conn, arg ) )
-        error( 404, "Not found", "Playlist not found" );
+        error( 404, "Not found", NULL );
     play( 0 );  // start playing the first song (also starts the response output)
 }
 
@@ -403,7 +414,7 @@ void loadMusic( const char *arg )
     mpd_run_clear( conn );
 
     if( !mpd_command_list_begin( conn, true ) || !mpd_send_clear( conn ) || !mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg ) || !mpd_search_add_db_songs( conn, true ) || !mpd_command_list_end( conn ) );
-        error( 404, "Not found", "Music directory not found" );
+        error( 404, "Not found", NULL );
     mpd_response_finish( conn );
 
     play( 0 );  // start playing the first song (also starts the response output)
@@ -417,12 +428,12 @@ void sendPlaylist( const char *arg )
     if( arg )
     {
         if( !mpd_send_list_playlist_meta( conn, arg ) )
-            error( 404, "Not found", "Playlist not found" );
+            error( 404, "Not found", NULL );
     }
     else
     {
         if( !mpd_send_list_queue_meta( conn ) )
-            error( 500, "Internal Server Error", "Error listing queue" );
+            error( 500, "Internal Server Error", NULL );
     }
 
     // print the playlist
@@ -454,17 +465,17 @@ void sendPlaylist( const char *arg )
 void add( char *arg )
 {
 	if( !mpd_command_list_begin( conn, true ) )
-        error( 500, "Internal Server Error", "Error adding song" );
+        error( 500, "Internal Server Error", NULL );
 
     char *url;
     while( (url = strsep( &arg, ":" )) )
     {
         if( !mpd_send_add( conn, url ) )
-            error( 404, "Not found", "Song not found" );
+            error( 404, "Not found", NULL );
     }
 
 	if( !mpd_command_list_end( conn ) )
-        error( 404, "Not found", "Song not found" );
+        error( 404, "Not found", NULL );
 
     mpd_response_finish( conn );
     sendPlaylist( NULL );
@@ -479,7 +490,7 @@ void searchMusic( const char *arg )
 void sendPassword( const char *arg )
 {
     if( !mpd_run_password( conn, arg ) )
-        error( 403, "Not allowed", "Password rejected" );       // check number
+        error( 403, "Forbidden", NULL );
 }
 
 // Parse a command
@@ -582,7 +593,7 @@ int main( int argc, char *argv[] )
     // Open connection to MPD
     conn = mpd_connection_new( SOCKET_PFAD, 0, 0 );
     if( conn == NULL || mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS )
-        error( 500, "Internal Server Error", "No connection to MPD" );
+        error( 500, "Internal Server Error", NULL );
 
     // duplicate query string so it is writeable
     char *arg = strdup( env );
