@@ -87,14 +87,14 @@
         if( sender )
         {
             sender.className = "aktiv";
-            if( state.song.title ) sender.getElementsByTagName('span')[0].innerText = state.song.title;
+            if( state.song && state.song.title ) sender.getElementsByTagName('span')[0].innerText = state.song.title;
         }
         document.getElementById('pause-li').className = state.playing ? 'stop' : 'play';
       }
 
       function populateQueue( )
       {
-        // if the queu is empty, populate it with the default playlist now
+        // if the queue is empty, populate it with the default playlist now
         if( this.response.playlist.length == 0 )
             loadPlaylist( DEFAULT_PLAYLIST );
 
