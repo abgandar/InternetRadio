@@ -142,7 +142,7 @@ char* jsonencode( const char *str )
     int len = 1;
 
     // determine resulting string length
-    for( c = str; c != '\0'; c++ )
+    for( c = str; *c != '\0'; c++ )
         if( *c == '\\' || *c == '"' )
             len += 2;
         else if( *c <= 0x20 )
