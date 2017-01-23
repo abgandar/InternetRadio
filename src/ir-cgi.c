@@ -273,6 +273,7 @@ void output_end( )
     }
 
     puts( "}" );  // end JSON output
+    fflush( stdin );
     if( conn ) mpd_connection_free( conn );
     exit( 0 );
 }
@@ -280,8 +281,10 @@ void output_end( )
 // output an error and exit
 void error( const int code, const char* msg, const char* message )
 {
+    fpurge( stdin );
     printf( "Status: %d %s\nContent-type: application/json\n\n", code, msg );               // header
     printf( "{\"status\":%d,\"message\":\"%s\"}", code, message != NULL ? message : msg );  // JSON
+    fflush( stdin );
     if( conn ) mpd_connection_free( conn );
     exit( code );
 }
@@ -400,8 +403,10 @@ void loadMusic( const char *arg )
 {
     mpd_run_clear( conn );
 
-    if( !mpd_run_load( conn, arg ) )
-        error( 404, "Not found", "Directory not found" );
+    if( !mpd_command_list_begin( conn, true ) || !mpd_send_clear( conn ) || !mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg ) || !mpd_search_add_db_songs( conn, true ) || !mpd_command_list_end( conn ) );
+        error( 404, "Not found", "Music directory not found" );
+    mpd_response_finish( conn );
+
     play( 0 );  // start playing the first song (also starts the response output)
 }
 
@@ -452,12 +457,11 @@ void add( char *arg )
 	if( !mpd_command_list_begin( conn, true ) )
         error( 500, "Internal Server Error", "Error adding song" );
 
-    char *url = strtok( arg, ":" );
-    while( url )
+    char *url;
+    while( (url = strsep( &arg, ":" )) )
     {
         if( !mpd_send_add( conn, url ) )
             error( 404, "Not found", "Song not found" );
-        url = strtok( NULL, ":" );
     }
 
 	if( !mpd_command_list_end( conn ) )
@@ -472,109 +476,132 @@ void searchMusic( const char *arg )
 {
 }
 
+// send password (unencrypted clear text, mostly window dressing)
+void sendPassword( const char *arg )
+{
+    if( !mpd_run_password( conn, arg ) )
+        error( 403, "Not allowed", "Password rejected" );       // check number
+}
+
+// Parse a command
+void parseCommand( char *cmd )
+{
+    if( strcmp( cmd, "status" ) == 0 || strcmp( cmd, "state" ) == 0 )
+    {
+        // Send current state (current queue, current song, ...)
+        // This is automatically added at the end to every successful request, so we do nothing except starting the output
+        output_start( );
+    }
+    else if( strncmp( cmd, "password=", 9 ) == 0 )
+    {
+        // Send password
+        sendPassword( cmd+9 );
+    }
+    else if( strcmp( cmd, "playlists" ) == 0 )
+    {
+        // Send list of all playlists on server
+        sendPlaylists( );
+    }
+    else if( strncmp( cmd, "playlist=", 9 ) == 0 )
+    {
+        // Send content of given playlist
+        sendPlaylist( cmd+9 );
+    }
+    else if( strcmp( cmd, "queue" ) == 0 )
+    {
+        // Send content of current queue
+        sendPlaylist( NULL );
+    }
+    else if( strncmp( cmd, "load=", 5 ) == 0 )
+    {
+        // Load the given playlist to replace the current queue and send its content
+        loadPlaylist( cmd+5 );
+        sendPlaylist( NULL );
+    }
+    else if( strncmp( cmd, "music=", 6 ) == 0 )
+    {
+        // Load the given music directory (recursively) to replace the current queue and send its content
+        loadMusic( cmd+6 );
+        sendPlaylist( NULL );
+    }
+    else if( strcmp( cmd, "forward" ) == 0 )
+    {
+        // Jump to next item on playlist
+        skip( 1 );
+    }
+    else if( strcmp( cmd, "back" ) == 0 )
+    {
+        // Jump to previous item on playlist
+        skip( -1 );
+    }
+    else if( strncmp( cmd, "play=", 5 ) == 0 )
+    {
+        // Start playback at given position
+        int i = strtol( cmd+5, NULL, 10 );
+        play( i );
+    }
+    else if( strncmp( cmd, "playid=", 7 ) == 0 )
+    {
+        // Start playback at given id
+        int i = strtol( cmd+7, NULL, 10 );
+        playid( i );
+    }
+    else if( strncmp( cmd, "pause=", 6 ) == 0 )
+    {
+        // Pause playback
+        int i = strtol( cmd+6, NULL, 10 );
+        pausemusic( i );
+    }
+    else if( strncmp( cmd, "add=", 4 ) == 0 )
+    {
+        // Add song to queue
+        add( cmd+4 );
+    }
+    else if( strncmp( cmd, "search=", 7 ) == 0 )
+    {
+        // Search a song in the music list
+        searchMusic( cmd+7 );
+    }
+    else
+    {
+        // No idea what you want from me
+        error( 400, "Bad Request", "Request not understood" );
+    }
+}
+
 // Main program entry point
 int main( int argc, char *argv[] )
 {
-    // get query string from CGI environment
-    const char *arg = getenv( "QUERY_STRING" );
-    if( arg == NULL )
-        error( 400, "Bad Request", "Request incomplete" );
+    // set up a large output buffer to allow errors occuring later to purge previous output
+    setvbuf( stdout, NULL, _IOFBF, OUTPUT_BUFFER_SIZE );
 
-    // URL decode argument
-    char *argdec = urldecode( arg );
-    if( argdec == NULL )
-        error( 500, "Internal Server Error", "Request failed" );
+    // get query string from CGI environment
+    const char *env = getenv( "QUERY_STRING" );
+    if( env == NULL )
+        error( 400, "Bad Request", "Request incomplete" );
 
     // Open connection to MPD
     conn = mpd_connection_new( SOCKET_PFAD, 0, 0 );
     if( conn == NULL || mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS )
         error( 500, "Internal Server Error", "No connection to MPD" );
 
-#ifdef MPD_PASSWORD
-    // send password if there is one (unencrypted clear text, mostly window dressing)
-    if( !mpd_run_password( conn, MPD_PASSWORD ) )
-        error( 500, "Internal Server Error", "MPD connection rejected" );
-#endif
+    // duplicate query string so it is writeable
+    char *arg = strdup( env );
+    if( arg == NULL )
+        error( 500, "Internal Server Error", "Request failed" );
 
-    // decode command
-    if( strcmp( argdec, "status" ) == 0 || strcmp( argdec, "state" ) == 0 )
+    // handle each request separately
+    char *var, *str = arg;
+    while( (var = strsep( &str, "&" )) != NULL )
     {
-        // Send current state (current queue, current song, ...)
-        // This is automatically added at the end to every successful request, so we do nothing except starting the output
-        output_start( );
+        // URL decode argument
+        char *argdec = urldecode( var );
+        if( argdec == NULL )
+            error( 500, "Internal Server Error", "Request failed" );
+        parseCommand( argdec );
+        free( argdec );
     }
-    else if( strcmp( argdec, "playlists" ) == 0 )
-    {
-        // Send list of all playlists on server
-        sendPlaylists( );
-    }
-    else if( strncmp( argdec, "playlist:", 9 ) == 0 )
-    {
-        // Send content of given playlist
-        sendPlaylist( argdec+9 );
-    }
-    else if( strcmp( argdec, "queue" ) == 0 )
-    {
-        // Send content of current queue
-        sendPlaylist( NULL );
-    }
-    else if( strncmp( argdec, "load:", 5 ) == 0 )
-    {
-        // Load the given playlist to replace the current queue and send its content
-        loadPlaylist( argdec+5 );
-        sendPlaylist( NULL );
-    }
-    else if( strncmp( argdec, "music:", 6 ) == 0 )
-    {
-        // Load the given music directory (recursively) to replace the current queue and send its content
-        loadMusic( argdec+6 );
-        sendPlaylist( NULL );
-    }
-    else if( strcmp( argdec, "forward" ) == 0 )
-    {
-        // Jump to next item on playlist
-        skip( 1 );
-    }
-    else if( strcmp( argdec, "back" ) == 0 )
-    {
-        // Jump to previous item on playlist
-        skip( -1 );
-    }
-    else if( strncmp( argdec, "play:", 5 ) == 0 )
-    {
-        // Start playback at given position
-        int i = strtol( argdec+5, NULL, 10 );
-        play( i );
-    }
-    else if( strncmp( argdec, "playid:", 7 ) == 0 )
-    {
-        // Start playback at given id
-        int i = strtol( argdec+7, NULL, 10 );
-        playid( i );
-    }
-    else if( strncmp( argdec, "pause:", 6 ) == 0 )
-    {
-        // Pause playback
-        int i = strtol( argdec+6, NULL, 10 );
-        pausemusic( i );
-    }
-    else if( strncmp( argdec, "add:", 4 ) == 0 )
-    {
-        // Add song to queue
-        add( argdec+4 );
-    }
-    else if( strncmp( argdec, "search:", 7 ) == 0 )
-    {
-        // Search a song in the music list
-        searchMusic( argdec+7 );
-    }
-    else
-    {
-        error( 400, "Bad Request", "Request not understood" );
-    }
-
-    // cleanup
-    free( argdec );
+    free( arg );
 
     // if we reach here everything is OK
     output_end( );
