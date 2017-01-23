@@ -27,6 +27,7 @@
  */
 
 #include <stdio.h>
+#include <stdio_ext.h>  // __fpurge is some silly linux nonsense
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -136,15 +137,15 @@ char* urldecode( const char *str )
 }
 
 // JSON encode string (result must later be free-ed by caller).
-char* jsonencode( const unsigned char *str )
+char* jsonencode( const char *str )
 {
-    const unsigned char *c;
+    const char *c;
     int len = 1;
 
     // NULL is interpreted as the empty string
     if( str == NULL )
     {
-        unsigned char *p = (unsigned char*)malloc( 1*sizeof(char) );
+        char *p = (char*)malloc( 1*sizeof(char) );
         *p = '\0';
         return p;
     }
@@ -154,14 +155,14 @@ char* jsonencode( const unsigned char *str )
     {
         if( *c == '\\' || *c == '"' )
             len += 2;
-        else if( *c < 0x20 )
+        else if( (unsigned char)*c < 0x20 )
             len += 6;
         else
             len++;
     }
 
     // allocate result
-    unsigned char *p, *dup = (unsigned char*) malloc( len*sizeof(char) );
+    char *p, *dup = (char*) malloc( len*sizeof(char) );
     if( dup == NULL ) return NULL;
 
     // copy or encode characters
@@ -172,7 +173,7 @@ char* jsonencode( const unsigned char *str )
             *(p++) = '\\';
             *(p++) = *c;
         }
-        else if( *c < 0x20 )
+        else if( (unsigned char)*c < 0x20 )
         {
             *(p++) = '\\';
             *(p++) = 'u';
@@ -221,7 +222,6 @@ void output_end( )
     // always attach current status to output (no error if status command fails since we already sent output before!)
     struct mpd_status *status = NULL;
     struct mpd_song *song = NULL;
-    char *json = NULL;
 	if( mpd_command_list_begin( conn, true ) && mpd_send_status( conn ) && mpd_send_current_song( conn ) && mpd_command_list_end( conn ) && (status = mpd_recv_status( conn )) )
     {
         puts( "\"state\":{" );
@@ -281,7 +281,7 @@ void output_end( )
 // output an error and exit
 void error( const int code, const char* msg, const char* message )
 {
-    fpurge( stdin );
+    __fpurge( stdin );
     printf( "Status: %d %s\nContent-type: application/json\n\n", code, msg );               // header
     printf( "{\"status\":%d,\"message\":\"%s\"}", code, message != NULL ? message : msg );  // JSON
     fflush( stdin );
