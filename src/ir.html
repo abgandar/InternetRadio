@@ -85,7 +85,7 @@
         if( sender )
         {
             sender.className = "aktiv";
-            if( state.song.title && state.song.title != '(null)' ) sender.getElementsByTagName('span')[0].innerText = state.song.title;
+            if( state.song.title ) sender.getElementsByTagName('span')[0].innerText = state.song.title;
         }
         document.getElementById('pause-li').className = state.playing ? 'stop' : 'play';
       }

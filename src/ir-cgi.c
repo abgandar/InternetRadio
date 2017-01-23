@@ -143,7 +143,11 @@ char* jsonencode( const unsigned char *str )
 
     // NULL is interpreted as the empty string
     if( str == NULL )
-        return "";
+    {
+        unsigned char *p = (unsigned char*)malloc( 1*sizeof(char) );
+        *p = '\0';
+        return p;
+    }
 
     // determine resulting string length
     for( c = str; *c != '\0'; c++ )
