@@ -27,18 +27,20 @@
                   user-select: none; /* Non-prefixed version */ }
       #container { position: fixed; top: 0px; left: 0px; height: 100%; width: 100%; overflow: hidden; padding: 0px; margin: 0px; }
 
-      #sidebar { z-index: 10; position: absolute; left: -260px; width: 300px; transition: left 300ms; -webkit-transition: left 300ms; margin: 0px; padding: 0px; overflow-x: hidden; overflow-y: scroll; }
-      #sidebar.aktiv { left: 0%; }
+      #sidebar-container { z-index: 10; position: absolute; left: -260px; width: 300px; transition: left 300ms; -webkit-transition: left 300ms; margin: 0px; padding: 0px; overflow-x: hidden; overflow-y: scroll; }
+      #sidebar-container.aktiv { left: 0%; }
+      #sidebar { width: 100%; border-bottom: 4px solid black; margin: 0px; padding: 0px; box-sizing: border-box; }
       #sidebar li { border: 1px solid black; font-size: 20pt; display: block; background: #DDDDDD; white-space: nowrap; }
       #sidebar a { margin: 0px; padding: 15px 5px; display: block; text-decoration: none; color: black; text-align: right; }
       #pause-li.play { background: lightgreen; }
       #pause-li.play #stop { display: none; }
       #pause-li.stop { background: pink; }
       #pause-li.stop #start { display: none; }
-      #sidebar #laden-li { border-bottom: 4px solid black; background: #9060A0; }
+      #sidebar #laden-li { background: #9060A0; }
       #sidebar #musik-li { background: lightyellow; }
-      #sidebar .playlist { background: lightyellow; }
-      #sidebar .playlist span { font-size: 16pt; }
+      #sidebar-playlist { width: 100%; margin: 0px; padding: 0px; box-sizing: border-box; }
+      #sidebar-playlist li { border: 1px solid black; font-size: 20pt; display: block; background: lightyellow; white-space: nowrap; }
+      #sidebar-playlist span { font-size: 16pt; }
 
       #sender { position: absolute; bottom: 0px; left: 0px; right: 0px; height: 100%; overflow-x: hidden; overflow-y: scroll; padding: 0px; margin: 0px; box-sizing: border-box; }
       #sender li { border: 1px solid black; width: 100%; box-sizing: border-box; display: block; padding: 0px; }
@@ -121,18 +123,16 @@
 
       function populatePlaylists( )
       {
-        var list = document.getElementById('sidebar');
+        var list = document.getElementById('sidebar-playlist');
 
         // remove previous entries
-        var old = list.getElementsByClassName('playlist');
-        while( old[0] ) list.removeChild( old[0] );
+        while( list.firstChild ) list.removeChild( list.firstChild );
 
         // sort and add new entries
         var playlists = this.response.playlists.sort( function( a, b ) { return a.name.localeCompare( b.name ); } )
         for( var i = 0; i < playlists.length; i++ )
         {
             var li = document.createElement( 'li' );
-            li.className = 'playlist';
             var a = document.createElement('a');
             a.href = "javascript:loadPlaylist('"+playlists[i].name+"');";
             var span = document.createElement('span');
@@ -270,15 +270,19 @@
   </head>
   <body onload="init()">
     <div id="container">
-    <ul id="sidebar">
-      <li id="menu-li"><a id="menu" href="javascript:toggleMenu()">Internet Radio &nbsp;&nbsp; &#9776;</a></li>
-      <li id="pause-li" class="play">
-        <a id="start" href="javascript:pause( )">Abspielen &nbsp;&nbsp; &#x25b6;</a>
-        <a id="stop" href="javascript:pause( )">Pause &nbsp;&nbsp; &#x23f8;</a>
-      </li>
-      <li id="laden-li"><a id="laden" href="javascript:refresh()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
-      <li id="musik-li"><a id="musik" href="javascript:loadMusic('')">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
-    </ul>
+    <div id="sidebar-container">
+      <ul id="sidebar">
+        <li id="menu-li"><a id="menu" href="javascript:toggleMenu()">Internet Radio &nbsp;&nbsp; &#9776;</a></li>
+        <li id="pause-li" class="play">
+          <a id="start" href="javascript:pause( )">Abspielen &nbsp;&nbsp; &#x25b6;</a>
+          <a id="stop" href="javascript:pause( )">Pause &nbsp;&nbsp; &#x23f8;</a>
+        </li>
+        <li id="laden-li"><a id="laden" href="javascript:refresh()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
+        <li id="musik-li"><a id="musik" href="javascript:loadMusic('')">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
+      </ul>
+      <ul id="sidebar-playlists">
+      </ul>
+    </div>
     <ul id="sender">
     </ul>
     </div>
