@@ -285,7 +285,6 @@ void error( const int code, const char* msg, const char* message )
     if( message == NULL )
     {
         struct mpd_status *status;
-        mpd_command_list_end( conn ); mpd_response_finish( conn );
         status = mpd_run_status( conn );
         if( status )
         {
@@ -416,7 +415,7 @@ void loadMusic( const char *arg )
 {
     mpd_run_clear( conn );
 
-    if( !mpd_command_list_begin( conn, true ) || !mpd_send_clear( conn ) || !mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg ) || !mpd_search_add_db_songs( conn, true ) || !mpd_command_list_end( conn ) );
+    if( !mpd_command_list_begin( conn, true ) || !mpd_send_clear( conn ) || !mpd_search_add_db_songs( conn, true ) || !mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg ) || !mpd_search_commit( conn ) || !mpd_command_list_end( conn ) );
         error( 404, "Not found", arg );
     mpd_response_finish( conn );
 
