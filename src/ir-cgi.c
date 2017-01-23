@@ -281,7 +281,7 @@ void output_end( )
 // output an error and exit
 void error( const int code, const char* msg, const char* message )
 {
-    const char *m = NULL;
+    char *m = NULL;
     if( message == NULL )
     {
         struct mpd_status *status;
