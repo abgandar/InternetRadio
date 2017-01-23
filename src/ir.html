@@ -156,7 +156,7 @@
       function loadPlaylist( name )
       {
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "load="+name );
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?load="+encodeURIComponent( name );
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load', populateQueue );
         xhr.responseType = 'json';
@@ -212,7 +212,7 @@
         ch[nr].classList.add('aktiv');
 
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "play="+nr );
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?play="+encodeURIComponent( nr );
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load',  function( ) { updateState( this.response.state ); } );
 //        xhr.addEventListener( 'error', function( ) { cell.className = "error";   setTimeout( function( ) { cell.className = ""; }, 250 ); } );
@@ -235,7 +235,7 @@
             }
 
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+encodeURIComponent( "pause="+i );
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?pause="+encodeURIComponent( i );
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load',  function( ) { updateState( this.response.state ); } );
         xhr.responseType = 'json';
