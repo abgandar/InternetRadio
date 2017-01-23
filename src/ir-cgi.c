@@ -490,9 +490,9 @@ int main( int argc, char *argv[] )
     if( conn == NULL || mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS )
         error( 500, "Internal Server Error", "No connection to MPD" );
 
-#ifdef MPD_PASSWORT
+#ifdef MPD_PASSWORD
     // send password if there is one (unencrypted clear text, mostly window dressing)
-    if( !mpd_run_password( conn, MPD_PASSWORT ) )
+    if( !mpd_run_password( conn, MPD_PASSWORD ) )
         error( 500, "Internal Server Error", "MPD connection rejected" );
 #endif
 
