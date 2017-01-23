@@ -71,7 +71,7 @@
                     { keyword: "", symbol: "\uD83C\uDFBC"},     // default
                   ];
 
-        var lname = name.toLowercase( );
+        var lname = name.toLowerCase( );
         for( i = 0; i < icons.length; i++ )
             if( lname.indexOf( icons[i].keyword ) >= 0 )
                 return( icons[i].symbol );
@@ -186,10 +186,15 @@
         xhr.send( );
       }
 
-      function init( )
+      function refresh( )
       {
         refreshPlaylists( );
         refreshQueue( );
+      }
+
+      function init( )
+      {
+        refresh( );
         setInterval( refreshState, 10000 );
       }
 
