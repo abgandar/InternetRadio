@@ -138,7 +138,7 @@ char* urldecode( const char *str )
 // JSON encode string (result must later be free-ed by caller).
 char* jsonencode( const char *str )
 {
-    char *c;
+    const char *c;
     int len = 1;
 
     // determine resulting string length
@@ -180,7 +180,7 @@ char* jsonencode( const char *str )
 }
 
 // output a JSON string attribute
-void json_str( const char name, const char value, const char comma )
+void json_str( const char *name, const char *value, const char comma )
 {
     char *json = jsonencode( value );
     printf( "\"%s\":\"%s\"%c", name, json, comma );
@@ -188,7 +188,7 @@ void json_str( const char name, const char value, const char comma )
 }
 
 // output a JSON int attribute
-void json_int( const char name, const int value, const char comma )
+void json_int( const char *name, const int value, const char comma )
 {
     printf( "\"%s\":\"%i\"%c", name, value, comma );
 }
@@ -385,7 +385,17 @@ void loadPlaylist( const char *arg )
     play( 0 );  // start playing the first song (also starts the response output)
 }
 
-// send content of specific playlist on server and simultaneously load it into queue
+// load the music directory (recursively) into the queue, replacing current queue
+void loadMusic( const char *arg )
+{
+    mpd_run_clear( conn );
+
+    if( !mpd_run_load( conn, arg ) )
+        error( 404, "Not found", "Directory not found" );
+    play( 0 );  // start playing the first song (also starts the response output)
+}
+
+// send content of specific playlist on server
 void sendPlaylist( const char *arg )
 {
     struct mpd_song *song = NULL;
@@ -502,7 +512,13 @@ int main( int argc, char *argv[] )
     {
         // Load the given playlist to replace the current queue and send its content
         loadPlaylist( argdec+5 );
-        sendPlaylist( argdec+5 );
+        sendPlaylist( NULL );
+    }
+    else if( strncmp( argdec, "music:", 6 ) == 0 )
+    {
+        // Load the given music directory (recursively) to replace the current queue and send its content
+        loadMusic( argdec+6 );
+        sendPlaylist( NULL );
     }
     else if( strcmp( argdec, "forward" ) == 0 )
     {

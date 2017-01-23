@@ -36,6 +36,7 @@
       #pause-li.stop { background: pink; }
       #pause-li.stop #start { display: none; }
       #sidebar #laden-li { border-bottom: 4px solid black; background: #9060A0; }
+      #sidebar #musik-li { background: lightyellow; }
       #sidebar .playlist { background: lightyellow; }
       #sidebar .playlist span { font-size: 16pt; }
 
@@ -67,8 +68,7 @@
                     { keyword: "laufen", symbol: "\uD83C\uDFC3"},
                     { keyword: "sport", symbol: "\uD83C\uDFC3"},
                     { keyword: "alex", symbol: "\uD83C\uDF83"},
-                    { keyword: "musik", symbol: "\uD83C\uDFBC"},
-                    { keyword: "", symbol: "\uD83C\uDFB6"},     // default
+                    { keyword: "", symbol: "\uD83C\uDFBC"},     // default
                   ];
 
         var lname = name.toLowercase( );
@@ -253,7 +253,7 @@
         <a id="stop" href="javascript:pause( )">Pause &nbsp;&nbsp; &#x23f8;</a>
       </li>
       <li id="laden-li"><a id="laden" href="javascript:refresh()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
-      <!--<li id="musik-li"><a id="musik" href="javascript:loadPlaylist('')">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>-->
+      <li id="musik-li"><a id="musik" href="javascript:loadPlaylist('')">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
     </ul>
     <ul id="sender">
     </ul>
