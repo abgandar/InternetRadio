@@ -285,6 +285,7 @@ void error( const int code, const char* msg, const char* message )
     if( message == NULL )
     {
         struct mpd_status *status;
+        mpd_command_list_end( conn ); mpd_response_finish( conn );
         status = mpd_run_status( conn );
         if( status )
         {
