@@ -49,6 +49,8 @@
     </style>
     <script type="text/javascript">
       DEFAULT_PLAYLIST = 'Radio Auswahl';
+      //PASSWORD = "";
+      PASSWORD = "password="+encodeURIComponent( '72TkJ98yo0mw' )+"&";
 
       function getIcon( name )
       {
@@ -145,7 +147,7 @@
       function refreshQueue( )
       {
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?queue";
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"queue";
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load', populateQueue );
         xhr.responseType = 'json';
@@ -156,7 +158,7 @@
       function loadPlaylist( name )
       {
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?load="+encodeURIComponent( name );
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"load="+encodeURIComponent( name );
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load', populateQueue );
         xhr.responseType = 'json';
@@ -167,7 +169,7 @@
       function loadMusic( dir )
       {
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?music="+encodeURIComponent( dir );
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"music="+encodeURIComponent( dir );
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load', populateQueue );
         xhr.responseType = 'json';
@@ -178,7 +180,7 @@
       function refreshPlaylists( )
       {
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?playlists";
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"playlists";
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load', populatePlaylists );
         xhr.responseType = 'json';
@@ -189,7 +191,7 @@
       function refreshState( )
       {
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?state";
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"state";
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load', function() { updateState( this.response.state ); } );
         xhr.responseType = 'json';
@@ -200,7 +202,7 @@
       function refresh( )
       {
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?queue&playlists";
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"queue&playlists";
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load', function( ) { populateQueue.call( this ); populatePlaylists.call( this ); } );
         xhr.responseType = 'json';
@@ -228,7 +230,7 @@
         ch[nr].classList.add('aktiv');
 
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?play="+encodeURIComponent( nr );
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"play="+encodeURIComponent( nr );
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load',  function( ) { updateState( this.response.state ); } );
 //        xhr.addEventListener( 'error', function( ) { cell.className = "error";   setTimeout( function( ) { cell.className = ""; }, 250 ); } );
@@ -251,7 +253,7 @@
             }
 
         // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?pause="+encodeURIComponent( i );
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"pause="+encodeURIComponent( i );
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load',  function( ) { updateState( this.response.state ); } );
         xhr.responseType = 'json';

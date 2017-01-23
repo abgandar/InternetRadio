@@ -406,7 +406,7 @@ void loadPlaylist( const char *arg )
 {
     mpd_run_clear( conn );
     if( !mpd_run_load( conn, arg ) )
-        error( 404, "Not found", arg );
+        error( 404, "Not found", NULL );
     play( 0 );  // start playing the first song (also starts the response output)
 }
 
