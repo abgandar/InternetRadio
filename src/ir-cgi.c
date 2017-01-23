@@ -281,7 +281,7 @@ void output_end( )
 // output an error and exit
 void error( const int code, const char* msg, const char* message )
 {
-    __fpurge( stdin );
+    __fpurge( stdout );
     printf( "Status: %d %s\nContent-type: application/json\n\n", code, msg );               // header
     printf( "{\"status\":%d,\"message\":\"%s\"}", code, message != NULL ? message : msg );  // JSON
     fflush( stdin );
@@ -573,10 +573,11 @@ void parseCommand( char *cmd )
 int main( int argc, char *argv[] )
 {
     // set up a large output buffer to allow errors occuring later to purge previous output
-    char *buf = (char*)malloc( OUTPUT_BUFFER_SIZE );
-    if( buf == NULL )
-        error( 500, "Internal Server Error", "Request failed" );
-    setvbuf( stdout, buf, _IOFBF, OUTPUT_BUFFER_SIZE );
+//    char *buf = (char*)malloc( OUTPUT_BUFFER_SIZE );
+//    if( buf == NULL )
+//        error( 500, "Internal Server Error", "Request failed" );
+//    setvbuf( stdout, buf, _IOFBF, OUTPUT_BUFFER_SIZE );
+    setvbuf( stdout, NULL, _IOFBF, OUTPUT_BUFFER_SIZE );
 
     // get query string from CGI environment
     const char *env = getenv( "QUERY_STRING" );
@@ -608,7 +609,7 @@ int main( int argc, char *argv[] )
 
     // if we reach here everything is OK
     output_end( );
-    fflush( stdout );
-    free( buf );
+//    fflush( stdout );
+//    free( buf );
     return 0;
 }
