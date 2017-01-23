@@ -473,10 +473,7 @@ int main( int argc, char *argv[] )
 #ifdef MPD_PASSWORT
     // send password if there is one (unencrypted clear text, mostly window dressing)
     if( !mpd_run_password( conn, MPD_PASSWORT ) )
-    {
-        mpd_connection_free( conn );
         error( 500, "Internal Server Error", "MPD connection rejected" );
-    }
 #endif
 
     // decode command
