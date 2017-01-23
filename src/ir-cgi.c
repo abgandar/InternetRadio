@@ -286,10 +286,11 @@ void error( const int code, const char* msg, const char* message )
     {
         struct mpd_status *status;
         status = mpd_run_status( conn );
-    printf( "hi\n" );
-        if( status && mpd_status_get_error( status ) != NULL )
+        if( status )
+        {
             m = jsonencode( mpd_status_get_error( status ) );
-        mpd_status_free( status );
+            mpd_status_free( status );
+        }
     }
 
     __fpurge( stdout );
