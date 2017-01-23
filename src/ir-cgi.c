@@ -143,36 +143,38 @@ char* jsonencode( const char *str )
 
     // determine resulting string length
     for( c = str; *c != '\0'; c++ )
+    {
         if( *c == '\\' || *c == '"' )
             len += 2;
         else if( *c <= 0x20 )
             len += 6;
         else
             len++;
+    }
 
     // allocate result
-    char *dup = (char*) malloc( len*sizeof(char) );
-    char *p = dup;
+    char *p, *dup = (char*) malloc( len*sizeof(char) );
+    if( dup == NULL ) return NULL;
 
     // copy or encode characters
-    for( c = str; c != '\0'; c++, p++ )
+    for( c = str, p = dup; *c != '\0'; c++ )
     {
         if( *c == '\\' || *c == '"')
         {
-            *p = '\\'; p++;
-            *p = *c;
+            *(p++) = '\\';
+            *(p++) = *c;
         }
         else if( *c <= 0x20 )
         {
-            *p = '\\'; p++;
-            *p = 'u'; p++;
-            *p = '0'; p++;
-            *p = '0'; p++;
-            *p = char_to_hex( *c >> 4 ); p++;
-            *p = char_to_hex( *c & 0x0F );
+            *(p++) = '\\';
+            *(p++) = 'u';
+            *(p++) = '0';
+            *(p++) = '0';
+            *(p++) = char_to_hex( *c >> 4 );
+            *(p++) = char_to_hex( *c & 0x0F );
         }
         else
-            *p = *c;
+            *(p++) = *c;
     }
     *p = '\0';
 
