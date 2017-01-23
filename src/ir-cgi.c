@@ -399,7 +399,8 @@ void loadPlaylist( const char *arg )
     mpd_run_clear( conn );
     if( !mpd_run_load( conn, arg ) )
         error( 404, "Not found", NULL );
-    play( 0 );  // start playing the first song (also starts the response output)
+    mpd_run_play_pos( conn, 0 );  // try to start playing the first song
+    output_start( );
 }
 
 // load the music directory (recursively) into the queue, replacing current queue
@@ -413,8 +414,8 @@ void loadMusic( const char *arg )
     if( !mpd_search_commit( conn ) )
         error( 404, "Not found", NULL );
     mpd_response_finish( conn );
-
-    play( 0 );  // start playing the first song (also starts the response output)
+    mpd_run_play_pos( conn, 0 );  // try to start playing the first song
+    output_start( );
 }
 
 // send content of specific playlist on server
