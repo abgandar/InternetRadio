@@ -406,9 +406,10 @@ void loadPlaylist( const char *arg )
 void loadMusic( const char *arg )
 {
     mpd_run_clear( conn );
-    mpd_search_add_db_songs( conn, true );
+    mpd_search_add_db_songs( conn, false );
 //    if( *arg )
-        mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg );
+        mpd_search_add_uri_constraint( conn, MPD_OPERATOR_DEFAULT, arg );
+//        mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg );
     if( !mpd_search_commit( conn ) )
         error( 404, "Not found", NULL );
     mpd_response_finish( conn );
