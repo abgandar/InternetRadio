@@ -407,7 +407,7 @@ void loadMusic( const char *arg )
 {
     mpd_run_clear( conn );
     mpd_search_add_db_songs( conn, true );
-    if( *arg )
+//    if( *arg )
         mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg );
     if( !mpd_search_commit( conn ) )
         error( 404, "Not found", NULL );
