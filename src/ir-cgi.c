@@ -141,6 +141,10 @@ char* jsonencode( const unsigned char *str )
     const unsigned char *c;
     int len = 1;
 
+    // NULL is interpreted as the empty string
+    if( str == NULL )
+        return "";
+
     // determine resulting string length
     for( c = str; *c != '\0'; c++ )
     {
