@@ -85,7 +85,11 @@
       function updateState( state )
       {
         var id = state.song ? state.song.position : 0;
-        var sender = document.getElementById('sender').children[id];
+        var list = document.getElementById('sender').children;
+        var sender = list[id];
+
+        for( var i = 0; i < list.length; i++ )
+            list[i].classList.remove( "aktiv" );
 
         if( sender )
         {
