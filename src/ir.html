@@ -136,7 +136,7 @@
             var li = document.createElement( 'li' );
             var a = document.createElement('a');
             a.href = "javascript:loadPlaylist('"+playlists[i].name+"');";
-            a.label = playlists[i].name;
+            a.title = playlists[i].name;
             var span = document.createElement('span');
             var text = document.createTextNode(playlists[i].name);
             var symbol = document.createTextNode(" \u00A0\u00A0 "+getIcon( playlists[i].name ));
@@ -274,10 +274,10 @@
     <div id="container">
     <div id="sidebar-container">
       <ul id="sidebar">
-        <li id="menu-li"><a id="menu" href="javascript:toggleMenu()">Internet Radio &nbsp;&nbsp; &#9776;</a></li>
+        <li id="menu-li"><a id="menu" href="javascript:toggleMenu()" title="Menu">Menu &nbsp;&nbsp; &#9776;</a></li>
         <li id="pause-li" class="play">
-          <a id="start" href="javascript:pause( )">Abspielen &nbsp;&nbsp; &#x25b6;</a>
-          <a id="stop" href="javascript:pause( )">Pause &nbsp;&nbsp; &#x23f8;</a>
+          <a id="start" href="javascript:pause( )" title="Abspielen">Abspielen &nbsp;&nbsp; &#x25b6;</a>
+          <a id="stop" href="javascript:pause( )" title="Pause">Pause &nbsp;&nbsp; &#x23f8;</a>
         </li>
         <li id="laden-li"><a id="laden" href="javascript:refresh()">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
         <li id="musik-li"><a id="musik" href="javascript:loadMusic('')">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
