@@ -136,6 +136,7 @@
             var li = document.createElement( 'li' );
             var a = document.createElement('a');
             a.href = "javascript:loadPlaylist('"+playlists[i].name+"');";
+            a.label = playlists[i].name;
             var span = document.createElement('span');
             var text = document.createTextNode(playlists[i].name);
             var symbol = document.createTextNode(" \u00A0\u00A0 "+getIcon( playlists[i].name ));
