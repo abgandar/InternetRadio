@@ -309,9 +309,10 @@
       function suchen( str )
       {
         var list = document.getElementById('sender').children;
+        str = str.toLowerCase( );
         for( var i = 0; i < list.length; i++ )
         {
-            if( list[i].textContent.indexOf( str ) == -1 )
+            if( list[i].textContent.toLowerCase( ).indexOf( str ) == -1 )
                 list[i].classList.add( 'notfound' );
             else
                 list[i].classList.remove( 'notfound' );
