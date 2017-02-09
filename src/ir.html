@@ -53,7 +53,7 @@
       var PASSWORD = "password="+encodeURIComponent( '72TkJ98yo0mw' )+"&";
 
       // adapted from https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API
-      var hidden, visibilityChange, updater = false;
+      var hidden, visibilityChange, updater = false, searcher = false;
       if( typeof document.hidden !== "undefined" )
       {
         hidden = "hidden";
@@ -219,7 +219,6 @@
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
-        console.log("refresh")
       }
 
       function refresh( )
@@ -306,7 +305,7 @@
         document.getElementById('sidebar-container').classList.toggle('aktiv');
       }
 
-        // XXX: add timer to make search limited while typing
+      // actually execute a search
       function suchen( str )
       {
         var list = document.getElementById('sender').children;
@@ -317,6 +316,13 @@
             else
                 list[i].classList.remove( 'notfound' );
         }
+      }
+
+      // search expression has changed
+      function sucheEingabe( str )
+      {
+        clearTimeout( searcher );
+        searcher = setTimeout( suchen, 100, str );
       }
     </script>
   </head>
@@ -330,7 +336,7 @@
           <a id="stop" href="javascript:pause( )" title="Pause">Pause &nbsp;&nbsp; &#x23f8;</a>
         </li>
         <li id="laden-li"><a id="laden" href="javascript:refresh()" title="Aktualisieren">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
-        <li id="suche-li" onclick="document.getElementById('sidebar-container').classList.add('aktiv'); document.getElementById('suche').focus();" title="Suchen"><input type="text" value="" placeholder="Suchen..." id="suche" oninput="suchen(this.value)" title="Suchen"> &nbsp;&nbsp; &#x1f50d;</a></li>
+        <li id="suche-li" onclick="document.getElementById('sidebar-container').classList.add('aktiv'); document.getElementById('suche').focus();" title="Suchen"><input type="text" value="" placeholder="Suchen..." id="suche" oninput="sucheEingabe(this.value)" title="Suchen"> &nbsp;&nbsp; &#x1f50d;</a></li>
         <li id="musik-li"><a id="musik" href="javascript:loadMusic('')" title="Musik">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
       </ul>
       <ul id="sidebar-playlists">
