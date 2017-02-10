@@ -24,8 +24,8 @@
                   user-select: none; /* Non-prefixed version */ }
       #container { position: fixed; top: 0px; left: 0px; height: 100%; width: 100%; overflow: hidden; padding: 0px; margin: 0px; }
 
-      #sidebar-container { z-index: 10; position: absolute; left: -260px; width: 300px; transition: left 300ms; -webkit-transition: left 300ms; margin: 0px; padding: 0px; overflow-x: hidden; overflow-y: scroll; }
-      #sidebar-container.aktiv { left: 0%; }
+      #sidebar-container { z-index: 10; position: absolute; left: -260px; width: 300px; height:100%; transition: left 300ms; -webkit-transition: left 300ms; margin: 0px; padding: 0px; overflow-x: hidden; overflow-y: scroll; }
+      #sidebar-container.aktiv { left: 0px; }
       #sidebar { width: 100%; border-bottom: 3px solid #444444; margin: 0px; padding: 0px; box-sizing: border-box; }
       #sidebar li { border: 1px solid #444444; font-size: 18pt; display: block; background: #EEEEEE; white-space: nowrap; }
       #sidebar #menu-li { background: #BBBBBB; font-size: 20pt; border-bottom: 4px solid #444444; }
@@ -39,7 +39,8 @@
       #sidebar-playlists a { margin: 0px; padding: 15px 5px; display: block; text-decoration: none; color: black; text-align: right; }
       #sidebar-playlists span { font-size: 16pt; }
 
-      #sender { position: absolute; bottom: 0px; left: 0px; right: 0px; height: 100%; overflow-x: hidden; overflow-y: scroll; padding: 0px; margin: 0px; box-sizing: border-box; }
+      #sender { position: absolute; bottom: 0px; left: 40px; right: 0px; overflow-x: hidden; overflow-y: scroll; padding: 0px; margin: 0px; box-sizing: border-box; transition: left 300ms; -webkit-transition: left 300ms; }
+      #sender.aktiv { left: 300px; }
       #sender li { border: 1px solid black; width: 100%; box-sizing: border-box; display: block; padding: 0px; }
       #sender li a { margin: 0px; padding-top: 30px; padding-bottom: 30px; padding-left: 45px; padding-right: 10px; display: block; text-decoration: none; color: black; font-size: 16pt; box-sizing: border-box; }
       #sender li.aktiv { background: lightblue; border-width: 2px; }
@@ -303,6 +304,7 @@
       function toggleMenu( )
       {
         document.getElementById('sidebar-container').classList.toggle('aktiv');
+        document.getElementById('sender').classList.toggle('aktiv');
       }
 
       // actually execute a search
