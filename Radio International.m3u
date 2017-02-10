@@ -1,70 +1,8 @@
 #EXTM3U
-#EXTINF:0,.977 - Alternative - North Carolina (USA)
-http://icecast3.977music.com/alternative
-#EXTINF:0,.977 - Classic Rock - North Carolina (USA)
-http://icecast3.977music.com/classicrock
-#EXTINF:0,.977 - Comedy - North Carolina (USA)
-http://icecast3.977music.com/comedy
-#EXTINF:0,.977 - Country - North Carolina (USA)
-http://icecast3.977music.com/country
-#EXTINF:0,.977 - Hitz - North Carolina (USA)
-http://icecast3.977music.com/hitz
-#EXTINF:0,.977 - Jamz - North Carolina (USA)
-http://icecast3.977music.com/jamz
-#EXTINF:0,.977 - Oldies - North Carolina (USA)
-http://icecast3.977music.com/oldies
-#EXTINF:0,.977 - Smooth Jazz - North Carolina (USA)
-http://icecast3.977music.com/smoothjazz
-#EXTINF:0,.977 - The 80's - North Carolina (USA)
-http://icecast3.977music.com/80s
-#EXTINF:0,.977 - The 90's - North Carolina (USA)
-http://icecast3.977music.com/90s
-#EXTINF:0,.977 - The Mix - North Carolina (USA)
-http://icecast3.977music.com/mix
-#EXTINF:0,1.FM - Always Christmas - Alabama (USA)
-http://64.71.184.99:8650
-#EXTINF:0,1.FM - Bay Smooth Jazz Radio - Alabama (USA)
-http://216.218.159.151:9010
-#EXTINF:0,1.FM - Channel X - Alabama (USA)
-http://209.51.161.54:8072
-#EXTINF:0,1.FM - Chill out Lounge - Alabama (USA)
-http://72.13.81.178:8010
-#EXTINF:0,1.FM - Top 40 - Alabama (USA)
-http://64.62.252.132:8075
 #EXTINF:0,181.fm - Classic Buzz - Harrisonburg (USA)
 http://mp3uplink.duplexfx.com:8038
 #EXTINF:0,181.fm - Lite 80s - Harrisonburg (USA)
 http://mp3uplink.duplexfx.com:8040
-#EXTINF:0,1POWER - New York City (USA)
-http://scfire-mtc-aa02.stream.aol.com/stream/1044
-#EXTINF:0,4U Classic Rock - Chatenay Malabry (Frankreich)
-http://str4ushaac.streamakaci.com
-#EXTINF:0,525 Power Tracks - Herndon (USA)
-http://fastcast4u.com:9256
-#EXTINF:0,Absolute Classic Rock - London (England)
-http://icecast.timlradio.co.uk/ac128.mp3
-#EXTINF:0,Absolute Radio 60th - London (England)
-http://icecast.timlradio.co.uk/a6160.ogg
-#EXTINF:0,AVRO Back to the Old School - Hilversum (Niederlande)
-http://shoutcast.omroep.nl:8056
-#EXTINF:0,AVRO Easy Listening - Hilversum (Niederlande)
-http://shoutcast.omroep.nl:8058
-#EXTINF:0,AVRO Film - Hilversum (Niederlande)
-http://shoutcast.omroep.nl:8070
-#EXTINF:0,AVRO Klassiek - Hilversum (Niederlande)
-http://shoutcast.omroep.nl:8072
-#EXTINF:0,AVRO Klassiek Baroque - Hilversum (Niederlande)
-http://shoutcast.omroep.nl:8068
-#EXTINF:0,AVRO Klassiek Operette - Hilversum (Niederlande)
-http://shoutcast.omroep.nl:8060
-#EXTINF:0,AVRO Klassiek Ziel & Zaligheid - Hilversum (Niederlande)
-http://shoutcast.omroep.nl:8074
-#EXTINF:0,AVRO Steenen Tijdperk 50ies - Hilversum (Niederlande)
-http://shoutcast.omroep.nl:8064
-#EXTINF:0,AVRO Steenen Tijdperk 60ies - Hilversum (Niederlande)
-http://shoutcast.omroep.nl:8066
-#EXTINF:0,AVRO Toppers van Toen - Hilversum (Niederlande)
-http://shoutcast.omroep.nl:8062
 #EXTINF:0,BBC Radio 1 - London (England)
 mms://wmlive.bbc.net.uk/wms/bbc_ami/radio1/radio1_bb_live_int_eq1_sl0
 #EXTINF:0,BBC Radio 2 - London (England)
