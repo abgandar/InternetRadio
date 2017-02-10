@@ -79,12 +79,6 @@ http://rb-mp3-m-bremeneins.akacast.akamaistream.net/7/716/234436/v1/gnl.akacast.
 http://rb-mp3-m-bremennext.akacast.akamaistream.net/7/705/234439/v1/gnl.akacast.akamaistream.net/rb-mp3-m-bremennext
 #EXTINF:0,Bremen Vier - Bremen (Deutschland)
 http://rb-mp3-m-bremenvier.akacast.akamaistream.net/7/23/234437/v1/gnl.akacast.akamaistream.net/rb-mp3-m-bremenvier
-#EXTINF:0,BRF1 - Eupen (Belgien)
-http://stream1.rtbf.be:8000/brf1
-#EXTINF:0,BRF2 - Eupen (Belgien)
-http://stream1.rtbf.be:8000/brf2
-#EXTINF:0,Chaos-Radio - - (DE / AT / CH)
-http://stream.chaos-radio.net:5678
 #EXTINF:0,Countrymusic24 - Berlin (Deutschland)
 http://countrymusic24.powerstream.de:9000
 #EXTINF:0,Crosschannel - Wetzlar (Deutschland)
@@ -99,8 +93,6 @@ http://live.meine-neue-welle.de/dnw_128.mp3
 http://server1.webradiostreaming.de:2640
 #EXTINF:0,EBM-Radio - Rostock (Deutschland)
 http://www.ebm-radio.org:8000
-#EXTINF:0,eldoRadio - Dortmund (Deutschland)
-http://eldoweb.eldoradio.de:8000/160.ogg
 #EXTINF:0,Electro Radio - Schwerzenbach (Schweiz)
 http://stream.electroradio.ch:26630
 #EXTINF:0,eRadio One - Griesheim (Deutschland)
@@ -195,8 +187,6 @@ http://www.ndr.de/resources/metadaten/audio/m3u/ndrinfo.m3u
 http://www.ndr.de/resources/metadaten/audio/m3u/ndrinfo_spezial.m3u
 #EXTINF:0,NDR Kultur - Hamburg (Deutschland)
 http://www.ndr.de/resources/metadaten/audio/m3u/ndrkultur.m3u
-#EXTINF:0,NewcomerRadio Deutschland - Wuppertal (Deutschland)
-http://streamplus14.leonex.de:15888
 #EXTINF:0,NIGHTLINE RADIO - Berlin (Deutschland)
 http://radio1.nightline-radio.de:8000
 #EXTINF:0,Nordwestradio - Bremen (Deutschland)
@@ -271,8 +261,6 @@ http://live.radio-ton.de/live-na
 http://live.radio-ton.de/live-owb
 #EXTINF:0,Radio Ton Region Main-Tauber - Aalen (Deutschland)
 http://live.radio-ton.de/live-mgh
-#EXTINF:0,Radio Tonkuhle - Hildesheim (Deutschland)
-http://stream.tonkuhle.de:8000/hifi.ogg
 #EXTINF:0,Radio Unerhört Marburg - Marburg (Deutschland)
 http://stream.radio-rum.de:8000/rum.mp3
 #EXTINF:0,RADIO ZÜRISEE - Rapperswil (Schweiz)
