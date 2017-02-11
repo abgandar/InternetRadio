@@ -8,7 +8,7 @@ ir.cgi: ir-cgi.c config.h
 
 install: ir.cgi ir.html
 	cp ir.cgi /usr/lib/cgi-bin
-	cp ir.html /var/www/html
+	cp ir.html  /var/www/html
 	cp ../*.m3u /var/lib/mpd/playlists
 
 uninstall:
