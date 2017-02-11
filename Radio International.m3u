@@ -45,6 +45,44 @@ http://icestreaming.rai.it:80/9.mp3
 http://icestreaming.rai.it:80/10.mp3
 #EXTINF:0,Rai Radio 8 Opera - Rom (Italien)
 http://icestreaming.rai.it:80/11.mp3
+#EXTINF:0,3FM - Amsterdam (Niederlande)
+http://icecast.omroep.nl/3fm-bb-mp3
+#EXTINF:0,3FM Alternative - Amsterdam (Niederlande)
+http://icecast.omroep.nl/3fm-alternative-mp3
+#EXTINF:0,3FM KX Radio / Serious Talent - Amsterdam (Niederlande)
+http://icecast.omroep.nl/3fm-serioustalent-mp3
+#EXTINF:0,3FM On Stage - Amsterdam (Niederlande)
+http://icecast.omroep.nl/3fm-live-mp3
+#EXTINF:0,Radio 1 - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio1-bb-mp3
+#EXTINF:0,Radio 2 - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio2-bb-mp3
+#EXTINF:0,Radio 2 in Concert - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio2-inconcert-mp3
+#EXTINF:0,Radio 2 Top 2000 - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio2-top2000-mp3
+#EXTINF:0,Radio 2 Liedkunst - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio2-liedkunst-mp3
+#EXTINF:0,Radio 2 Sterren.nl - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio2-sterrennl-mp3
+#EXTINF:0,Radio 4 - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio4-bb-mp3
+#EXTINF:0,Radio 4 Eigentijds - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio4-eigentijds-mp3
+#EXTINF:0,Radio 4 Jong Klassiek - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio4-jongklassiek-mp3
+#EXTINF:0,Radio 4 Musica Religiosa - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio4-musicareligiosa-mp3
+#EXTINF:0,Radio 5 - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio5-bb-mp3
+#EXTINF:0,Radio 5 Nostalgia - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio5-nostalgia-mp3
+#EXTINF:0,Radio 6 - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio6-bb-mp3
+#EXTINF:0,Radio 6 Jazz Jong - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio6-jazzjong-mp3
+#EXTINF:0,Radio 6 Soul & Jazz - Amsterdam (Niederlande)
+http://icecast.omroep.nl/radio6-bb-mp3.m3u
 #EXTINF:0,ShoutedFM mth.Alternativ - Amsterdam (Niederlande)
 http://alternative.mthn.net:8700
 #EXTINF:0,ShoutedFM mth.Black - Amsterdam (Niederlande)
