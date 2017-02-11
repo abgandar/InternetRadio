@@ -17,6 +17,8 @@ http://bbcmedia.ic.llnwd.net/stream/bbcmedia_radio1xtra_mf_p
 http://bbcmedia.ic.llnwd.net/stream/bbcmedia_radio4extra_mf_p
 #EXTINF:0,BBC Radio 5 Live Extra - London (England)
 http://bbcmedia.ic.llnwd.net/stream/bbcmedia_radio5extra_mf_p
+#EXTINF:0,FranceInter - Paris (Frankreich)
+http://direct.franceinter.fr/live/franceinter-midfi.mp3
 #EXTINF:0,PulsRadio - Morschwiller Le Bas (Frankreich)
 http://87.98.131.132:5000
 #EXTINF:0,Radio Nova (Novaplanet) - Paris (Frankreich)
