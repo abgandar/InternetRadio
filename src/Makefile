@@ -8,12 +8,12 @@ ir.cgi: ir-cgi.c config.h
 
 install: ir.cgi ir.html
 	cp ir.cgi /usr/lib/cgi-bin
-	cp ir.html  /var/www/html
+	cp ir.html radio-0-75x.png radio-1x.png radio-2-6x.png radio-2x.png radio-4x.png radio-5-3x.png /var/www/html
 	cp ../*.m3u /var/lib/mpd/playlists
 
 uninstall:
 	@rm /usr/lib/cgi-bin/ir.cgi
-	@rm /var/www/html/ir.html
+	@rm /var/www/html/ir.html /var/www/html/radio-0-75x.png /var/www/html/radio-1x.png /var/www/html/radio-2-6x.png /var/www/html/radio-2x.png /var/www/html/radio-4x.png /var/www/html/radio-5-3x.png
 	@rm "/var/lib/mpd/playlists/Radio Auswahl.m3u" "/var/lib/mpd/playlists/Radio International.m3u" "/var/lib/mpd/playlists/Radio Deutschland.m3u"
 
 clean:
