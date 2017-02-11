@@ -65,17 +65,23 @@ http://stream05.media.rambler.ru/echo.mp3
 http://mp3uplink.duplexfx.com:8038
 #EXTINF:0,181.fm - Lite 80s - Harrisonburg (USA)
 http://mp3uplink.duplexfx.com:8040
-#EXTINF:0,chroniX AGGRESSION - Denver (USA)
-http://wm3.spacialnet.com/aggro
 #EXTINF:0,DEFJAY - Beverly Hills (USA)
 http://sc2.netstreamer.net:8008
-#EXTINF:0,Digitally Imported - Minimal - New York City (USA)
-mms://88.191.102.239/minimal
 #EXTINF:0,Dinner Jazz Excursion Radio - Springfield (USA)
 http://sc01.warpradio.com:8240
 #EXTINF:0,Seatle's HotJamz - Seattle (USA)
 http://stream-high.kmih.org:8000
-#EXTINF:0,SKY.fm - Bossa Nova Jazz - New York City (USA)
-mms://wstream5g.di.fm/bossanova
 #EXTINF:0,WGUC Live - Ohio (USA)
 http://cpr2.streamguys.net/wguc
+#EXTINF:0,WKAR 90.5 - East Lansing (USA)
+http://mozart.wkar.msu.edu:80/wkar-fm-mp3
+#EXTINF:0,WKAR AM 870 NewsTalk - East Lansing (USA)
+http://mozart.wkar.msu.edu:80/wkar-am-mp3
+#EXTINF:0,WKAR Folk - East Lansing (USA)
+http://mozart.wkar.msu.edu:80/wkar-folk
+#EXTINF:0,WKAR Jazz - East Lansing (USA)
+http://mozart.wkar.msu.edu:80/wkar-jazz
+#EXTINF:0,WKAR Classical - East Lansing (USA)
+http://mozart.wkar.msu.edu:80/wkar-classical
+#EXTINF:0,WKAR Radio Reading Service - East Lansing (USA)
+http://mozart.wkar.msu.edu:80/rrs-64-mp3
