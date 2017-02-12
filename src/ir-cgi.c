@@ -217,8 +217,8 @@ void output_start( )
 
     if( started ) return;   // only send once
 
-    fputs( stdout, "Content-type: application/json\n\n" );                      // header
-    fputs( stdout, "{\"status\":200,\"message\":\"Request successfull\"," );    // start JSON output
+    fputs( "Content-type: application/json\n\n", stdout );                      // header
+    fputs( "{\"status\":200,\"message\":\"Request successfull\",", stdout );    // start JSON output
 
     char host[HOST_NAME_MAX+1];
     if( gethostname( host, sizeof( host ) ) == 0 )
@@ -235,33 +235,33 @@ void output_end( )
     struct mpd_song *song = NULL;
 	if( mpd_command_list_begin( conn, true ) && mpd_send_status( conn ) && mpd_send_current_song( conn ) && mpd_command_list_end( conn ) && (status = mpd_recv_status( conn )) )
     {
-        fputs( stdout, "\"state\":{" );
+        fputs( "\"state\":{", stdout );
 
         if( mpd_status_get_state( status ) == MPD_STATE_PLAY || mpd_status_get_state( status ) == MPD_STATE_PAUSE )
         {
             mpd_response_next( conn );
             song = mpd_recv_song( conn );
-            fputs( stdout, "\"song\":{" );
+            fputs( "\"song\":{", stdout );
             json_int( "pos", mpd_status_get_song_pos( status ), ',' );
             json_int( "id", mpd_song_get_id( song ), ',' );
             json_str( "title", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ), ',' );
             json_str( "name", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ), ',' );
             json_str( "artist", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ), ',' );
             json_str( "uri", mpd_song_get_uri( song ), ' ' );
-            fputs( stdout, "}," );
+            fputs( "},", stdout );
             mpd_song_free( song );
         }
 
 		switch( mpd_status_get_state( status ) )
         {
             case MPD_STATE_PLAY:
-                fputs( stdout, "\"playing\":1,");
+                fputs( "\"playing\":1,", stdout );
                 break;
             case MPD_STATE_PAUSE:
-                fputs( stdout, "\"playing\":0,");
+                fputs( "\"playing\":0,", stdout );
                 break;
             default:
-                fputs( stdout, "\"playing\":0,");
+                fputs( "\"playing\":0,", stdout );
         }
 
         json_int( "repeat", mpd_status_get_repeat( status ) ? 1 : 0, ',' );
@@ -274,16 +274,16 @@ void output_end( )
 
         json_int( "volume", mpd_status_get_volume( status ), ' ' );
 
-        fputs( stdout, "}" );
+        fputs( "}", stdout );
 		mpd_status_free( status );
         mpd_response_finish( conn );
     }
     else
     {
-        fputs( stdout, "state:{}" );  // need to put this to prevent trailing comma
+        fputs( "state:{}", stdout );  // need to put this to prevent trailing comma
     }
 
-    fputs( stdout, "}" );  // end JSON output
+    fputs( "}", stdout );  // end JSON output
     fflush( stdin );
     if( conn ) mpd_connection_free( conn );
     exit( 0 );
@@ -388,20 +388,20 @@ void sendPlaylists( )
 
     // print all playlists
     output_start( );
-    fputs( stdout, "\"playlists\":[" );
+    fputs( "\"playlists\":[", stdout );
     int i = 0;
     while( (list = mpd_recv_playlist( conn ) ) )
     {
         if( i )
-            fputs( stdout, ",{" );
+            fputs( ",{", stdout );
         else
-            fputs( stdout, "{" );
+            fputs( "{" );
         json_str( "name", mpd_playlist_get_path( list ), ' ' );
-        fputs( stdout, "}" );
+        fputs( "}", stdout );
         mpd_playlist_free( list );
         i++;
     }
-    fputs( stdout, "]," );
+    fputs( "],", stdout );
 
     mpd_response_finish( conn );
 }
@@ -447,25 +447,25 @@ void sendPlaylist( const char *arg )
 
     // print the playlist
     output_start( );
-    fputs( stdout, "\"playlist\":[" );
+    fputs( "\"playlist\":[", stdout );
     int i = 0;
     while( (song = mpd_recv_song( conn ) ) )
     {
         if( i )
-            fputs( stdout, ",{" );
+            fputs( ",{", stdout );
         else
-            fputs( stdout, "{" );
+            fputs( "{", stdout );
         json_int( "position", i, ',' );
         json_int( "id", mpd_song_get_id( song ), ',' );
         json_str( "title", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ), ',' );
         json_str( "name", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ), ',' );
         json_str( "artist", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ), ',' );
         json_str( "uri", mpd_song_get_uri( song ), ' ' );
-        fputs( stdout, "}" );
+        fputs( "}", stdout );
         mpd_song_free( song );
         i++;
     }
-    fputs( stdout, "]," );
+    fputs( "],", stdout );
 
     mpd_response_finish( conn );
 }
