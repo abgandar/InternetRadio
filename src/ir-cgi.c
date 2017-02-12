@@ -220,7 +220,7 @@ void output_start( )
 
     if( started ) return;   // only send once
 
-    fputs( "Content-type: application/json\n\n", stdout );                      // header
+    fputs( "Content-type: application/json\nCache-control: no-cache\n\n", stdout );                      // header
     fputs( "{\"status\":200,\"message\":\"Request successfull\",", stdout );    // start JSON output
 
     char host[HOST_NAME_MAX+1];
@@ -302,7 +302,7 @@ void error( const int code, const char* msg, const char* message )
         m = strdup("-");
 
     __fpurge( stdout );     // discard any previous buffered output
-    printf( "Status: %d %s\nContent-type: application/json\n\n", code, msg );
+    printf( "Status: %d %s\nContent-type: application/json\nCache-control: no-cache\n\n", code, msg );
     printf( "{\"status\":%d,\"message\":\"%s\"}", code, message ? message : m );
     fflush( stdout );
     free( m );
