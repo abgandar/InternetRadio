@@ -18,15 +18,7 @@
      Creative Commons Attribution-Noncommercial-No Derivate Works 3.0 Unported
      http://babasse.deviantart.com/art/Old-School-79460710   -->
     <style>
-      body { font-family: Helvetica Neue, Helvetica, Arial, sans;
-             overflow: hidden;
-             transition: background 200ms; -webkit-transition: background 200ms;
-        -webkit-touch-callout: none; /* iOS Safari */
-          -webkit-user-select: none; /* Chrome/Safari/Opera */
-           -khtml-user-select: none; /* Konqueror */
-             -moz-user-select: none; /* Firefox */
-              -ms-user-select: none; /* Internet Explorer/Edge */
-                  user-select: none; /* Non-prefixed version */ }
+      body { font-family: Helvetica Neue, Helvetica, Arial, sans; overflow: hidden; transition: background 200ms; -webkit-transition: background 200ms; user-select: none; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; }
       body.error { background: pink; }
       #container { position: fixed; top: 0px; left: 0px; height: 100%; width: 100%; overflow: hidden; padding: 0px; margin: 0px; }
 
@@ -157,7 +149,7 @@
 
         // update the document title with the host name 
         if( this.response.host )
-            document.title = "Internet Radio " + this.response.host.substring(3);
+            document.title = "Internet Radio - " + this.response.host;
 
         // remove previous entries
         while( list.firstChild ) list.removeChild( list.firstChild );
@@ -180,13 +172,21 @@
         updateState( this.response.state );
       }
 
+      // indicate an error by flashing the document in red
+      function showError( )
+      {
+        var body = document.getElementById('body');
+        body.classList.toggle( "error", true );
+        setTimeout( function( ) { body.classList.toggle( "error", false ); }, 250 );
+      }
+
       function refreshQueue( )
       {
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"queue";
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', populateQueue );
-        xhr.addEventListener( 'error', function( ) { document.getElementById('body').className = "error"; setTimeout( function( ) { document.getElementById('body').className = ""; }, 250 ); } );
+        xhr.addEventListener( 'load', function( ) { if( this.state == 200 ) populateQueue.call( this ); else showError( ); } );
+        xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
@@ -197,8 +197,8 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"load="+encodeURIComponent( name );
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', populateQueue );
-        xhr.addEventListener( 'error', function( ) { document.getElementById('body').className = "error"; setTimeout( function( ) { document.getElementById('body').className = ""; }, 250 ); } );
+        xhr.addEventListener( 'load', function( ) { if( this.state == 200 ) populateQueue.call( this ); else showError( ); } );
+        xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
@@ -209,8 +209,8 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"music="+encodeURIComponent( dir );
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', populateQueue );
-        xhr.addEventListener( 'error', function( ) { document.getElementById('body').className = "error"; setTimeout( function( ) { document.getElementById('body').className = ""; }, 250 ); } );
+        xhr.addEventListener( 'load', function( ) { if( this.state == 200 ) populateQueue.call( this ); else showError( ); } );
+        xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
@@ -221,8 +221,8 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"playlists";
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', populatePlaylists );
-        xhr.addEventListener( 'error', function( ) { document.getElementById('body').className = "error"; setTimeout( function( ) { document.getElementById('body').className = ""; }, 250 ); } );
+        xhr.addEventListener( 'load', function( ) { if( this.state == 200 ) populatePlaylists.call( this ); else showError( ); } );
+        xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
@@ -233,8 +233,8 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"state";
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function() { updateState( this.response.state ); } );
-        xhr.addEventListener( 'error', function( ) { document.getElementById('body').className = "error"; setTimeout( function( ) { document.getElementById('body').className = ""; }, 250 ); } );
+        xhr.addEventListener( 'load', function() { if( this.state == 200 ) updateState( this.response.state ); else showError( ); } );
+        xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
@@ -245,8 +245,8 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"queue&playlists";
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function( ) { populateQueue.call( this ); populatePlaylists.call( this ); } );
-        xhr.addEventListener( 'error', function( ) { document.getElementById('body').className = "error"; setTimeout( function( ) { document.getElementById('body').className = ""; }, 250 ); } );
+        xhr.addEventListener( 'load', function( ) { if( this.state == 200 ) { populateQueue.call( this ); populatePlaylists.call( this ); } else showError( ); } );
+        xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
@@ -316,8 +316,8 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"pause="+encodeURIComponent( i );
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load',  function( ) { updateState( this.response.state ); } );
-        xhr.addEventListener( 'error', function( ) { document.getElementById('body').className = "error"; setTimeout( function( ) { document.getElementById('body').className = ""; }, 250 ); } );
+        xhr.addEventListener( 'load',  function( ) { if( this.state == 200 ) updateState( this.response.state ); else showError( ); } );
+        xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
