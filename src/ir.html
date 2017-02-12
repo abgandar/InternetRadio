@@ -35,8 +35,9 @@
       #sidebar a { margin: 0px; padding: 15px 5px; display: block; text-decoration: none; color: black; text-align: right; }
       #pause-li.play #stop { display: none; }
       #pause-li.stop #start { display: none; }
-      #sidebar #suche-li { text-align: right; color: black; padding: 15px 5px; border-bottom: 3px solid #444444; cursor: pointer; }
+      #sidebar #suche-li { text-align: right; color: black; padding: 15px 5px; cursor: pointer; }
       #suche { border: none; width: 70%; font-size: 16pt; cursor: auto; }
+      #sidebar #stream-li { border-bottom: 3px solid #444444; }
       #sidebar-playlists { width: 100%; margin: 0px; padding: 0px; box-sizing: border-box; background: #EEEEEE; }
       #sidebar-playlists li { border: 1px solid #444444; font-size: 18pt; display: block; white-space: nowrap; }
       #sidebar-playlists a { margin: 0px; padding: 15px 5px; display: block; text-decoration: none; color: black; text-align: right; }
@@ -387,7 +388,7 @@
         </li>
         <li id="laden-li"><a id="laden" href="javascript:refresh()" title="Aktualisieren">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
         <li id="suche-li" onclick="document.getElementById('sidebar-container').classList.add('aktiv'); document.getElementById('sender').classList.add('aktiv'); document.getElementById('suche').focus();" title="Suchen"><input type="text" value="" placeholder="Suchen..." id="suche" oninput="sucheEingabe(this.value)" title="Suchen"> &nbsp;&nbsp; &#x1f50d;</li>
-        <li id="stream-li"><a id="stream" href=":9000" title="HTTP Streaming">Streaming &nbsp;&nbsp; &#x1f3a7;</a></li>
+        <li id="stream-li"><a id="stream" href=":9000/" title="Streaming" target="_blank">Streaming &nbsp;&nbsp; &#x1f3a7;</a></li>
         <li id="musik-li"><a id="musik" href="javascript:loadMusic('')" title="Musik">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
       </ul>
       <ul id="sidebar-playlists">
