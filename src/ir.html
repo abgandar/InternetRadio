@@ -108,17 +108,18 @@
       {
         var id = state.song ? state.song.position : 0;
         var list = document.getElementById('sender').children;
-        var sender = list[id];
 
         for( var i = 0; i < list.length; i++ )
             list[i].classList.remove( "aktiv" );
 
+        document.getElementById('pause-li').className = state.playing ? 'stop' : 'play';
+
+        var sender = list[id];
         if( sender )
         {
             sender.classList.add( "aktiv" );
             if( state.song && state.song.title ) sender.getElementsByTagName('span')[0].innerText = state.song.title;
         }
-        document.getElementById('pause-li').className = state.playing ? 'stop' : 'play';
       }
 
       function populateQueue( )
