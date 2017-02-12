@@ -26,6 +26,8 @@
  *
  */
 
+#define __USE_POSIX
+
 #include <stdio.h>
 #include <stdio_ext.h>  // __fpurge is some silly linux nonsense
 #include <stdlib.h>
@@ -395,7 +397,7 @@ void sendPlaylists( )
         if( i )
             fputs( ",{", stdout );
         else
-            fputs( "{" );
+            fputs( "{", stdout );
         json_str( "name", mpd_playlist_get_path( list ), ' ' );
         fputs( "}", stdout );
         mpd_playlist_free( list );
