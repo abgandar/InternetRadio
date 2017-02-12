@@ -115,7 +115,7 @@
         document.getElementById('pause-li').className = state.playing ? 'stop' : 'play';
 
         var sender = list[id];
-        if( sender )
+        if( sender && "songid_"+state.song.id == sender.id )
         {
             sender.classList.add( "aktiv" );
             if( state.song && state.song.title ) sender.getElementsByTagName('span')[0].innerText = state.song.title;
@@ -137,6 +137,7 @@
         for( var i = 0; i < this.response.playlist.length; i++ )
         {
             var li = document.createElement( 'li' );
+            li.id = "songid_"+this.response.playlist[i].id;
             var a = document.createElement('a');
             a.href = "javascript:play("+i+");";
             var span = document.createElement('span');
