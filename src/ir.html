@@ -106,7 +106,7 @@
 
       function updateState( state )
       {
-        var pos = state.song ? state.song.position : 0;
+        var pos = state.song ? state.song.pos : 0;
         var id = state.song ? state.song.id : -1;
         var list = document.getElementById('sender').children;
 
@@ -154,6 +154,10 @@
       function populatePlaylists( )
       {
         var list = document.getElementById('sidebar-playlists');
+
+        // update the document title with the host name 
+        if( this.response.host )
+            document.title = "Internet Radio " + this.response.host.substring(3);
 
         // remove previous entries
         while( list.firstChild ) list.removeChild( list.firstChild );
@@ -293,7 +297,7 @@
         xhr.open( 'GET', url, true );
         xhr.send( );
 
-        setTimeout( refreshState, 1000 );
+        setTimeout( refreshState, 750 );
       }
 
       function pause( )
