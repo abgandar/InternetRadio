@@ -295,6 +295,7 @@
         refresh( );
         updater = setInterval( refreshState, 10000 );
         document.addEventListener( visibilityChange, handleVisibilityChange, false );
+        document.getElementById( 'stream' ).href = "http://" + window.location.hostname + ":9000/"; // fix streaming link
       }
 
       function play( nr )
@@ -388,7 +389,7 @@
         </li>
         <li id="laden-li"><a id="laden" href="javascript:refresh()" title="Aktualisieren">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
         <li id="suche-li" onclick="document.getElementById('sidebar-container').classList.add('aktiv'); document.getElementById('sender').classList.add('aktiv'); document.getElementById('suche').focus();" title="Suchen"><input type="text" value="" placeholder="Suchen..." id="suche" oninput="sucheEingabe(this.value)" title="Suchen"> &nbsp;&nbsp; &#x1f50d;</li>
-        <li id="stream-li"><a id="stream" href="http://:9000/" title="Streaming" target="_blank">Streaming &nbsp;&nbsp; &#x1f3a7;</a></li>
+        <li id="stream-li"><a id="stream" href="/" title="Streaming" target="_blank">Streaming &nbsp;&nbsp; &#x1f3a7;</a></li>
         <li id="musik-li"><a id="musik" href="javascript:loadMusic('')" title="Musik">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
       </ul>
       <ul id="sidebar-playlists">
