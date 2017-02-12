@@ -106,7 +106,8 @@
 
       function updateState( state )
       {
-        var id = state.song ? state.song.position : 0;
+        var pos = state.song ? state.song.position : 0;
+        var id = state.song ? state.song.id : -1;
         var list = document.getElementById('sender').children;
 
         for( var i = 0; i < list.length; i++ )
@@ -114,8 +115,8 @@
 
         document.getElementById('pause-li').className = state.playing ? 'stop' : 'play';
 
-        var sender = list[id];
-        if( sender && "songid_"+state.song.id == sender.id )
+        var sender = list[pos];
+        if( sender && "songid_"+id == sender.id )
         {
             sender.classList.add( "aktiv" );
             if( state.song && state.song.title ) sender.getElementsByTagName('span')[0].innerText = state.song.title;
