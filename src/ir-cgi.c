@@ -34,6 +34,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <limits.h>
 #include <stdbool.h>
 
 #include <mpd/client.h>
