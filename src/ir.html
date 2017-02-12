@@ -202,7 +202,7 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"queue";
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populateQueue.call( this ); else showError( ); } );
+        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populateQueue.call( this ); else showError( this ); } );
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
@@ -214,7 +214,7 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"load="+encodeURIComponent( name );
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populateQueue.call( this ); else showError( ); } );
+        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populateQueue.call( this ); else showError( this ); } );
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
@@ -226,7 +226,7 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"music="+encodeURIComponent( dir );
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populateQueue.call( this ); else showError( ); } );
+        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populateQueue.call( this ); else showError( this ); } );
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
@@ -238,7 +238,7 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"playlists";
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populatePlaylists.call( this ); else showError( ); } );
+        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populatePlaylists.call( this ); else showError( this ); } );
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
@@ -250,7 +250,7 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"state";
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function() { if( this.status == 200 ) updateState( this.response.state ); else showError( ); } );
+        xhr.addEventListener( 'load', function() { if( this.status == 200 ) updateState( this.response.state ); else showError( this ); } );
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
@@ -262,7 +262,7 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"queue&playlists";
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) { populateQueue.call( this ); populatePlaylists.call( this ); } else showError( ); } );
+        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) { populateQueue.call( this ); populatePlaylists.call( this ); } else showError( this ); } );
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
@@ -333,7 +333,7 @@
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"pause="+encodeURIComponent( i );
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load',  function( ) { if( this.status == 200 ) updateState( this.response.state ); else showError( ); } );
+        xhr.addEventListener( 'load',  function( ) { if( this.status == 200 ) updateState( this.response.state ); else showError( this ); } );
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
