@@ -399,7 +399,7 @@ void loadPlaylist( const char *arg )
     mpd_run_clear( conn );
     if( !mpd_run_load( conn, arg ) )
         error( 404, "Not found", NULL );
-    mpd_run_play_pos( conn, 0 );  // try to start playing the first song
+//    mpd_run_play_pos( conn, 0 );  // try to start playing the first song
     output_start( );
 }
 
@@ -414,7 +414,7 @@ void loadMusic( const char *arg )
     if( !mpd_search_commit( conn ) )
         error( 404, "Not found", NULL );
     mpd_response_finish( conn );
-    mpd_run_play_pos( conn, 0 );  // try to start playing the first song
+//    mpd_run_play_pos( conn, 0 );  // try to start playing the first song
     output_start( );
 }
 

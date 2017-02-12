@@ -1,4 +1,6 @@
 #EXTM3U
+#EXTINF:0,Klassik Radio - Hamburg (Deutschland)
+http://klassikradio.hoerradar.de/klassikradio-live-mp3-hq
 #EXTINF:0,SWR1 Baden-Württemberg - Stuttgart (Deutschland)
 http://swr-mp3-m-swr1bw.akacast.akamaistream.net/7/245/137133/v1/gnl.akacast.akamaistream.net/swr-mp3-m-swr1bw
 #EXTINF:0,SWR1 Rheinland-Pfalz - Stuttgart (Deutschland)
@@ -17,5 +19,3 @@ http://swr-mp3-m-info.akacast.akamaistream.net/7/40/137140/v1/gnl.akacast.akamai
 http://dradio_mp3_dlf_m.akacast.akamaistream.net/7/249/142684/v1/gnl.akacast.akamaistream.net/dradio_mp3_dlf_m
 #EXTINF:0,BR-Klassik - München (Deutschland)
 http://br-mp3-br-klassik-m.akacast.akamaistream.net/7/120/142693/v1/gnl.akacast.akamaistream.net/br_mp3_br-klassik_m
-#EXTINF:0,Klassik Radio - Hamburg (Deutschland)
-http://klassikradio.hoerradar.de/klassikradio-live-mp3-hq
