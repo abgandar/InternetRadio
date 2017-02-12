@@ -46,7 +46,8 @@
       #sender.aktiv { left: 300px; }
       #sender li { border: 1px solid black; width: 100%; box-sizing: border-box; display: block; padding: 0px; }
       #sender li a { margin: 0px; padding-top: 30px; padding-bottom: 30px; padding-left: 20px; padding-right: 10px; display: block; text-decoration: none; color: black; font-size: 16pt; box-sizing: border-box; }
-      #sender li.aktiv { background: lightblue; border-width: 2px; }
+      #sender li.auswahl { background: lightblue; border-width: 2px; }
+      #sender li.aktiv { background: blue; border-width: 2px; }
       #sender li.notfound { display: none; }
       #sender li span { display: none; }
       #sender li.aktiv span { display: block; font-size: 11pt; }
@@ -118,7 +119,10 @@
         var list = document.getElementById('sender').children;
 
         for( var i = 0; i < list.length; i++ )
+        {
             list[i].classList.remove( "aktiv" );
+            list[i].classList.remove( "auswahl" );
+        }
 
         document.getElementById('pause-li').className = state.playing ? 'stop' : 'play';
 
@@ -302,8 +306,11 @@
 
         // deselect old songs, and highlight new
         for( i = 0; i < ch.length; i++ )
+        {
             ch[i].classList.remove('aktiv');
-        ch[nr].classList.add('aktiv');
+            ch[i].classList.remove('auswahl');
+        }
+        ch[nr].classList.add('auswahl');
 
         // send request to server
         var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"play="+encodeURIComponent( nr );
