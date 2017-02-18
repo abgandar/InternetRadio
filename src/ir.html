@@ -36,7 +36,9 @@
       #pause-li.play #stop { display: none; }
       #pause-li.stop #start { display: none; }
       #sidebar #suche-li { text-align: right; color: black; padding: 15px 7px; cursor: pointer; }
-      #suche { border: none; width: 70%; font-size: 16pt; cursor: auto; }
+      #suche { padding-right: 24px; border: none; width: 65%; font-size: 16pt; cursor: auto; }
+      #suchencancel { visibility: visible; position: absolute; right: 12px; bottom: 2px; font-size: 16px; color: grey; }
+      #suche:placeholder-shown + #suchencancel { visibility: hidden; }
       #sidebar #stream-li { border-bottom: 3px solid #444444; }
       #sidebar-playlists { width: 100%; margin: 0px; padding: 0px; box-sizing: border-box; background: #EEEEEE; }
       #sidebar-playlists li { border: 1px solid #444444; font-size: 18pt; display: block; white-space: nowrap; }
@@ -388,7 +390,7 @@
           <a id="stop" href="javascript:pause( )" title="Pause">Pause &nbsp;&nbsp; &#x23f8;</a>
         </li>
         <li id="laden-li"><a id="laden" href="javascript:refresh()" title="Aktualisieren">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
-        <li id="suche-li" onclick="document.getElementById('sidebar-container').classList.add('aktiv'); document.getElementById('sender').classList.add('aktiv'); document.getElementById('suche').focus();" title="Suchen"><input type="text" value="" placeholder="Suchen..." id="suche" oninput="sucheEingabe(this.value)" title="Suchen"> &nbsp;&nbsp; &#x1f50d;</li>
+        <li id="suche-li" onclick="document.getElementById('sidebar-container').classList.add('aktiv'); document.getElementById('sender').classList.add('aktiv'); document.getElementById('suche').focus();" title="Suchen"><span style="position: relative;"><input type="text" value="" placeholder="Suchen..." id="suche" oninput="sucheEingabe(this.value)" onkeydown="if(window.event.keyCode == 27) document.getElementById('suche').value =''; else if(window.event.keyCode == 13) suchen(this.value);" title="Suchen"/><span id="suchencancel" onclick="document.getElementById('suche').value ='';">&#x24e7;</span> </span> &nbsp;&nbsp; &#x1f50d;</li>
         <li id="stream-li"><a id="stream" href="/" title="Streaming" target="_blank">Streaming &nbsp;&nbsp; &#x1f3a7;</a></li>
         <li id="musik-li"><a id="musik" href="javascript:loadMusic('')" title="Musik">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
       </ul>
