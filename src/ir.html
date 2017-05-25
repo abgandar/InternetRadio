@@ -27,7 +27,7 @@
       #message.warning { background: lightyellow; border-color: yellow; visibility: visible; opacity: 1; transition-delay: 0s; }
       #message.info { background: lightgreen; border-color: green; visibility: visible; opacity: 1; transition-delay: 0s; }
 
-      #sidebar-container { z-index: 10; position: absolute; left: -260px; width: 300px; height:100%; transition: left 300ms; -webkit-transition: left 300ms; margin: 0px; padding: 0px; overflow-x: hidden; overflow-y: scroll; }
+      #sidebar-container { z-index: 10; position: absolute; left: -260px; width: 300px; height:100%; transition: left 300ms; -webkit-transition: left 300ms; margin: 0px; padding: 0px; overflow-x: hidden; overflow-y: auto; }
       #sidebar-container.aktiv { left: 0px; }
       #sidebar { width: 100%; border-bottom: 3px solid #444444; margin: 0px; padding: 0px; box-sizing: border-box; }
       #sidebar li { border: 1px solid #444444; font-size: 18pt; display: block; background: #EEEEEE; white-space: nowrap; }
@@ -159,7 +159,7 @@
             var name = this.response.playlist[i].name || this.response.playlist[i].title || this.response.playlist[i].uri;
             var text = document.createTextNode(name);
             list.appendChild(li).appendChild(a).appendChild(text);
-            a.append(span);
+            a.appendChild(span);
         }
 
         updateState( this.response.state );
@@ -295,6 +295,7 @@
       function init( )
       {
         refresh( );
+        if( window.innerWidth >= 800 ) toggleMenu();
         updater = setInterval( refreshState, 10000 );
         document.addEventListener( visibilityChange, handleVisibilityChange, false );
         document.getElementById( 'stream' ).href = "http://" + window.location.hostname + ":9000/"; // fix streaming link
