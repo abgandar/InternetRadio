@@ -86,7 +86,7 @@ http://c14000-l.i.core.cdn.streamfarm.net/3095crosschannel_dsl.mp3
 #EXTINF:0,DEFJAY.DE - Berlin (Deutschland)
 http://sc1.netstreamer.net:8040
 #EXTINF:0,Deutschlandfunk - Köln (Deutschland)
-http://dradio_mp3_dlf_m.akacast.akamaistream.net/7/249/142684/v1/gnl.akacast.akamaistream.net/dradio_mp3_dlf_m
+http://st01.dlf.de/dlf/01/128/mp3/stream.mp3
 #EXTINF:0,Die Neue Welle - Karlsruhe (Deutschland)
 http://live.meine-neue-welle.de/dnw_128.mp3
 #EXTINF:0,DONAU 3 FM - Ulm (Deutschland)
@@ -342,19 +342,19 @@ http://stream.stadtradio-goettingen.de:8000/stadtradio.mp3
 #EXTINF:0,SWR DasDing - Stuttgart (Deutschland)
 http://swr-mp3-m-dasding.akacast.akamaistream.net/7/588/137139/v1/gnl.akacast.akamaistream.net/swr-mp3-m-dasding
 #EXTINF:0,SWR info - Stuttgart (Deutschland)
-http://swr-mp3-m-info.akacast.akamaistream.net/7/40/137140/v1/gnl.akacast.akamaistream.net/swr-mp3-m-info
+http://swr-swraktuell-live.cast.addradio.de/swr/swraktuell/live/mp3/128/stream.mp3
 #EXTINF:0,SWR1 Baden-Württemberg - Stuttgart (Deutschland)
-http://swr-mp3-m-swr1bw.akacast.akamaistream.net/7/245/137133/v1/gnl.akacast.akamaistream.net/swr-mp3-m-swr1bw
+http://swr-swr1-bw.cast.addradio.de/swr/swr1/bw/mp3/128/stream.mp3
 #EXTINF:0,SWR1 Rheinland-Pfalz - Stuttgart (Deutschland)
-http://swr-mp3-m-swr1rp.akacast.akamaistream.net/7/467/137134/v1/gnl.akacast.akamaistream.net/swr-mp3-m-swr1rp
+http://swr-swr1-rp.cast.addradio.de/swr/swr1/rp/mp3/128/stream.mp3
 #EXTINF:0,SWR2 - Stuttgart (Deutschland)
-http://swr-mp3-m-swr2.akacast.akamaistream.net/7/721/137135/v1/gnl.akacast.akamaistream.net/swr-mp3-m-swr2
+http://swr-swr2-live.cast.addradio.de/swr/swr2/live/mp3/256/stream.mp3
 #EXTINF:0,SWR3 - Stuttgart (Deutschland)
-http://swr-mp3-m-swr3.akacast.akamaistream.net/7/720/137136/v1/gnl.akacast.akamaistream.net/swr-mp3-m-swr3
+http://swr-swr3-live.cast.addradio.de/swr/swr3/live/mp3/128/stream.mp3
 #EXTINF:0,SWR4 Baden-Württemberg - Stuttgart (Deutschland)
-http://swr-mp3-m-swr4bw.akacast.akamaistream.net/7/426/137137/v1/gnl.akacast.akamaistream.net/swr-mp3-m-swr4bw
+http://swr-swr4-bw.cast.addradio.de/swr/swr4/bw/mp3/128/stream.mp3
 #EXTINF:0,SWR4 Rheinland-Pfalz - Stuttgart (Deutschland)
-http://swr-mp3-m-swr4rp.akacast.akamaistream.net/7/906/137138/v1/gnl.akacast.akamaistream.net/swr-mp3-m-swr4rp
+http://swr-swr4-rp.cast.addradio.de/swr/swr4/rp/mp3/128/stream.mp3
 #EXTINF:0,TranceBase.FM - Mönchengladbach (Deutschland)
 http://mp3.trb-stream.net
 #EXTINF:0,UZIC - Techno Minimal - Lausanne (Schweiz)
