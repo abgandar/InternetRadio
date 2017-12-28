@@ -34,7 +34,8 @@
       #sidebar li { border: 1px solid #444444; font-size: 18pt; display: block; background: #EEEEEE; white-space: nowrap; }
       #menu-li { background: #BBBBBB; font-size: 20pt; border-bottom: 4px solid #444444; }
       #sidebar a { margin: 0px; padding: 15px 7px; display: block; text-decoration: none; color: black; text-align: right; }
-      #reboot { width: 5%; left: 0px; position: absolute; }
+      #reboot { width: 6%; float: left; margin-left: 5px; margin-right: 5px; }
+      #poweroff { width: 6%; float: left; margin-left: 5px; margin-right: 5px; }
       #pause-li.play #stop { display: none; }
       #pause-li.stop #start { display: none; }
       #volume-li { text-align: right; color: black; padding: 15px 7px; cursor: pointer; }
@@ -474,7 +475,10 @@
     <div id="container">
     <div id="sidebar-container">
       <ul id="sidebar">
-          <li id="menu-li"><a id="reboot" href="javascript:rebootSystem(false)" title="Neustart">&#x238b;</a><a id="menu" href="javascript:toggleMenu()" title="Menu">Menu &nbsp;&nbsp; &#9776;</a></li>
+          <li id="menu-li">
+              <a id="poweroff" href="javascript:rebootSystem(false)" title="Herunterfahren">&#x21af;</a>
+              <a id="reboot" href="javascript:rebootSystem(true)" title="Neustart">&#x238b;</a>
+              <a id="menu" href="javascript:toggleMenu()" title="Menu">Menu &nbsp;&nbsp; &#9776;</a></li>
         <li id="pause-li" class="play">
           <a id="start" href="javascript:pause( )" title="Abspielen">Abspielen &nbsp;&nbsp; &#x25b6;</a>
           <a id="stop" href="javascript:pause( )" title="Pause">Pause &nbsp;&nbsp; &#x23f8;</a>
