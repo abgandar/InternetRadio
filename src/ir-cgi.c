@@ -315,6 +315,8 @@ void setVolume( const unsigned int vol )
 {
     if( !mpd_run_set_volume( conn, vol ) )
         error( 500, "Internal Server Error", NULL );
+
+    output_start( );
 }
 
 // skip by the given amount
