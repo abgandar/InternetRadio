@@ -516,7 +516,7 @@ void rebootSystem( const int mode )
     sync( );
     sleep( 2 );     // wait for buffers to flush
     reboot( mode );
-    error( 500, "Internal Server Error", "Shutdown or reboot failed" )
+    error( 500, "Internal Server Error", "Shutdown or reboot failed" );
 }
 
 // Parse a command
