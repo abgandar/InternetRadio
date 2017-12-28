@@ -143,9 +143,17 @@
         }
 
         var elm = document.getElementById('volume')
-        elm.value = state.volume;
-        if(typeof elm.old_volume == "undefined") elm.old_volume = state.volume;
-        document.getElementById('volume-li').classList.toggle('mute', state.volume==0);
+        if(state.volume == -1)
+        {
+          elm.disabled = true;
+        }
+        else
+        {
+          elm.disabled = false;
+          elm.value = state.volume;
+          if(typeof elm.old_volume == "undefined") elm.old_volume = state.volume;
+          document.getElementById('volume-li').classList.toggle('mute', state.volume==0);
+        }
       }
 
       function populateQueue( )
