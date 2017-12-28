@@ -32,8 +32,9 @@
       #sidebar-container.aktiv { left: 0px; }
       #sidebar { width: 100%; border-bottom: 3px solid #444444; margin: 0px; padding: 0px; box-sizing: border-box; }
       #sidebar li { border: 1px solid #444444; font-size: 18pt; display: block; background: #EEEEEE; white-space: nowrap; }
-      #sidebar #menu-li { background: #BBBBBB; font-size: 20pt; border-bottom: 4px solid #444444; }
+      #menu-li { background: #BBBBBB; font-size: 20pt; border-bottom: 4px solid #444444; }
       #sidebar a { margin: 0px; padding: 15px 7px; display: block; text-decoration: none; color: black; text-align: right; }
+      #reboot { width: 5%; left: 0px; position: absolute; }
       #pause-li.play #stop { display: none; }
       #pause-li.stop #start { display: none; }
       #volume-li { text-align: right; color: black; padding: 15px 7px; cursor: pointer; }
@@ -46,7 +47,7 @@
       #suche { padding-right: 24px; border: none; width: 65%; font-size: 16pt; cursor: auto; }
       #suchencancel { visibility: visible; position: absolute; right: 12px; bottom: 2px; font-size: 16px; color: grey; }
       #suche:placeholder-shown + #suchencancel { visibility: hidden; }
-      #sidebar #stream-li { border-bottom: 3px solid #444444; }
+      #stream-li { border-bottom: 3px solid #444444; }
       #sidebar-playlists { width: 100%; margin: 0px; padding: 0px; box-sizing: border-box; background: #EEEEEE; }
       #sidebar-playlists li { border: 1px solid #444444; font-size: 18pt; display: block; white-space: nowrap; }
       #sidebar-playlists a { margin: 0px; padding: 15px 7px; display: block; text-decoration: none; color: black; text-align: right; }
@@ -453,6 +454,19 @@
           elm.value = elm.old_volume;
         setVolume(elm.value);
       }
+
+      // reboot system
+      function rebootSystem( reboot )
+      {
+        // send request to server
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+(reboot?"reboot":"shutdown");
+        var xhr = new XMLHttpRequest( );
+        xhr.addEventListener( 'load',  function( ) { if( this.status == 200 ) updateState( this.response.state ); else showError( this.response ); } );
+        xhr.addEventListener( 'error', showError );
+        xhr.responseType = 'json';
+        xhr.open( 'GET', url, true );
+        xhr.send( );
+      }
     </script>
   </head>
   <body onload="init()" id="body">
@@ -460,7 +474,7 @@
     <div id="container">
     <div id="sidebar-container">
       <ul id="sidebar">
-        <li id="menu-li"><a id="menu" href="javascript:toggleMenu()" title="Menu">Menu &nbsp;&nbsp; &#9776;</a></li>
+          <li id="menu-li"><a id="reboot" href="javascript:rebootSystem(false)" title="Neustart">&#x238b;</a><a id="menu" href="javascript:toggleMenu()" title="Menu">Menu &nbsp;&nbsp; &#9776;</a></li>
         <li id="pause-li" class="play">
           <a id="start" href="javascript:pause( )" title="Abspielen">Abspielen &nbsp;&nbsp; &#x25b6;</a>
           <a id="stop" href="javascript:pause( )" title="Pause">Pause &nbsp;&nbsp; &#x23f8;</a>
