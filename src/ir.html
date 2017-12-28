@@ -37,6 +37,7 @@
       #pause-li.play #stop { display: none; }
       #pause-li.stop #start { display: none; }
       #volume-li { text-align: right; color: black; padding: 15px 7px; cursor: pointer; }
+      #volume-li.hidden { display: none; }
       #volume { width: 70%; height: 100%; }
       #volume-li.mute #volume-on { display: none; }
       #volume-off { display: none; }
@@ -142,17 +143,19 @@
             if( state.song && state.song.title ) sender.getElementsByTagName('span')[0].innerText = state.song.title;
         }
 
-        var elm = document.getElementById('volume')
+        var elm = document.getElementById('volume');
+        var li = document.getElementById('volume-li');
         if(state.volume == -1)
         {
-          elm.disabled = true;
+            li.classList.add('hidden');
         }
         else
         {
           elm.disabled = false;
           elm.value = state.volume;
           if(typeof elm.old_volume == "undefined") elm.old_volume = state.volume;
-          document.getElementById('volume-li').classList.toggle('mute', state.volume==0);
+          li.classList.toggle('mute', state.volume==0);
+          li.classList.remove('hidden');
         }
       }
 
