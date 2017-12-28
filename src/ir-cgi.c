@@ -310,8 +310,15 @@ void error( const int code, const char* msg, const char* message )
     exit( code );
 }
 
+// set mixer volume for all outputs
+void setVolume( const unsigned int vol )
+{
+    if( !mpd_run_set_volume( conn, vol ) )
+        error( 500, "Internal Server Error", NULL );
+}
+
 // skip by the given amount
-void skip( int where )
+void skip( const int where )
 {
     bool res = false;
     switch( where )
@@ -336,7 +343,7 @@ void skip( int where )
 }
 
 // play given song position
-void play( int position )
+void play( const int position )
 {
     if( position >= 0 && !mpd_run_play_pos( conn, position ) )
         error( 404, "Not found", NULL );
@@ -345,7 +352,7 @@ void play( int position )
 }
 
 // play given song id
-void playid( int id )
+void playid( const int id )
 {
     if( id >= 0 && !mpd_run_play_id( conn, id ) )
         error( 404, "Not found", NULL );
@@ -354,7 +361,7 @@ void playid( int id )
 }
 
 // pause / unpause playback
-void pausemusic( int position )
+void pausemusic( const int position )
 {
     struct mpd_status *status = NULL;
 	if( !(status = mpd_run_status( conn )) )
@@ -554,25 +561,31 @@ void parseCommand( char *cmd )
     else if( strncmp( cmd, "play=", 5 ) == 0 )
     {
         // Start playback at given position
-        int i = strtol( cmd+5, NULL, 10 );
+        const int i = strtol( cmd+5, NULL, 10 );
         play( i );
     }
     else if( strncmp( cmd, "playid=", 7 ) == 0 )
     {
         // Start playback at given id
-        int i = strtol( cmd+7, NULL, 10 );
+        const int i = strtol( cmd+7, NULL, 10 );
         playid( i );
     }
     else if( strncmp( cmd, "pause=", 6 ) == 0 )
     {
         // Pause playback
-        int i = strtol( cmd+6, NULL, 10 );
+        const int i = strtol( cmd+6, NULL, 10 );
         pausemusic( i );
     }
     else if( strncmp( cmd, "add=", 4 ) == 0 )
     {
         // Add song to queue
         add( cmd+4 );
+    }
+    else if( strncmp( cmd, "volume=", 7 ) == 0 )
+    {
+        // Set the mixer volume
+        const unsigned int i = strtol( cmd+7, NULL, 10 );
+        setVolume( i );
     }
     else
     {
