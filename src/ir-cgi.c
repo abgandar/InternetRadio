@@ -514,7 +514,7 @@ void sendPassword( const char *arg )
 void rebootSystem( const int mode )
 {
     sync( );
-    sleep( 2 );     // wait for buffers to flush
+    sleep( 3 );     // wait for buffers to flush
     reboot( mode );
     error( 500, "Internal Server Error", "Shutdown or reboot failed" );
 }
