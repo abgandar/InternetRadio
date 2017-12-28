@@ -468,8 +468,8 @@
         <li id="volume-li" onclick="volumeClick()" title="Lautst&auml;rke">
             <input type="range" min="0" max="100" step="1" id="volume" onchange="setVolume(this.value);" onclick="event.stopPropagation();" title="Lautst&auml;rke"/> &nbsp;&nbsp; <span id="volume-on">&#x1f50a;</span><span id="volume-off">&#x1f507;</span>
         </li>
-        <li id="laden-li"><a id="laden" href="javascript:refresh()" title="Aktualisieren">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
         <li id="suche-li" onclick="sucheClick()" title="Suchen"><span style="position: relative;"><input type="text" value="" placeholder="Suchen..." id="suche" oninput="sucheEingabe(this.value)" onkeydown="sucheKeyDown(window.event.keyCode)" title="Suchen"/><span id="suchencancel" onclick="sucheReset()">&#x24e7;</span> </span> &nbsp;&nbsp; &#x1f50d;</li>
+        <li id="laden-li"><a id="laden" href="javascript:refresh()" title="Aktualisieren">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
         <li id="stream-li"><a id="stream" href="/" title="Streaming" target="_blank">Streaming &nbsp;&nbsp; &#x1f3a7;</a></li>
         <li id="musik-li"><a id="musik" href="javascript:loadMusic('')" title="Musik">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
       </ul>
