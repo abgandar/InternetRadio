@@ -36,6 +36,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <sys/reboot.h>
 
 #include <mpd/client.h>
 
@@ -509,6 +510,14 @@ void sendPassword( const char *arg )
         error( 403, "Forbidden", NULL );
 }
 
+// reboot system (if priviliges allow)
+void reboot( const int mode )
+{
+    sync( );
+    sleep( 2 );     // wait for buffers to flush
+    reboot( mode );
+}
+
 // Parse a command
 void parseCommand( char *cmd )
 {
@@ -588,6 +597,16 @@ void parseCommand( char *cmd )
         // Set the mixer volume
         const unsigned int i = strtol( cmd+7, NULL, 10 );
         setVolume( i );
+    }
+    else if( strcmp( cmd, "reboot" ) == 0 )
+    {
+        // Reboot the system (assuming sufficient priviliges, usually not given)
+        reboot( LINUX_REBOOT_CMD_RESTART );
+    }
+    else if( strcmp( cmd, "shutdown" ) == 0 )
+    {
+        // Reboot the system (assuming sufficient priviliges, usually not given)
+        reboot( LINUX_REBOOT_CMD_POWER_OFF );
     }
     else
     {
