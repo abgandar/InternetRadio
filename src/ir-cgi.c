@@ -601,12 +601,12 @@ void parseCommand( char *cmd )
     else if( strcmp( cmd, "reboot" ) == 0 )
     {
         // Reboot the system (assuming sufficient priviliges, usually not given)
-        rebootSystem( LINUX_REBOOT_CMD_RESTART );
+        rebootSystem( RB_AUTOBOOT );
     }
     else if( strcmp( cmd, "shutdown" ) == 0 )
     {
         // Reboot the system (assuming sufficient priviliges, usually not given)
-        rebootSystem( LINUX_REBOOT_CMD_POWER_OFF );
+        rebootSystem( RB_POWER_OFF );
     }
     else
     {
