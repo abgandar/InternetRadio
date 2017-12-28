@@ -511,7 +511,7 @@ void sendPassword( const char *arg )
 }
 
 // reboot system (if priviliges allow)
-void reboot( const int mode )
+void rebootSystem( const int mode )
 {
     sync( );
     sleep( 2 );     // wait for buffers to flush
@@ -601,12 +601,12 @@ void parseCommand( char *cmd )
     else if( strcmp( cmd, "reboot" ) == 0 )
     {
         // Reboot the system (assuming sufficient priviliges, usually not given)
-        reboot( LINUX_REBOOT_CMD_RESTART );
+        rebootSystem( LINUX_REBOOT_CMD_RESTART );
     }
     else if( strcmp( cmd, "shutdown" ) == 0 )
     {
         // Reboot the system (assuming sufficient priviliges, usually not given)
-        reboot( LINUX_REBOOT_CMD_POWER_OFF );
+        rebootSystem( LINUX_REBOOT_CMD_POWER_OFF );
     }
     else
     {
