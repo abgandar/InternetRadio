@@ -517,7 +517,7 @@ void rebootSystem( const int mode )
 {
 #ifdef SYSTEMD
     sd_bus *bus = NULL;
-    sd_bus_error error = SD_BUS_ERROR_NULL;
+    sd_bus_error err = SD_BUS_ERROR_NULL;
     int r;
 
     /* Connect to the system bus (adapted from From http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html) */
@@ -527,12 +527,12 @@ void rebootSystem( const int mode )
     r = sd_bus_call_method( bus, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
                             "org.freedesktop.systemd1.Manager",
                             mode == RB_POWER_OFF ? "PowerOff" : "Reboot",
-                            &error, NULL, "b", false );
+                            &err, NULL, "b", false );
     if( r < 0 )
     {
         sd_bus_unref( bus );
-        error( 500, "Internal Server Error", error.message );
-        sd_bus_error_free( &error );    // not reached
+        error( 500, "Internal Server Error", err.message );
+        sd_bus_error_free( &err );    // not reached
     }
 
     output_start( );
