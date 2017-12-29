@@ -442,6 +442,7 @@
       {
         ev.preventDefault( );
         var url = ev.dataTransfer.getData( "text" );
+        document.getElementsByTagName("body")[0].classList.remove( 'dragover' );
         if( url ) addURL( url );
       }
     </script>
