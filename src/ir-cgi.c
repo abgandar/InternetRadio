@@ -28,6 +28,8 @@
 
 #define __USE_POSIX
 
+#include "config.h"
+
 #include <stdio.h>
 #include <stdio_ext.h>  // __fpurge is some silly linux nonsense
 #include <stdlib.h>
@@ -37,10 +39,10 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <sys/reboot.h>
-
+#ifdef SYSTEMD
+#include <systemd/sd-bus.h>
+#endif
 #include <mpd/client.h>
-
-#include "config.h"
 
 static struct mpd_connection *conn = NULL;
 
@@ -513,10 +515,33 @@ void sendPassword( const char *arg )
 // reboot system (if priviliges allow)
 void rebootSystem( const int mode )
 {
+#ifdef SYSTEMD
+    sd_bus *bus = NULL;
+    sd_bus_error error = SD_BUS_ERROR_NULL;
+    int r;
+
+    /* Connect to the system bus (adapted from From http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html) */
+    r = sd_bus_open_system( &bus );
+    if( r < 0 )
+        error( 500, "Internal Server Error", strerror( -r ) );
+    r = sd_bus_call_method( bus, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+                            "org.freedesktop.systemd1.Manager",
+                            mode == RB_POWER_OFF ? "PowerOff" : "Reboot",
+                            &error, NULL, "b", false );
+    if( r < 0 )
+    {
+        sd_bus_unref( bus );
+        error( 500, "Internal Server Error", error.message );
+        sd_bus_error_free( &error );    // not reached
+    }
+
+    output_start( );
+#else
     sync( );
-    sleep( 3 );     // wait for buffers to flush
+    sleep( REBOOT_WAIT );     // wait for buffers to flush
     reboot( mode );
-    error( 500, "Internal Server Error", "Shutdown or reboot failed" );
+    error( 500, "Internal Server Error", "Shutdown or reboot failed" );     // not reached
+#endif
 }
 
 // Parse a command
