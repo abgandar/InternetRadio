@@ -1,4 +1,4 @@
-LDLIBS += -lmpdclient
+LDLIBS += -lmpdclient -lsystemd
 CPPFLAGS += -Wall
 
 all: ir.cgi
