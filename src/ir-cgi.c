@@ -493,17 +493,17 @@ void sendPlaylist( const char *arg )
 // add song(s) to playlist and send new queue
 void add( char *arg )
 {
-	if( !mpd_command_list_begin( conn, true ) )
-        error( 500, "Internal Server Error", NULL );
+    if( !mpd_command_list_begin( conn, false ) )
+        error( 500, "Internal Server Errorr", NULL );
 
     char *url;
-    while( (url = strsep( &arg, ":" )) )
+    while( (url = strsep( &arg, "|" )) )
     {
         if( !mpd_send_add( conn, url ) )
             error( 404, "Not found", NULL );
     }
 
-	if( !mpd_command_list_end( conn ) )
+    if( !mpd_command_list_end( conn ) )
         error( 404, "Not found", NULL );
 
     mpd_response_finish( conn );
