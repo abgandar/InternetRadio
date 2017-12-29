@@ -527,7 +527,7 @@ void rebootSystem( const int mode )
     r = sd_bus_call_method( bus, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
                             "org.freedesktop.systemd1.Manager",
                             mode == RB_POWER_OFF ? "PowerOff" : "Reboot",
-                            &err, NULL, "b", false );
+                            &err, NULL, NULL );
     if( r < 0 )
     {
         sd_bus_unref( bus );
