@@ -21,6 +21,7 @@
     <style>
       body { font-family: Helvetica Neue, Helvetica, Arial, sans; overflow: hidden; transition: background 200ms; -webkit-transition: background 200ms; user-select: none; -webkit-touch-callout: none; -webkit-user-select: none; -khtml-user-select: none; -moz-user-select: none; -ms-user-select: none; }
       body.error { background: pink; }
+      body.dragover { background: #EEEEEE !important; }
       #container { position: fixed; top: 0px; left: 0px; height: 100%; width: 100%; overflow: hidden; padding: 0px; margin: 0px; }
 
       #message { z-index: 1000; position: fixed; top: 0px; left: 25%; right: 25%; height:auto; transition: visibility 0s linear 0.5s, opacity 0.5s linear, background 0.5s linear, border-color 0.5s linear; -webkit-transition: visibility 0s linear 0.5s, opacity 0.5s linear, background 0.5s linear, border-color 0.5s linear; visibility: hidden; opacity: 0; overflow: hidden; padding: 5px; text-align: center; border: 1px solid white; border-top: 0px; font-size: 90%; }
@@ -421,9 +422,31 @@
         if( url )
           XHR( "add="+encodeURIComponent( url ) );
       }
+
+      function dragEnter( ev )
+      {
+        document.getElementsByTagName("body")[0].classList.add( 'dragover' );
+      }
+
+      function dragLeave( ev )
+      {
+        document.getElementsByTagName("body")[0].classList.remove( 'dragover' );
+      }
+
+      function allowDrop( ev )
+      {
+        ev.preventDefault( );
+      }
+
+      function drop( ev )
+      {
+        ev.preventDefault( );
+        var url = ev.dataTransfer.getData( "text" );
+        if( url ) addURL( url );
+      }
     </script>
   </head>
-  <body onload="init()" id="body">
+  <body onload="init()" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" id="body">
     <div id="message"></div>
     <div id="container">
     <div id="sidebar-container">
