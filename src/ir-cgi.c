@@ -299,14 +299,19 @@ void output_end( )
 void error( const int code, const char* msg, const char* message )
 {
     char *m;
-    if( message == NULL && mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS )
-        m = jsonencode( mpd_connection_get_error_message( conn ) );
+    if( message == NULL )
+    {
+        if( mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS )
+            m = jsonencode( mpd_connection_get_error_message( conn ) );
+        else
+            m = strdup( "-" );
+    }
     else
-        m = strdup("-");
+        m = jsonencode( message );
 
     __fpurge( stdout );     // discard any previous buffered output
     printf( "Status: %d %s\nContent-type: application/json\nCache-control: no-cache\n\n", code, msg );
-    printf( "{\"status\":%d,\"message\":\"%s\"}", code, message ? message : m );
+    printf( "{\"status\":%d,\"message\":\"%s\"}", code, m );
     fflush( stdout );
     free( m );
     if( conn ) mpd_connection_free( conn );
@@ -520,7 +525,7 @@ void rebootSystem( const int mode )
     sd_bus_error err = SD_BUS_ERROR_NULL;
     int r;
 
-    /* Connect to the system bus (adapted from From http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html) */
+    /* Connect to the system bus (adapted from http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html) */
     r = sd_bus_open_system( &bus );
     if( r < 0 )
         error( 500, "Internal Server Error", strerror( -r ) );
@@ -538,7 +543,7 @@ void rebootSystem( const int mode )
     output_start( );
 #else
     sync( );
-    sleep( REBOOT_WAIT );     // wait for buffers to flush
+    usleep( REBOOT_WAIT );     // wait for buffers to flush. Not done in systemctl reboot.
     reboot( mode );
     error( 500, "Internal Server Error", "Shutdown or reboot failed" );     // not reached
 #endif
