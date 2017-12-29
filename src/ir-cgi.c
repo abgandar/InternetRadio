@@ -494,7 +494,7 @@ void sendPlaylist( const char *arg )
 void add( char *arg )
 {
     if( !mpd_command_list_begin( conn, false ) )
-        error( 500, "Internal Server Errorr", NULL );
+        error( 500, "Internal Server Error", NULL );
 
     char *url;
     while( (url = strsep( &arg, "|" )) )

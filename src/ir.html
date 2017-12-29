@@ -53,6 +53,9 @@
       #sidebar-playlists li { border: 1px solid #444444; font-size: 18pt; display: block; white-space: nowrap; }
       #sidebar-playlists a { margin: 0px; padding: 15px 7px; display: block; text-decoration: none; color: black; text-align: right; }
       #sidebar-playlists span { font-size: 16pt; }
+      #sidebar-bottom { width: 100%; margin: 0px; padding: 0px; box-sizing: border-box; background: white; }
+      #sidebar-bottom li { border: 1px solid white; font-size: 18pt; display: block; white-space: nowrap; }
+      #sidebar-bottom a { margin: 0px; padding: 15px 7px; display: block; text-decoration: none; color: black; text-align: right; }
 
       #sender { position: absolute; left: 40px; right: 0px; top: 0px; bottom: 0px; overflow-x: hidden; overflow-y: scroll; padding: 0px; margin: 0px; box-sizing: border-box; transition: left 300ms; -webkit-transition: left 300ms; }
       #sender.aktiv { left: 300px; }
@@ -124,48 +127,57 @@
                 return( icons[i].symbol );
       }
 
-      function updateState( state )
+      function updateState( response )
       {
-        var pos = state.song ? state.song.pos : 0;
-        var id = state.song ? state.song.id : -1;
+        var pos = response.state.song ? response.state.song.pos : 0;
+        var id = response.state.song ? response.state.song.id : -1;
         var list = document.getElementById('sender').children;
+
+        if( response.playlist )
+          populateQueue( response.playlist );
+
+        if( response.playlists )
+          populatePlaylists( response.playlists );
+
+        if( response.host )
+          document.title = "Internet Radio - " + response.host;
+
+        document.getElementById('pause-li').className = response.state.playing ? 'stop' : 'play';
 
         for( var i = 0; i < list.length; i++ )
         {
-            list[i].classList.remove( "aktiv" );
-            list[i].classList.remove( "auswahl" );
+          list[i].classList.remove( "aktiv" );
+          list[i].classList.remove( "auswahl" );
         }
-
-        document.getElementById('pause-li').className = state.playing ? 'stop' : 'play';
 
         var sender = list[pos];
         if( sender && "songid_"+id == sender.id )
         {
-            sender.classList.add( "aktiv" );
-            if( state.song && state.song.title ) sender.getElementsByTagName('span')[0].innerText = state.song.title;
+          sender.classList.add( "aktiv" );
+          if( response.state.song && response.state.song.title ) sender.getElementsByTagName('span')[0].innerText = response.state.song.title;
         }
 
         var elm = document.getElementById('volume');
         var li = document.getElementById('volume-li');
-        if(state.volume == -1)
+        if(response.state.volume == -1)
         {
-            li.classList.add('hidden');
+          li.classList.add('hidden');
         }
         else
         {
           elm.disabled = false;
-          elm.value = state.volume;
-          if(typeof elm.old_volume == "undefined") elm.old_volume = state.volume;
-          li.classList.toggle('mute', state.volume==0);
-          li.classList.remove('hidden');
+          elm.value = response.state.volume;
+          if(typeof elm.old_volume == "undefined") elm.old_volume = response.state.volume;
+          li.classList.toggle( 'mute', response.state.volume==0 );
+          li.classList.remove( 'hidden' );
         }
       }
 
-      function populateQueue( )
+      function populateQueue( playlist )
       {
         // if the queue is empty, populate it with the default playlist now
-        if( this.response.playlist.length == 0 )
-            loadPlaylist( DEFAULT_PLAYLIST );
+        if( playlist.length == 0 )
+          loadPlaylist( DEFAULT_PLAYLIST );
 
         var list = document.getElementById('sender');
 
@@ -173,35 +185,29 @@
         while( list.firstChild ) list.removeChild( list.firstChild );
 
         // add new entries
-        for( var i = 0; i < this.response.playlist.length; i++ )
+        for( var i = 0; i < playlist.length; i++ )
         {
             var li = document.createElement( 'li' );
-            li.id = "songid_"+this.response.playlist[i].id;
+            li.id = "songid_"+playlist[i].id;
             var a = document.createElement('a');
             a.href = "javascript:play("+i+");";
             var span = document.createElement('span');
-            var name = this.response.playlist[i].name || this.response.playlist[i].title || this.response.playlist[i].uri;
+            var name = playlist[i].name || playlist[i].title || playlist[i].uri;
             var text = document.createTextNode(name);
             list.appendChild(li).appendChild(a).appendChild(text);
             a.appendChild(span);
         }
-
-        updateState( this.response.state );
       }
 
-      function populatePlaylists( )
+      function populatePlaylists( playlists )
       {
         var list = document.getElementById('sidebar-playlists');
-
-        // update the document title with the host name 
-        if( this.response.host )
-            document.title = "Internet Radio - " + this.response.host;
 
         // remove previous entries
         while( list.firstChild ) list.removeChild( list.firstChild );
 
         // sort and add new entries
-        var playlists = this.response.playlists.sort( function( a, b ) { return a.name.localeCompare( b.name ); } )
+        var playlists = playlists.sort( function( a, b ) { return a.name.localeCompare( b.name ); } )
         for( var i = 0; i < playlists.length; i++ )
         {
             var li = document.createElement( 'li' );
@@ -214,8 +220,6 @@
             list.appendChild(li).appendChild(a).appendChild(span).appendChild(text);
             a.appendChild(symbol);
         }
-
-        updateState( this.response.state );
       }
 
       // indicate an error by flashing the document in red
@@ -228,76 +232,46 @@
         setTimeout( function( ) { body.classList.toggle( "error", false ); }, 250 );
       }
 
-      function refreshQueue( )
+      // send XHR request zum Server
+      function XHR( action )
       {
-        // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"queue";
+        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+action;
         var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populateQueue.call( this ); else showError( this.response ); } );
+        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) updateState( this.response ); else showError( this.response ); } );
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
         xhr.send( );
+      }
+
+      function refreshQueue( )
+      {
+        XHR( "queue" );
       }
 
       function loadPlaylist( name )
       {
-        // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"load="+encodeURIComponent( name );
-        var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populateQueue.call( this ); else showError( this.response ); } );
-        xhr.addEventListener( 'error', showError );
-        xhr.responseType = 'json';
-        xhr.open( 'GET', url, true );
-        xhr.send( );
+        XHR( "load="+encodeURIComponent( name ) );
       }
 
       function loadMusic( dir )
       {
-        // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"music="+encodeURIComponent( dir );
-        var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populateQueue.call( this ); else showError( this.response ); } );
-        xhr.addEventListener( 'error', showError );
-        xhr.responseType = 'json';
-        xhr.open( 'GET', url, true );
-        xhr.send( );
+        XHR( "music="+encodeURIComponent( dir ) );
       }
 
       function refreshPlaylists( )
       {
-        // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"playlists";
-        var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) populatePlaylists.call( this ); else showError( this.response ); } );
-        xhr.addEventListener( 'error', showError );
-        xhr.responseType = 'json';
-        xhr.open( 'GET', url, true );
-        xhr.send( );
+        XHR( "playlists" );
       }
 
       function refreshState( )
       {
-        // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"state";
-        var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function() { if( this.status == 200 ) updateState( this.response.state ); else showError( this.response ); } );
-        xhr.addEventListener( 'error', showError );
-        xhr.responseType = 'json';
-        xhr.open( 'GET', url, true );
-        xhr.send( );
+        XHR( "state" );
       }
 
       function refresh( )
       {
-        // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"queue&playlists";
-        var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) { populateQueue.call( this ); populatePlaylists.call( this ); } else showError( this.response ); } );
-        xhr.addEventListener( 'error', showError );
-        xhr.responseType = 'json';
-        xhr.open( 'GET', url, true );
-        xhr.send( );
+        XHR( "queue&playlists" );
       }
 
       function handleVisibilityChange( )
@@ -341,15 +315,7 @@
         }
         ch[nr].classList.add('auswahl');
 
-        // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"play="+encodeURIComponent( nr );
-        var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load',  function( ) { updateState( this.response.state ); } );
-        xhr.addEventListener( 'error', function( ) { document.getElementById('body').className = "error"; setTimeout( function( ) { document.getElementById('body').className = ""; }, 250 ); } );
-        xhr.responseType = 'json';
-        xhr.open( 'GET', url, true );
-        xhr.send( );
-
+        XHR( "play="+encodeURIComponent( nr ) );
         setTimeout( refreshState, 750 );
       }
 
@@ -366,14 +332,7 @@
                 break;
             }
 
-        // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"pause="+encodeURIComponent( i );
-        var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load',  function( ) { if( this.status == 200 ) updateState( this.response.state ); else showError( this.response ); } );
-        xhr.addEventListener( 'error', showError );
-        xhr.responseType = 'json';
-        xhr.open( 'GET', url, true );
-        xhr.send( );
+        XHR( "pause="+encodeURIComponent( i ) );
       }
 
       function toggleMenu( )
@@ -432,14 +391,7 @@
       {
         // set mute state
         document.getElementById('volume-li').classList.toggle('mute', vol==0);
-        // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+"volume="+encodeURIComponent( vol );
-        var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load',  function( ) { if( this.status == 200 ) updateState( this.response.state ); else showError( this.response ); } );
-        xhr.addEventListener( 'error', showError );
-        xhr.responseType = 'json';
-        xhr.open( 'GET', url, true );
-        xhr.send( );
+        XHR( "volume="+encodeURIComponent( vol ) );
       }
 
       // mute or restore the volume, saving the current volume level
@@ -459,14 +411,15 @@
       // reboot system
       function rebootSystem( reboot )
       {
-        // send request to server
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+(reboot?"reboot":"shutdown");
-        var xhr = new XMLHttpRequest( );
-        xhr.addEventListener( 'load',  function( ) { if( this.status == 200 ) updateState( this.response.state ); else showError( this.response ); } );
-        xhr.addEventListener( 'error', showError );
-        xhr.responseType = 'json';
-        xhr.open( 'GET', url, true );
-        xhr.send( );
+        XHR( reboot ? "reboot" : "shutdown" );
+      }
+    
+      // add URL
+      function addURL( url )
+      {
+        if( !url ) url = prompt( "Adresse der neuen Webradiostation:", "http://" );
+        if( url )
+          XHR( "add="+encodeURIComponent( url ) );
       }
     </script>
   </head>
@@ -475,23 +428,39 @@
     <div id="container">
     <div id="sidebar-container">
       <ul id="sidebar">
-          <li id="menu-li">
-              <a id="poweroff" href="javascript:rebootSystem(false)" title="Herunterfahren">&#x21af;</a>
-              <a id="reboot" href="javascript:rebootSystem(true)" title="Neustart">&#x238b;</a>
-              <a id="menu" href="javascript:toggleMenu()" title="Menu">Menu &nbsp;&nbsp; &#9776;</a></li>
+        <li id="menu-li">
+          <a id="poweroff" href="javascript:rebootSystem(false)" title="Herunterfahren">&#x21af;</a>
+          <a id="reboot" href="javascript:rebootSystem(true)" title="Neustart">&#x238b;</a>
+          <a id="menu" href="javascript:toggleMenu()" title="Menu">Menu &nbsp;&nbsp; &#9776;</a>
+        </li>
         <li id="pause-li" class="play">
           <a id="start" href="javascript:pause( )" title="Abspielen">Abspielen &nbsp;&nbsp; &#x25b6;</a>
           <a id="stop" href="javascript:pause( )" title="Pause">Pause &nbsp;&nbsp; &#x23f8;</a>
         </li>
         <li id="volume-li" onclick="volumeClick()" title="Lautst&auml;rke">
-            <input type="range" min="0" max="100" step="1" id="volume" onchange="setVolume(this.value);" onclick="event.stopPropagation();" title="Lautst&auml;rke"/> &nbsp;&nbsp; <span id="volume-on">&#x1f50a;</span><span id="volume-off">&#x1f507;</span>
+          <input type="range" min="0" max="100" step="1" id="volume" onchange="setVolume(this.value);" onclick="event.stopPropagation();" title="Lautst&auml;rke"/> &nbsp;&nbsp; <span id="volume-on">&#x1f50a;</span><span id="volume-off">&#x1f507;</span>
         </li>
-        <li id="suche-li" onclick="sucheClick()" title="Suchen"><span style="position: relative;"><input type="text" value="" placeholder="Suchen..." id="suche" oninput="sucheEingabe(this.value)" onkeydown="sucheKeyDown(window.event.keyCode)" title="Suchen"/><span id="suchencancel" onclick="sucheReset()">&#x24e7;</span> </span> &nbsp;&nbsp; &#x1f50d;</li>
-        <li id="laden-li"><a id="laden" href="javascript:refresh()" title="Aktualisieren">Aktualisieren &nbsp;&nbsp; &#x21BB;</a></li>
-        <li id="stream-li"><a id="stream" href="/" title="Streaming" target="_blank">Streaming &nbsp;&nbsp; &#x1f3a7;</a></li>
-        <li id="musik-li"><a id="musik" href="javascript:loadMusic('')" title="Musik">Musik &nbsp;&nbsp; &#x1f3b6;</a></li>
+        <li id="suche-li" onclick="sucheClick()" title="Suchen">
+          <span style="position: relative;">
+            <input type="text" value="" placeholder="Suchen..." id="suche" oninput="sucheEingabe(this.value)" onkeydown="sucheKeyDown(window.event.keyCode)" title="Suchen"/>
+            <span id="suchencancel" onclick="sucheReset()">&#x24e7;</span> </span> &nbsp;&nbsp; &#x1f50d;
+        </li>
+        <li id="laden-li">
+          <a id="laden" href="javascript:refresh()" title="Aktualisieren">Aktualisieren &nbsp;&nbsp; &#x21BB;</a>
+        </li>
+        <li id="stream-li">
+          <a id="stream" href="/" title="Streaming" target="_blank">Streaming &nbsp;&nbsp; &#x1f3a7;</a>
+        </li>
+        <li id="musik-li">
+          <a id="musik" href="javascript:loadMusic('')" title="Musik">Musik &nbsp;&nbsp; &#x1f3b6;</a>
+        </li>
       </ul>
       <ul id="sidebar-playlists">
+      </ul>
+      <ul id="sidebar-bottom">
+        <li id="add-li">
+            <a id="add" href="javascript:addURL()" title="URL hinzuf&uuml;gen">Hinzuf&uuml;gen &nbsp;&nbsp; &#x2795;</a>
+        </li>
       </ul>
     </div>
     <ul id="sender">
