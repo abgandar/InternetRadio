@@ -1,6 +1,7 @@
 LDLIBS += -lmpdclient -lsystemd
 CPPFLAGS += -Wall
 DATESTAMP := `date +"%d%m%Y"`
+GITREV := `git rev-parse HEAD`
 
 all: ir.cgi
 
@@ -8,7 +9,7 @@ ir.cgi: ir-cgi.c config.h
 	$(CC) -o $@ $< $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
 ir.html: ir-raw.html
-	sed -e "s/%DATE%/$(DATESTAMP)/g" ir-raw.html > ir.html
+	sed -e "s/%DATE%/$(DATESTAMP)/g" -e "s/%GITREV%/$(GITREV)/g" ir-raw.html > ir.html
 
 install: ir.cgi ir.html
 	cp ir.cgi /usr/lib/cgi-bin

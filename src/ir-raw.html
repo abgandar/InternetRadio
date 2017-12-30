@@ -34,10 +34,11 @@
       #sidebar { width: 100%; border-bottom: 3px solid #444444; margin: 0px; padding: 0px; box-sizing: border-box; }
       #sidebar li { border: 1px solid #444444; font-size: 18pt; display: block; background: #EEEEEE; white-space: nowrap; }
       #sidebar a { margin: 0px; padding: 15px 7px; display: block; text-decoration: none; color: black; text-align: right; }
-      #sidebar #menu-li { background: #BBBBBB; font-size: 20pt; border-bottom: 4px solid #444444; }
+      #sidebar #menu-li { background: #BBBBBB; font-size: 20pt; border-bottom: 4px solid #444444; position: relative; }
       #reboot { width: 6%; float: left; margin-left: 5px; margin-right: 5px; }
       #poweroff { width: 6%; float: left; margin-left: 5px; margin-right: 5px; }
-      #version { position: absolute; top: 2px; left: 2px; font-size: 35%; }
+      #revision { position: absolute; bottom: 2px; left: 2px; font-size: 30%; }
+      #version { position: absolute; top: 2px; left: 2px; font-size: 30%; }
       #pause-li.play #stop { display: none; }
       #pause-li.stop #start { display: none; }
       #volume-li { text-align: right; color: black; padding: 15px 7px; cursor: pointer; }
@@ -456,7 +457,8 @@
         <li id="menu-li">
           <a id="poweroff" href="javascript:rebootSystem(false)" title="Herunterfahren">&#x21af;</a>
           <a id="reboot" href="javascript:rebootSystem(true)" title="Neustart">&#x238b;</a>
-          <div id="version">V%DATE%</div>
+          <div id="version">%GITREV%</div>
+          <div id="revision">%DATE%</div>
           <a id="menu" href="javascript:toggleMenu()" title="Menu">Menu &nbsp;&nbsp; &#9776;</a>
         </li>
         <li id="pause-li" class="play">
