@@ -31,7 +31,7 @@
 #include "config.h"
 
 #include <stdio.h>
-#include <stdio_ext.h>  // __fpurge is some silly linux nonsense
+#include <stdio_ext.h>  // __fpurge is some silly linux extension
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -224,11 +224,7 @@ void output_start( )
     if( started ) return;   // only send once
 
     fputs( "Content-type: application/json\nCache-control: no-cache\n\n", stdout );                      // header
-    fputs( "{\"status\":200,\"message\":\"Request successfull\",", stdout );    // start JSON output
-
-    char host[HOST_NAME_MAX+1];
-    if( gethostname( host, sizeof( host ) ) == 0 )
-        json_str( "host", host, ',' );
+    fputs( "{\"status\":200,\"message\":\"Request successful\",", stdout );    // start JSON output
 
     started = true;
 }
@@ -236,7 +232,12 @@ void output_start( )
 // finish outputting results and end program
 void output_end( )
 {
-    // always attach current status to output (no error if status command fails since we already sent output before!)
+    // always attach our hostname (just for good measure)
+    char host[HOST_NAME_MAX+1];
+    if( gethostname( host, sizeof( host ) ) == 0 )
+        json_str( "host", host, ',' );
+
+    // always attach current status to output (no error if status command fails since we may already have sent other output before)
     struct mpd_status *status = NULL;
     struct mpd_song *song = NULL;
 	if( mpd_command_list_begin( conn, true ) && mpd_send_status( conn ) && mpd_send_current_song( conn ) && mpd_command_list_end( conn ) && (status = mpd_recv_status( conn )) )
@@ -318,13 +319,11 @@ void error( const int code, const char* msg, const char* message )
     exit( code );
 }
 
-// set mixer volume for all outputs
+// set mixer volume for all outputs to value between 0 and 100
 void setVolume( const unsigned int vol )
 {
     if( !mpd_run_set_volume( conn, vol ) )
         error( 500, "Internal Server Error", NULL );
-
-    output_start( );
 }
 
 // skip by the given amount
@@ -348,8 +347,6 @@ void skip( const int where )
 
     if( !res )
         error( 500, "Internal Server Error", "Error skipping songs" );
-
-    output_start( );
 }
 
 // play given song position
@@ -357,8 +354,6 @@ void play( const int position )
 {
     if( position >= 0 && !mpd_run_play_pos( conn, position ) )
         error( 404, "Not found", NULL );
-
-    output_start( );
 }
 
 // play given song id
@@ -366,8 +361,6 @@ void playid( const int id )
 {
     if( id >= 0 && !mpd_run_play_id( conn, id ) )
         error( 404, "Not found", NULL );
-
-    output_start( );
 }
 
 // pause / unpause playback
@@ -392,20 +385,18 @@ void pausemusic( const int position )
         default:
             // start playing the given song id
             play( position );
-            return;
+            break;
     }
-
-    output_start( );
 }
 
 // send list of all playlists on the server
 void sendPlaylists( )
 {
     struct mpd_playlist *list = NULL;
-
+    
     if( !mpd_send_list_playlists( conn ) )
-        error( 500, "Internal Server Error", NULL );
-
+    error( 500, "Internal Server Error", NULL );
+    
     // print all playlists
     output_start( );
     fputs( "\"playlists\":[", stdout );
@@ -413,16 +404,59 @@ void sendPlaylists( )
     while( (list = mpd_recv_playlist( conn ) ) )
     {
         if( i )
-            fputs( ",{", stdout );
+        fputs( ",{", stdout );
         else
-            fputs( "{", stdout );
+        fputs( "{", stdout );
         json_str( "name", mpd_playlist_get_path( list ), ' ' );
         fputs( "}", stdout );
         mpd_playlist_free( list );
         i++;
     }
     fputs( "],", stdout );
+    
+    mpd_response_finish( conn );
+}
 
+// send content of specific playlist on server
+void sendPlaylist( const char *arg )
+{
+    struct mpd_song *song = NULL;
+    
+    if( arg )
+    {
+        if( !mpd_send_list_playlist_meta( conn, arg ) )
+        error( 404, "Not found", NULL );
+    }
+    else
+    {
+        if( !mpd_send_list_queue_meta( conn ) )
+        error( 500, "Internal Server Error", NULL );
+    }
+    
+    // print the playlist
+    output_start( );
+    fputs( "\"playlist\":[", stdout );
+    int i = 0;
+    while( (song = mpd_recv_song( conn ) ) )
+    {
+        if( i )
+        fputs( ",{", stdout );
+        else
+        fputs( "{", stdout );
+        json_int( "position", i, ',' );
+        json_int( "id", mpd_song_get_id( song ), ',' );
+        json_str( "title", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ), ',' );
+        json_str( "name", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ), ',' );
+        json_str( "artist", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ), ',' );
+        json_str( "track", mpd_song_get_tag( song, MPD_TAG_TRACK, 0 ), ',' );
+        json_str( "album", mpd_song_get_tag( song, MPD_TAG_ALBUM, 0 ), ',' );
+        json_str( "uri", mpd_song_get_uri( song ), ' ' );
+        fputs( "}", stdout );
+        mpd_song_free( song );
+        i++;
+    }
+    fputs( "],", stdout );
+    
     mpd_response_finish( conn );
 }
 
@@ -432,62 +466,28 @@ void loadPlaylist( const char *arg )
     mpd_run_clear( conn );
     if( !mpd_run_load( conn, arg ) )
         error( 404, "Not found", NULL );
-//    mpd_run_play_pos( conn, 0 );  // try to start playing the first song
-    output_start( );
+#ifdef AUTOPLAY
+    mpd_run_play_pos( conn, 0 );  // try to autoplay the first song
+#endif
+    sendPlaylist( NULL );
 }
 
-// load the music directory (recursively) into the queue, replacing current queue
+// load part of the music directory (recursively) into the queue, replacing current queue
 void loadMusic( const char *arg )
 {
     mpd_run_clear( conn );
     mpd_search_add_db_songs( conn, false );
-    mpd_search_add_uri_constraint( conn, MPD_OPERATOR_DEFAULT, arg );
+    mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST_SORT, false );    // are multiple sort tags supported?
+    mpd_search_add_sort_tag( conn, MPD_TAG_TITLE, false );
+    //mpd_search_add_uri_constraint( conn, MPD_OPERATOR_DEFAULT, arg );
+    mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg );    // is this the correct one to use?
     if( !mpd_search_commit( conn ) )
         error( 404, "Not found", NULL );
     mpd_response_finish( conn );
-//    mpd_run_play_pos( conn, 0 );  // try to start playing the first song
-    output_start( );
-}
-
-// send content of specific playlist on server
-void sendPlaylist( const char *arg )
-{
-    struct mpd_song *song = NULL;
-
-    if( arg )
-    {
-        if( !mpd_send_list_playlist_meta( conn, arg ) )
-            error( 404, "Not found", NULL );
-    }
-    else
-    {
-        if( !mpd_send_list_queue_meta( conn ) )
-            error( 500, "Internal Server Error", NULL );
-    }
-
-    // print the playlist
-    output_start( );
-    fputs( "\"playlist\":[", stdout );
-    int i = 0;
-    while( (song = mpd_recv_song( conn ) ) )
-    {
-        if( i )
-            fputs( ",{", stdout );
-        else
-            fputs( "{", stdout );
-        json_int( "position", i, ',' );
-        json_int( "id", mpd_song_get_id( song ), ',' );
-        json_str( "title", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ), ',' );
-        json_str( "name", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ), ',' );
-        json_str( "artist", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ), ',' );
-        json_str( "uri", mpd_song_get_uri( song ), ' ' );
-        fputs( "}", stdout );
-        mpd_song_free( song );
-        i++;
-    }
-    fputs( "],", stdout );
-
-    mpd_response_finish( conn );
+#ifdef AUTOPLAY
+    mpd_run_play_pos( conn, 0 );  // try to autoplay the first song
+#endif
+    sendPlaylist( NULL );
 }
 
 // add song(s) to playlist and send new queue
@@ -539,29 +539,27 @@ void rebootSystem( const int mode )
         error( 500, "Internal Server Error", err.message );
         sd_bus_error_free( &err );    // not reached
     }
-
-    output_start( );
 #else
     sync( );
     usleep( REBOOT_WAIT );     // wait for buffers to flush. Not done in systemctl reboot.
     reboot( mode );
-    error( 500, "Internal Server Error", "Shutdown or reboot failed" );     // not reached
 #endif
+    error( 500, "Internal Server Error", "Shutdown or reboot failed" );     // not reached
 }
 
 // Parse a command
 void parseCommand( char *cmd )
 {
-    if( strcmp( cmd, "status" ) == 0 || strcmp( cmd, "state" ) == 0 )
-    {
-        // Send current state (current queue, current song, ...)
-        // This is automatically added at the end to every successful request, so we do nothing except starting the output
-        output_start( );
-    }
-    else if( strncmp( cmd, "password=", 9 ) == 0 )
+    if( strncmp( cmd, "password=", 9 ) == 0 )
     {
         // Send password
         sendPassword( cmd+9 );
+    }
+    else if( strcmp( cmd, "state" ) == 0 )
+    {
+        // Send current state (current queue, current song, ...)
+        // This is automatically added at the end to every successful request, so we do nothing
+        return;
     }
     else if( strcmp( cmd, "playlists" ) == 0 )
     {
@@ -631,12 +629,12 @@ void parseCommand( char *cmd )
     }
     else if( strcmp( cmd, "reboot" ) == 0 )
     {
-        // Reboot the system (assuming sufficient priviliges, usually not given)
+        // Reboot the system (assuming sufficient priviliges)
         rebootSystem( RB_AUTOBOOT );
     }
     else if( strcmp( cmd, "shutdown" ) == 0 )
     {
-        // Reboot the system (assuming sufficient priviliges, usually not given)
+        // Reboot the system (assuming sufficient priviliges)
         rebootSystem( RB_POWER_OFF );
     }
     else
@@ -680,7 +678,9 @@ int main( int argc, char *argv[] )
     }
     free( arg );
 
-    // if we reach here everything is OK
+    // if we reach here everything is OK.
+    output_start( );
     output_end( );
+
     return 0;
 }
