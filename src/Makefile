@@ -1,10 +1,14 @@
 LDLIBS += -lmpdclient -lsystemd
 CPPFLAGS += -Wall
+DATESTAMP := `date +"%d%m%Y"`
 
 all: ir.cgi
 
 ir.cgi: ir-cgi.c config.h
 	$(CC) -o $@ $< $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
+
+ir.html: ir-raw.html
+	sed -e "s/%DATE%/$(DATESTAMP)/g" ir-raw.html > ir.html
 
 install: ir.cgi ir.html
 	cp ir.cgi /usr/lib/cgi-bin
@@ -18,4 +22,4 @@ uninstall:
 	@rm "/var/lib/mpd/playlists/Radio Auswahl.m3u" "/var/lib/mpd/playlists/Radio International.m3u" "/var/lib/mpd/playlists/Radio Deutschland.m3u"
 
 clean:
-	rm -f ir-cgi.o ir.cgi
+	rm -f ir-cgi.o ir.cgi ir.html
