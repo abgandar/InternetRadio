@@ -482,7 +482,7 @@ void loadMusic( const char *arg )
 //        mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg );  // restrict search to subdirectory of music dir, must be non-empty, error if directory does not exist
     //mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST_SORT, false );    // are multiple sort tags supported?
     //mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST, false );
-    mpd_search_add_sort_tag( conn, MPD_TAG_TITLE, false );
+    //mpd_search_add_sort_tag( conn, MPD_TAG_TITLE, false );
     if( !mpd_search_commit( conn ) )
         error( 404, "Not found", NULL );
     if( !mpd_response_finish( conn ) )
