@@ -430,7 +430,7 @@ void sendPlaylist( const char *arg )
     else
     {
         if( !mpd_send_list_queue_meta( conn ) )
-        error( 500, "Internal Server Errorr", NULL );
+        error( 500, "Internal Server Error", NULL );
     }
     
     // print the playlist
@@ -481,11 +481,12 @@ void loadMusic( const char *arg )
 //    if( arg && *arg != '\0' )
 //        mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg );  // restrict search to subdirectory of music dir, must be non-empty, error if directory does not exist
     mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST_SORT, false );    // are multiple sort tags supported?
-    mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST, false );
+    //mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST, false );
     mpd_search_add_sort_tag( conn, MPD_TAG_TITLE, false );
     if( !mpd_search_commit( conn ) )
         error( 404, "Not found", NULL );
-    mpd_response_finish( conn );
+    if( !mpd_response_finish( conn ) )
+        error( 404, "Not found", NULL );
 #ifdef AUTOPLAY
     mpd_run_play_pos( conn, 0 );  // try to autoplay the first song
 #endif
