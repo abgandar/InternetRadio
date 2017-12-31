@@ -1,4 +1,4 @@
-LDLIBS += -lmpdclient -lsystemd
+LDLIBS += -L/usr/local/lib -lmpdclient -lsystemd
 CPPFLAGS += -Wall
 DATESTAMP := `date +"%d%m%Y"`
 GITREV := `git rev-parse HEAD`
