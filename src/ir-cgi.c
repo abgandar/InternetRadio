@@ -482,7 +482,7 @@ void loadMusic( const char *arg )
         mpd_search_add_uri_constraint( conn, MPD_OPERATOR_DEFAULT, arg ); // matches against full file name relative to music dir or uri. empty arg matches everything.
         //mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg );  // restrict search to subdirectory of music dir, must be non-empty, error if directory does not exist
     // none of these sort tags seem to work (error: "incorrect arguments")
-    mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST_SORT, false );    // are multiple sort tags supported?
+    //mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST_SORT, false );    // are multiple sort tags supported?
     //mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST, false );
     //mpd_search_add_sort_tag( conn, MPD_TAG_TITLE, false );
     if( !mpd_search_commit( conn ) )
