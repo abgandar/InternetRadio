@@ -3,7 +3,7 @@ CPPFLAGS += -Wall
 DATESTAMP := `date +"%d%m%Y"`
 GITREV := `git rev-parse HEAD`
 
-all: ir.cgi
+all: ir.cgi ir.html
 
 ir.cgi: ir-cgi.c config.h
 	$(CC) -o $@ $< $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)

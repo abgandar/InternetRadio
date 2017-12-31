@@ -38,6 +38,7 @@
 #include <unistd.h>
 #include <limits.h>
 #include <stdbool.h>
+#include <time.h>
 #include <sys/reboot.h>
 #ifdef SYSTEMD
 #include <systemd/sd-bus.h>
@@ -222,11 +223,10 @@ void output_start( )
     static bool started = false;
 
     if( started ) return;   // only send once
-
-    fputs( "Content-type: application/json\nCache-control: no-cache\n\n", stdout );                      // header
-    fputs( "{\"status\":200,\"message\":\"Request successful\",", stdout );    // start JSON output
-
     started = true;
+
+    fputs( "Content-type: application/json\nCache-control: no-cache\n\n", stdout );    // header
+    fputs( "{\"status\":200,\"message\":\"Request successful\",", stdout );    // start JSON output
 }
 
 // finish outputting results and end program
@@ -291,7 +291,7 @@ void output_end( )
     }
 
     fputs( "}", stdout );  // end JSON output
-    fflush( stdin );
+    fflush( stdout );
     if( conn ) mpd_connection_free( conn );
     exit( 0 );
 }
@@ -479,7 +479,7 @@ void loadMusic( const char *arg )
     mpd_search_add_db_songs( conn, false );
     mpd_search_add_any_tag_constraint( conn, MPD_OPERATOR_DEFAULT, "" );    // searches must have some constraint, this just matches everything
     if( arg && *arg != '\0' )
-        mpd_search_add_uri_constraint( conn, MPD_OPERATOR_DEFAULT, arg ); // matches against full file name relative to music dir or uri. empty arg matches everything.
+        mpd_search_add_uri_constraint( conn, MPD_OPERATOR_DEFAULT, arg ); // matches against full file name relative to music dir. empty arg matches everything.
         //mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg );  // restrict search to subdirectory of music dir, must be non-empty, error if directory does not exist
     // none of these sort tags seem to work (error: "incorrect arguments")
     //mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST_SORT, false );    // are multiple sort tags supported?
@@ -550,6 +550,32 @@ void rebootSystem( const int mode )
     reboot( mode );
 #endif
     error( 500, "Internal Server Error", "Shutdown or reboot failed" );     // not reached
+}
+
+// send some statistics
+void sendStatistics( )
+{
+    struct mpd_stats stat;
+    char str[100];
+    time_t t;
+
+    if( !(stat = mpd_run_stats( conn )) )
+        error( 500, "Internal Server Error", NULL );
+
+    output_start( );
+    fputs( "\"stats\":{", stdout );
+    json_int( "artists", mpd_stats_get_number_of_artists( stat ), ',' );
+    json_int( "albums", mpd_stats_get_number_of_albums( stat ), ',' );
+    json_int( "songs", mpd_stats_get_number_of_songs( stat ), ',' );
+    json_int( "uptime", mpd_stats_get_number_of_uptime( stat ), ',' );
+    json_int( "playtime", mpd_stats_get_play_time( stat ), ',' );
+    json_int( "totaltime", mpd_stats_get_db_play_time( stat ), ',' );
+    t = mpd_stats_get_db_update_time( stat );
+    strftime( str, 100, "%+", localtime( &t ) );
+    json_str( "dbupdate", str, ' ' );
+    fputs( "},", stdout );
+
+    mpd_stats_free( stat );
 }
 
 // Parse a command
@@ -639,6 +665,11 @@ void parseCommand( char *cmd )
     {
         // Reboot the system (assuming sufficient priviliges)
         rebootSystem( RB_POWER_OFF );
+    }
+    else if( strcmp( cmd, "stats" ) == 0 )
+    {
+        // Send some statistics
+        sendStatistics( );
     }
     else
     {
