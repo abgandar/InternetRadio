@@ -430,7 +430,7 @@ void sendPlaylist( const char *arg )
     else
     {
         if( !mpd_send_list_queue_meta( conn ) )
-        error( 500, "Internal Server Error", NULL );
+        error( 500, "Internal Server Errorr", NULL );
     }
     
     // print the playlist
