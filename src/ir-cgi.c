@@ -580,13 +580,11 @@ void parseCommand( char *cmd )
     {
         // Load the given playlist to replace the current queue and send its content
         loadPlaylist( cmd+5 );
-        sendPlaylist( NULL );
     }
     else if( strncmp( cmd, "music=", 6 ) == 0 )
     {
         // Load the given music directory (recursively) to replace the current queue and send its content
         loadMusic( cmd+6 );
-        sendPlaylist( NULL );
     }
     else if( strcmp( cmd, "forward" ) == 0 )
     {
