@@ -477,7 +477,7 @@ void loadMusic( const char *arg )
 {
     mpd_run_clear( conn );
     mpd_search_add_db_songs( conn, false );
-    mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST, false );    // are multiple sort tags supported?
+    //mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST, false );    // are multiple sort tags supported?
     //mpd_search_add_sort_tag( conn, MPD_TAG_TITLE, false );
     mpd_search_add_uri_constraint( conn, MPD_OPERATOR_DEFAULT, arg );
     //mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg );    // is this the correct one to use?
@@ -487,7 +487,7 @@ void loadMusic( const char *arg )
 #ifdef AUTOPLAY
     mpd_run_play_pos( conn, 0 );  // try to autoplay the first song
 #endif
-//    sendPlaylist( NULL );
+    sendPlaylist( NULL );
 }
 
 // add song(s) to playlist and send new queue
