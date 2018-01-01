@@ -131,7 +131,7 @@
                 return( icons[i].symbol );
       }
 
-      function getSongTitleText( song )
+      function getSongText( song )
       {
           if( !song ) return( '' );
           res = ''; sep = '';
@@ -152,7 +152,7 @@
               res += sep+song.artist;
               sep = ' – ';
           }
-          
+
           if( song.album )
           {
               res += sep+song.album;
