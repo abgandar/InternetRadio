@@ -131,6 +131,28 @@
                 return( icons[i].symbol );
       }
 
+      function getSongInfoText( song )
+      {
+          if( !song ) return( '' );
+          res = ''; sep = '';
+          if( song.title )
+          {
+              res += sep+song.title;
+              sep = ' – ';
+          }
+          if( song.artist )
+          {
+              res += sep+song.artist;
+              sep = ' – ';
+          }
+          if( song.album )
+          {
+              res += sep+song.album;
+              sep = ' – ';
+          }
+          return res;
+      }
+
       function updateState( response )
       {
         // handle queue updates
@@ -162,7 +184,8 @@
         if( sender && 'songid_'+id == sender.id )
         {
           sender.classList.add( 'aktiv' );
-          if( response.state.song && response.state.song.title ) sender.getElementsByTagName('span')[0].innerText = response.state.song.title;
+          if( response.state.song && response.state.song.title )
+            sender.getElementsByTagName('span')[0].innerText = getSongInfoText( response.state.song );
         }
 
         // handle volume updates
@@ -202,8 +225,9 @@
             var span = document.createElement( 'span' );
             var name = playlist[i].name || playlist[i].title || playlist[i].uri;
             var text = document.createTextNode( name );
+            var textSpan = document.createTextNode( getSongInfoText( playlist[i] ) );
             list.appendChild( li ).appendChild( a ).appendChild( text );
-            a.appendChild( span );
+            a.appendChild( span ).appendChild( textSpan );
         }
       }
 

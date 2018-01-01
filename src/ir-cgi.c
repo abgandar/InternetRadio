@@ -254,6 +254,8 @@ void output_end( )
             json_str( "title", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ), ',' );
             json_str( "name", mpd_song_get_tag( song, MPD_TAG_NAME, 0 ), ',' );
             json_str( "artist", mpd_song_get_tag( song, MPD_TAG_ARTIST, 0 ), ',' );
+            json_str( "track", mpd_song_get_tag( song, MPD_TAG_TRACK, 0 ), ',' );
+            json_str( "album", mpd_song_get_tag( song, MPD_TAG_ALBUM, 0 ), ',' );
             json_str( "uri", mpd_song_get_uri( song ), ' ' );
             fputs( "},", stdout );
             mpd_song_free( song );
