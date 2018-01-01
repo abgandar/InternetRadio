@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2017 Alexander Wittig <alexander@wittig.name>
+ * Copyright (C) 2016-2018 Alexander Wittig <alexander@wittig.name>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -481,9 +481,8 @@ void loadMusic( const char *arg )
     if( arg && *arg != '\0' )
         mpd_search_add_uri_constraint( conn, MPD_OPERATOR_DEFAULT, arg ); // matches against full file name relative to music dir. empty arg matches everything.
         //mpd_search_add_base_constraint( conn, MPD_OPERATOR_DEFAULT, arg );  // restrict search to subdirectory of music dir, must be non-empty, error if directory does not exist
-    // none of these sort tags seem to work (error: "incorrect arguments")
+    // not allowed in _add_ calls yet (error: "incorrect arguments")
     //mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST_SORT, false );    // are multiple sort tags supported?
-    //mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST, false );
     //mpd_search_add_sort_tag( conn, MPD_TAG_TITLE, false );
     if( !mpd_search_commit( conn ) )
         error( 404, "Not found", NULL );
@@ -556,7 +555,7 @@ void rebootSystem( const int mode )
 void sendStatistics( )
 {
     struct mpd_stats stat;
-    char str[100];
+    char str[64];
     time_t t;
 
     if( !(stat = mpd_run_stats( conn )) )
@@ -571,7 +570,7 @@ void sendStatistics( )
     json_int( "playtime", mpd_stats_get_play_time( stat ), ',' );
     json_int( "totaltime", mpd_stats_get_db_play_time( stat ), ',' );
     t = mpd_stats_get_db_update_time( stat );
-    strftime( str, 100, "%+", localtime( &t ) );
+    strftime( str, 64, "%+", localtime( &t ) );
     json_str( "dbupdate", str, ' ' );
     fputs( "},", stdout );
 
@@ -716,5 +715,5 @@ int main( int argc, char *argv[] )
     output_start( );
     output_end( );
 
-    return 0;
+    return 0;   // never reached
 }

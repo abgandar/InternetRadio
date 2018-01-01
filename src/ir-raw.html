@@ -72,57 +72,57 @@
     </style>
     <script type="text/javascript">
       var DEFAULT_PLAYLIST = 'Radio Auswahl';
-      //var PASSWORD = "";
-      var PASSWORD = "password="+encodeURIComponent( '72TkJ98yo0mw' )+"&";
+      //var PASSWORD = '';
+      var PASSWORD = 'password='+encodeURIComponent( '72TkJ98yo0mw' )+'&';
 
       // adapted from https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API
       var hidden, visibilityChange, updater = false, searcher = false;
-      if( typeof document.hidden !== "undefined" )
+      if( typeof document.hidden !== 'undefined' )
       {
-        hidden = "hidden";
-        visibilityChange = "visibilitychange";
+        hidden = 'hidden';
+        visibilityChange = 'visibilitychange';
       }
-      else if( typeof document.msHidden !== "undefined" )
+      else if( typeof document.msHidden !== 'undefined' )
       {
-        hidden = "msHidden";
-        visibilityChange = "msvisibilitychange";
+        hidden = 'msHidden';
+        visibilityChange = 'msvisibilitychange';
       }
-      else if( typeof document.webkitHidden !== "undefined" )
+      else if( typeof document.webkitHidden !== 'undefined' )
       {
-        hidden = "webkitHidden";
-        visibilityChange = "webkitvisibilitychange";
+        hidden = 'webkitHidden';
+        visibilityChange = 'webkitvisibilitychange';
       }
 
-      function showMessage( msg, type = "error" )
+      function showMessage( msg, type = 'error' )
       {
-        var div = document.getElementById("message");
+        var div = document.getElementById('message');
         div.innerText = msg;
-        message.className = type;
+        div.className = type;
         if( showMessage.timer )
             clearTimeout( showMessage.timer );
-        showMessage.timer = setTimeout( function( ) { div.className = ""; }, 5000 );
+        showMessage.timer = setTimeout( function( ) { div.className = ''; }, 5000 );
       }
 
       function getIcon( name )
       {
         var icons = [
-                    { keyword: "radio", symbol: "\uD83D\uDCFB"},
-                    { keyword: "weihnachten", symbol: "\uD83C\uDF84"},
-                    { keyword: "karaoke", symbol: "\uD83C\uDFA4"},
-                    { keyword: "film", symbol: "\uD83C\uDFA5"},
-                    { keyword: "theater", symbol: "\uD83C\uDFAD"},
-                    { keyword: "oper", symbol: "\uD83C\uDFAD"},
-                    { keyword: "klavier", symbol: "\uD83C\uDFB9"},
-                    { keyword: "piano", symbol: "\uD83C\uDFB9"},
-                    { keyword: "gitarre", symbol: "\uD83C\uDFB8"},
-                    { keyword: "jazz", symbol: "\uD83C\uDFB7"},
-                    { keyword: "klassik", symbol: "\uD83C\uDFBB"},
-                    { keyword: "violine", symbol: "\uD83C\uDFBB"},
-                    { keyword: "laufen", symbol: "\uD83C\uDFC3"},
-                    { keyword: "sport", symbol: "\uD83C\uDFC3"},
-                    { keyword: "alex", symbol: "\uD83C\uDF83"},
-                    { keyword: "itali", symbol: "\uD83C\uDDEE\uD83C\uDDF9"},
-                    { keyword: "", symbol: "\uD83C\uDFBC"},     // default
+                    { keyword: 'radio', symbol: "\uD83D\uDCFB"},
+                    { keyword: 'weihnachten', symbol: "\uD83C\uDF84"},
+                    { keyword: 'karaoke', symbol: "\uD83C\uDFA4"},
+                    { keyword: 'film', symbol: "\uD83C\uDFA5"},
+                    { keyword: 'theater', symbol: "\uD83C\uDFAD"},
+                    { keyword: 'oper', symbol: "\uD83C\uDFAD"},
+                    { keyword: 'klavier', symbol: "\uD83C\uDFB9"},
+                    { keyword: 'piano', symbol: "\uD83C\uDFB9"},
+                    { keyword: 'gitarre', symbol: "\uD83C\uDFB8"},
+                    { keyword: 'jazz', symbol: "\uD83C\uDFB7"},
+                    { keyword: 'klassik', symbol: "\uD83C\uDFBB"},
+                    { keyword: 'violine', symbol: "\uD83C\uDFBB"},
+                    { keyword: 'laufen', symbol: "\uD83C\uDFC3"},
+                    { keyword: 'sport', symbol: "\uD83C\uDFC3"},
+                    { keyword: 'alex', symbol: "\uD83C\uDF83"},
+                    { keyword: 'itali', symbol: "\uD83C\uDDEE\uD83C\uDDF9"},
+                    { keyword: '', symbol: "\uD83C\uDFBC"},     // default
                   ];
 
         var lname = name.toLowerCase( );
@@ -133,45 +133,49 @@
 
       function updateState( response )
       {
-        var pos = response.state.song ? response.state.song.pos : 0;
-        var id = response.state.song ? response.state.song.id : -1;
-        var list = document.getElementById('sender').children;
-
+        // handle queue updates
         if( response.playlist )
           populateQueue( response.playlist );
 
+        // handle playlist updates
         if( response.playlists )
           populatePlaylists( response.playlists );
 
+        // handle host updates
         if( response.host )
-          document.title = "Internet Radio - " + response.host;
+          document.title = 'Internet Radio - ' + response.host;
 
-        document.getElementById('pause-li').className = response.state.playing ? 'stop' : 'play';
+        // handle pause/play updates
+        document.getElementById( 'pause-li' ).className = response.state.playing ? 'stop' : 'play';
 
+        // handle current song updates
+        var list = document.getElementById('sender').children;
         for( var i = 0; i < list.length; i++ )
         {
-          list[i].classList.remove( "aktiv" );
-          list[i].classList.remove( "auswahl" );
+          list[i].classList.remove( 'aktiv' );
+          list[i].classList.remove( 'auswahl' );
         }
 
+        var pos = response.state.song ? response.state.song.pos : 0;
+        var id = response.state.song ? response.state.song.id : -1;
         var sender = list[pos];
-        if( sender && "songid_"+id == sender.id )
+        if( sender && 'songid_'+id == sender.id )
         {
-          sender.classList.add( "aktiv" );
+          sender.classList.add( 'aktiv' );
           if( response.state.song && response.state.song.title ) sender.getElementsByTagName('span')[0].innerText = response.state.song.title;
         }
 
-        var elm = document.getElementById('volume');
-        var li = document.getElementById('volume-li');
-        if(response.state.volume == -1)
+        // handle volume updates
+        var elm = document.getElementById( 'volume' );
+        var li = document.getElementById( 'volume-li' );
+        if( response.state.volume == -1 )
         {
-          li.classList.add('hidden');
+          li.classList.add( 'hidden' );
         }
         else
         {
-          elm.disabled = false;
           elm.value = response.state.volume;
-          if(typeof elm.old_volume == "undefined") elm.old_volume = response.state.volume;
+          if( typeof elm.old_volume == 'undefined' ) elm.old_volume = response.state.volume;
           li.classList.toggle( 'mute', response.state.volume==0 );
           li.classList.remove( 'hidden' );
         }
@@ -183,7 +187,7 @@
         if( playlist.length == 0 )
           loadPlaylist( DEFAULT_PLAYLIST );
 
-        var list = document.getElementById('sender');
+        var list = document.getElementById( 'sender' );
 
         // remove previous entries
         while( list.firstChild ) list.removeChild( list.firstChild );
@@ -192,20 +196,20 @@
         for( var i = 0; i < playlist.length; i++ )
         {
             var li = document.createElement( 'li' );
-            li.id = "songid_"+playlist[i].id;
-            var a = document.createElement('a');
-            a.href = "javascript:play("+i+");";
-            var span = document.createElement('span');
+            li.id = 'songid_'+playlist[i].id;
+            var a = document.createElement( 'a' );
+            a.href = 'javascript:play('+i+');';
+            var span = document.createElement( 'span' );
             var name = playlist[i].name || playlist[i].title || playlist[i].uri;
-            var text = document.createTextNode(name);
-            list.appendChild(li).appendChild(a).appendChild(text);
-            a.appendChild(span);
+            var text = document.createTextNode( name );
+            list.appendChild( li ).appendChild( a ).appendChild( text );
+            a.appendChild( span );
         }
       }
 
       function populatePlaylists( playlists )
       {
-        var list = document.getElementById('sidebar-playlists');
+        var list = document.getElementById( 'sidebar-playlists' );
 
         // remove previous entries
         while( list.firstChild ) list.removeChild( list.firstChild );
@@ -215,14 +219,14 @@
         for( var i = 0; i < playlists.length; i++ )
         {
             var li = document.createElement( 'li' );
-            var a = document.createElement('a');
-            a.href = "javascript:loadPlaylist('"+playlists[i].name+"');";
+            var a = document.createElement( 'a' );
+            a.href = 'javascript:loadPlaylist('+playlists[i].name+');';
             a.title = playlists[i].name;
-            var span = document.createElement('span');
-            var text = document.createTextNode(playlists[i].name);
-            var symbol = document.createTextNode(" \u00A0\u00A0 "+getIcon( playlists[i].name ));
-            list.appendChild(li).appendChild(a).appendChild(span).appendChild(text);
-            a.appendChild(symbol);
+            var span = document.createElement( 'span' );
+            var text = document.createTextNode( playlists[i].name );
+            var symbol = document.createTextNode( " \u00A0\u00A0 "+getIcon( playlists[i].name ) );
+            list.appendChild( li ).appendChild( a ).appendChild( span ).appendChild( text );
+            a.appendChild( symbol );
         }
       }
 
@@ -230,16 +234,16 @@
       function showError( response = false )
       {
         var body = document.getElementById('body');
-        body.classList.toggle( "error", true );
+        body.classList.add( 'error' );
         if( response && response.message )
             showMessage( response.message );
-        setTimeout( function( ) { body.classList.toggle( "error", false ); }, 250 );
+        setTimeout( function( ) { body.classList.remove( 'error' ); }, 250 );
       }
 
       // send XHR request zum Server
       function XHR( action )
       {
-        var url = "http://"+location.host+"/cgi-bin/ir.cgi?"+PASSWORD+action;
+        var url = 'http://'+location.host+'/cgi-bin/ir.cgi?'+PASSWORD+action;
         var xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) updateState( this.response ); else showError( this.response ); } );
         xhr.addEventListener( 'error', showError );
@@ -250,32 +254,32 @@
 
       function refreshQueue( )
       {
-        XHR( "queue" );
+        XHR( 'queue' );
       }
 
       function loadPlaylist( name )
       {
-        XHR( "load="+encodeURIComponent( name ) );
+        XHR( 'load='+encodeURIComponent( name ) );
       }
 
       function loadMusic( dir )
       {
-        XHR( "music="+encodeURIComponent( dir ) );
+        XHR( 'music='+encodeURIComponent( dir ) );
       }
 
       function refreshPlaylists( )
       {
-        XHR( "playlists" );
+        XHR( 'playlists' );
       }
 
       function refreshState( )
       {
-        XHR( "state" );
+        XHR( 'state' );
       }
 
       function refresh( )
       {
-        XHR( "queue&playlists" );
+        XHR( 'queue&playlists' );
       }
 
       function handleVisibilityChange( )
@@ -298,28 +302,29 @@
       {
         refresh( );
         if( window.innerWidth >= 800 ) toggleMenu();
-        updater = setInterval( refreshState, 10000 );
+        if( !document[hidden] )
+            updater = setInterval( refreshState, 10000 );
         document.addEventListener( visibilityChange, handleVisibilityChange, false );
-        document.getElementById( 'stream' ).href = "http://" + window.location.hostname + ":9000/"; // fix streaming link
+        document.getElementById( 'stream' ).href = 'http://' + window.location.hostname + ':9000/'; // fix streaming link
       }
 
       function play( nr )
       {
-        var ch = document.getElementById('sender').children;
+        var ch = document.getElementById( 'sender' ).children;
 
         // if we're already playing the right song this is a no-op
-        if( ch[nr].classList.contains('aktiv') && document.getElementById('pause-li').className == 'stop' )
+        if( ch[nr].classList.contains( 'aktiv' ) && document.getElementById( 'pause-li' ).className == 'stop' )
             return;
 
         // deselect old songs, and highlight new
         for( i = 0; i < ch.length; i++ )
         {
-            ch[i].classList.remove('aktiv');
-            ch[i].classList.remove('auswahl');
+            ch[i].classList.remove( 'aktiv' );
+            ch[i].classList.remove( 'auswahl' );
         }
-        ch[nr].classList.add('auswahl');
+        ch[nr].classList.add( 'auswahl' );
 
-        XHR( "play="+encodeURIComponent( nr ) );
+        XHR( 'play='+encodeURIComponent( nr ) );
         setTimeout( refreshState, 750 );
       }
 
@@ -328,27 +333,27 @@
         // Pause or unpause. If we're stopped, start playing at the selected song
         // find selected song
         var nr = -1;
-        var ch = document.getElementById('sender').children;
+        var ch = document.getElementById( 'sender' ).children;
         for( i = 0; i < ch.length; i++ )
-            if( ch[i].classList.contains('aktiv') )
+            if( ch[i].classList.contains( 'aktiv' ) )
             {
                 nr = i;
                 break;
             }
 
-        XHR( "pause="+encodeURIComponent( i ) );
+        XHR( 'pause='+encodeURIComponent( i ) );
       }
 
       function toggleMenu( )
       {
-        document.getElementById('sidebar-container').classList.toggle('aktiv');
-        document.getElementById('sender').classList.toggle('aktiv');
+        document.getElementById( 'sidebar-container' ).classList.toggle( 'aktiv' );
+        document.getElementById( 'sender' ).classList.toggle( 'aktiv' );
       }
 
       // actually execute a search
       function suchen( str )
       {
-        var list = document.getElementById('sender').children;
+        var list = document.getElementById( 'sender' ).children;
         str = str.toLowerCase( );
         for( var i = 0; i < list.length; i++ )
         {
@@ -368,72 +373,72 @@
 
       function sucheClick( )
       {
-        document.getElementById('sidebar-container').classList.add('aktiv');
-        document.getElementById('sender').classList.add('aktiv');
-        document.getElementById('suche').focus();
+        document.getElementById( 'sidebar-container' ).classList.add( 'aktiv' );
+        document.getElementById( 'sender' ).classList.add( 'aktiv' );
+        document.getElementById( 'suche' ).focus( );
       }
 
       function sucheKeyDown(keyCode)
       {
-        if(keyCode == 27)
-          document.getElementById('suche').value ='';
-        else if(keyCode == 13)
+        if( keyCode == 27 )
+          document.getElementById( 'suche' ).value ='';
+        else if( keyCode == 13 )
         { }
         else
           return;
 
-        suchen(document.getElementById('suche').value);
+        suchen( document.getElementById( 'suche' ).value );
       }
 
       function sucheReset( )
       {
-        document.getElementById('suche').value ='';
-        suchen('');
+        document.getElementById( 'suche' ).value ='';
+        suchen( '' );
       }
 
       function setVolume( vol )
       {
         // set mute state
-        document.getElementById('volume-li').classList.toggle('mute', vol==0);
-        XHR( "volume="+encodeURIComponent( vol ) );
+        document.getElementById( 'volume-li' ).classList.toggle( 'mute', vol==0 );
+        XHR( 'volume='+encodeURIComponent( vol ) );
       }
 
       // mute or restore the volume, saving the current volume level
       function volumeClick( )
       {
-        var elm = document.getElementById('volume');
-        if(document.getElementById('volume-li').classList.toggle('mute'))
+        var elm = document.getElementById( 'volume' );
+        if( document.getElementById( 'volume-li' ).classList.toggle( 'mute' ) )
         {
           elm.old_volume = elm.value;
           elm.value = 0;
         }
         else
           elm.value = elm.old_volume;
-        setVolume(elm.value);
+        setVolume( elm.value );
       }
 
       // reboot system
       function rebootSystem( reboot )
       {
-        XHR( reboot ? "reboot" : "shutdown" );
+        XHR( reboot ? 'reboot' : 'shutdown' );
       }
     
       // add URL
       function addURL( url )
       {
-        if( !url ) url = prompt( "Adresse der neuen Webradiostation:", "http://" );
+        if( !url ) url = prompt( 'Adresse der neuen Webradiostation:', 'http://' );
         if( url )
-          XHR( "add="+encodeURIComponent( url ) );
+          XHR( 'add='+encodeURIComponent( url ) );
       }
 
       function dragEnter( ev )
       {
-        document.getElementsByTagName("body")[0].classList.add( 'dragover' );
+        document.getElementById( 'body' ).classList.add( 'dragover' );
       }
 
       function dragLeave( ev )
       {
-        document.getElementsByTagName("body")[0].classList.remove( 'dragover' );
+        document.getElementById( 'body' ).classList.remove( 'dragover' );
       }
 
       function allowDrop( ev )
@@ -444,8 +449,8 @@
       function drop( ev )
       {
         ev.preventDefault( );
-        var url = ev.dataTransfer.getData( "text" );
-        document.getElementsByTagName("body")[0].classList.remove( 'dragover' );
+        document.getElementById( 'body' ).classList.remove( 'dragover' );
+        var url = ev.dataTransfer.getData( 'text' );
         if( url ) addURL( url );
       }
     </script>
