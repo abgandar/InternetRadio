@@ -62,6 +62,7 @@
 
       #sender { position: absolute; left: 40px; right: 0px; top: 0px; bottom: 0px; overflow-x: hidden; overflow-y: scroll; padding: 0px; margin: 0px; box-sizing: border-box; transition: left 300ms; -webkit-transition: left 300ms; }
       #sender.aktiv { left: 300px; }
+      body.refreshing #sender { filter: blur(1px); touch-action: none; }
       #sender li { border: 1px solid black; width: 100%; box-sizing: border-box; display: block; padding: 0px; }
       #sender li a { margin: 0px; padding-top: 30px; padding-bottom: 30px; padding-left: 20px; padding-right: 10px; display: block; text-decoration: none; color: black; font-size: 16pt; box-sizing: border-box; }
       #sender li.auswahl { background: lightblue; opacity: 0.7; border-width: 2px; }
@@ -71,9 +72,9 @@
       #sender li.aktiv span { display: block; font-size: 11pt; }
     </style>
     <script type="text/javascript">
-      var DEFAULT_PLAYLIST = 'Radio Auswahl';
-      //var PASSWORD = '';
-      var PASSWORD = 'password='+encodeURIComponent( '72TkJ98yo0mw' )+'&';
+      const DEFAULT_PLAYLIST = 'Radio Auswahl';
+      //const PASSWORD = '';
+      const PASSWORD = 'password='+encodeURIComponent( '72TkJ98yo0mw' )+'&';
 
       // adapted from https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API
       var hidden, visibilityChange, updater = false, searcher = false;
@@ -93,9 +94,40 @@
         visibilityChange = 'webkitvisibilitychange';
       }
 
+      function handleVisibilityChange( )
+      {
+        // stop auto-updater when not showing
+        if( document[hidden] )
+        {
+          clearInterval( updater );
+          updater = false;
+        }
+        else
+        {
+          refreshState( );
+          if( updater === false )
+            updater = setInterval( refreshState, 10000 );
+        }
+      }
+
+      // adapted from https://developers.google.com/web/updates/2017/11/overscroll-behavior
+      var scrollStartY;
+      function handletouchstart( e )
+      {
+          scrollStartY = e.touches[0].pageY;
+      }
+
+      function handletouchmove( e )
+      {
+          const y = e.touches[0].pageY;
+          if( (document.scrollingElement.scrollTop === 0) && (y > scrollStartY) && !document.body.classList.contains( 'refreshing' ) )
+              refresh( );
+      }
+
+      // show error message
       function showMessage( msg, type = 'error' )
       {
-        var div = document.getElementById('message');
+        const div = document.getElementById('message');
         div.innerText = msg;
         div.className = type;
         if( showMessage.timer )
@@ -105,7 +137,7 @@
 
       function getIcon( name )
       {
-        var icons = [
+        const icons = [
                     { keyword: 'radio', symbol: "\uD83D\uDCFB"},
                     { keyword: 'weihnachten', symbol: "\uD83C\uDF84"},
                     { keyword: 'karaoke', symbol: "\uD83C\uDFA4"},
@@ -125,7 +157,7 @@
                     { keyword: '', symbol: "\uD83C\uDFBC"},     // default
                   ];
 
-        var lname = name.toLowerCase( );
+        const lname = name.toLowerCase( );
         for( i = 0; i < icons.length; i++ )
             if( lname.indexOf( icons[i].keyword ) >= 0 )
                 return( icons[i].symbol );
@@ -205,16 +237,16 @@
         document.getElementById( 'pause-li' ).className = response.state.playing ? 'stop' : 'play';
 
         // handle current song updates
-        var list = document.getElementById('sender').children;
+        const list = document.getElementById('sender').children;
         for( var i = 0; i < list.length; i++ )
         {
           list[i].classList.remove( 'aktiv' );
           list[i].classList.remove( 'auswahl' );
         }
 
-        var pos = response.state.song ? response.state.song.pos : 0;
-        var id = response.state.song ? response.state.song.id : -1;
-        var sender = list[pos];
+        const pos = response.state.song ? response.state.song.pos : 0;
+        const id = response.state.song ? response.state.song.id : -1;
+        const sender = list[pos];
         if( sender && 'songid_'+id == sender.id )
         {
           sender.classList.add( 'aktiv' );
@@ -223,8 +255,8 @@
         }
 
         // handle volume updates
-        var elm = document.getElementById( 'volume' );
-        var li = document.getElementById( 'volume-li' );
+        const elm = document.getElementById( 'volume' );
+        const li = document.getElementById( 'volume-li' );
         if( response.state.volume == -1 )
         {
           li.classList.add( 'hidden' );
@@ -236,6 +268,9 @@
           li.classList.toggle( 'mute', response.state.volume==0 );
           li.classList.remove( 'hidden' );
         }
+        
+        // remove refreshing indicator from body
+        document.body.classList.remove( 'refreshing' );
       }
 
       function populateQueue( playlist )
@@ -244,7 +279,7 @@
         if( playlist.length == 0 )
           loadPlaylist( DEFAULT_PLAYLIST );
 
-        var list = document.getElementById( 'sender' );
+        const list = document.getElementById( 'sender' );
 
         // remove previous entries
         while( list.firstChild ) list.removeChild( list.firstChild );
@@ -252,39 +287,39 @@
         // add new entries
         for( var i = 0; i < playlist.length; i++ )
         {
-            var songTitle = getSongTitleText( playlist[i] );
-            var songInfo = getSongInfoText( playlist[i] );
-            var li = document.createElement( 'li' );
+            const songTitle = getSongTitleText( playlist[i] );
+            const songInfo = getSongInfoText( playlist[i] );
+            const li = document.createElement( 'li' );
             li.id = 'songid_'+playlist[i].id;
-            var a = document.createElement( 'a' );
+            const a = document.createElement( 'a' );
             a.href = 'javascript:play('+i+');';
             a.title = songInfo;
-            var span = document.createElement( 'span' );
-            var text = document.createTextNode( songTitle );
-            var textSpan = document.createTextNode( songInfo );
+            const span = document.createElement( 'span' );
+            const text = document.createTextNode( songTitle );
+            const textSpan = document.createTextNode( songInfo );
             list.appendChild( li ).appendChild( a ).appendChild( text );
             a.appendChild( span ).appendChild( textSpan );
         }
       }
 
-      function populatePlaylists( playlists )
+      function populatePlaylists( pls )
       {
-        var list = document.getElementById( 'sidebar-playlists' );
+        const list = document.getElementById( 'sidebar-playlists' );
 
         // remove previous entries
         while( list.firstChild ) list.removeChild( list.firstChild );
 
         // sort and add new entries
-        var playlists = playlists.sort( function( a, b ) { return a.name.localeCompare( b.name ); } )
+        const playlists = pls.sort( function( a, b ) { return a.name.localeCompare( b.name ); } )
         for( var i = 0; i < playlists.length; i++ )
         {
-            var li = document.createElement( 'li' );
-            var a = document.createElement( 'a' );
+            const li = document.createElement( 'li' );
+            const a = document.createElement( 'a' );
             a.href = 'javascript:loadPlaylist("'+playlists[i].name+'");';
             a.title = playlists[i].name;
-            var span = document.createElement( 'span' );
-            var text = document.createTextNode( playlists[i].name );
-            var symbol = document.createTextNode( " \u00A0\u00A0 "+getIcon( playlists[i].name ) );
+            const span = document.createElement( 'span' );
+            const text = document.createTextNode( playlists[i].name );
+            const symbol = document.createTextNode( " \u00A0\u00A0 "+getIcon( playlists[i].name ) );
             list.appendChild( li ).appendChild( a ).appendChild( span ).appendChild( text );
             a.appendChild( symbol );
         }
@@ -293,18 +328,18 @@
       // indicate an error by flashing the document in red
       function showError( response = false )
       {
-        var body = document.getElementById('body');
-        body.classList.add( 'error' );
+        document.body.classList.add( 'error' );
+        document.body.classList.remove( 'refreshing' );
         if( response && response.message )
             showMessage( response.message );
-        setTimeout( function( ) { body.classList.remove( 'error' ); }, 250 );
+        setTimeout( function( ) { document.body.classList.remove( 'error' ); }, 250 );
       }
 
       // send XHR request zum Server
       function XHR( action )
       {
-        var url = 'http://'+location.host+'/cgi-bin/ir.cgi?'+PASSWORD+action;
-        var xhr = new XMLHttpRequest( );
+        const url = 'http://'+location.host+'/cgi-bin/ir.cgi?'+PASSWORD+action;
+        const xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) updateState( this.response ); else showError( this.response ); } );
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
@@ -339,23 +374,8 @@
 
       function refresh( )
       {
+        document.body.classList.add( 'refreshing' );
         XHR( 'queue&playlists' );
-      }
-
-      function handleVisibilityChange( )
-      {
-        // stop updater when not showing
-        if( document[hidden] )
-        {
-          clearInterval( updater );
-          updater = false;
-        }
-        else
-        {
-          refreshState( );
-          if( updater === false )
-            updater = setInterval( refreshState, 10000 );
-        }
       }
 
       function init( )
@@ -364,13 +384,16 @@
         if( window.innerWidth >= 800 ) toggleMenu();
         if( !document[hidden] )
             updater = setInterval( refreshState, 10000 );
-        document.addEventListener( visibilityChange, handleVisibilityChange, false );
+        document.addEventListener( visibilityChange, handleVisibilityChange, {passive: true} );
+        const liste = document.getElementById( 'sender' );
+        liste.addEventListener( 'touchstart', handletouchstart, {passive: true} );
+        liste.addEventListener( 'touchmove', handletouchmove, {passive: true} );
         document.getElementById( 'stream' ).href = 'http://' + window.location.hostname + ':9000/'; // fix streaming link
       }
 
       function play( nr )
       {
-        var ch = document.getElementById( 'sender' ).children;
+        const ch = document.getElementById( 'sender' ).children;
 
         // if we're already playing the right song this is a no-op
         if( ch[nr].classList.contains( 'aktiv' ) && document.getElementById( 'pause-li' ).className == 'stop' )
@@ -393,7 +416,7 @@
         // Pause or unpause. If we're stopped, start playing at the selected song
         // find selected song
         var nr = -1;
-        var ch = document.getElementById( 'sender' ).children;
+        const ch = document.getElementById( 'sender' ).children;
         for( i = 0; i < ch.length; i++ )
             if( ch[i].classList.contains( 'aktiv' ) )
             {
@@ -413,7 +436,7 @@
       // actually execute a search
       function suchen( str )
       {
-        var list = document.getElementById( 'sender' ).children;
+        const list = document.getElementById( 'sender' ).children;
         str = str.toLowerCase( );
         for( var i = 0; i < list.length; i++ )
         {
@@ -466,7 +489,7 @@
       // mute or restore the volume, saving the current volume level
       function volumeClick( )
       {
-        var elm = document.getElementById( 'volume' );
+        const elm = document.getElementById( 'volume' );
         if( document.getElementById( 'volume-li' ).classList.toggle( 'mute' ) )
         {
           elm.old_volume = elm.value;
@@ -493,12 +516,12 @@
 
       function dragEnter( ev )
       {
-        document.getElementById( 'body' ).classList.add( 'dragover' );
+        document.body.classList.add( 'dragover' );
       }
 
       function dragLeave( ev )
       {
-        document.getElementById( 'body' ).classList.remove( 'dragover' );
+        document.body.classList.remove( 'dragover' );
       }
 
       function allowDrop( ev )
@@ -509,13 +532,13 @@
       function drop( ev )
       {
         ev.preventDefault( );
-        document.getElementById( 'body' ).classList.remove( 'dragover' );
-        var url = ev.dataTransfer.getData( 'text' );
+        document.body.classList.remove( 'dragover' );
+        const url = ev.dataTransfer.getData( 'text' );
         if( url ) addURL( url );
       }
     </script>
   </head>
-  <body onload="init()" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)" id="body">
+  <body onload="init()" ondrop="drop(event)" ondragover="allowDrop(event)" ondragenter="dragEnter(event)" ondragleave="dragLeave(event)">
     <div id="message"></div>
     <div id="container">
     <div id="sidebar-container">
