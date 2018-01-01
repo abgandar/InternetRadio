@@ -218,14 +218,16 @@
         // add new entries
         for( var i = 0; i < playlist.length; i++ )
         {
+            var songTitle = playlist[i].name || playlist[i].title || playlist[i].uri;
+            var songInfo = getSongInfoText( playlist[i] );
             var li = document.createElement( 'li' );
             li.id = 'songid_'+playlist[i].id;
             var a = document.createElement( 'a' );
             a.href = 'javascript:play('+i+');';
+            a.title = songInfo;
             var span = document.createElement( 'span' );
-            var name = playlist[i].name || playlist[i].title || playlist[i].uri;
-            var text = document.createTextNode( name );
-            var textSpan = document.createTextNode( getSongInfoText( playlist[i] ) );
+            var text = document.createTextNode( songTitle );
+            var textSpan = document.createTextNode( songInfo );
             list.appendChild( li ).appendChild( a ).appendChild( text );
             a.appendChild( span ).appendChild( textSpan );
         }
