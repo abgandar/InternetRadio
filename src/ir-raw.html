@@ -131,6 +131,40 @@
                 return( icons[i].symbol );
       }
 
+      function getSongTitleText( song )
+      {
+          if( !song ) return( '' );
+          res = ''; sep = '';
+
+          if( song.name )
+          {
+              res += sep+song.name;
+              sep = ' – ';
+          }
+          else if( song.title )
+          {
+              res += sep+song.title;
+              sep = ' – ';
+          }
+
+          if( song.artist )
+          {
+              res += sep+song.artist;
+              sep = ' – ';
+          }
+          
+          if( song.album )
+          {
+              res += sep+song.album;
+              sep = ' – ';
+          }
+
+          if( !res )
+              res = song.uri;
+
+          return res;
+      }
+
       function getSongInfoText( song )
       {
           if( !song ) return( '' );
@@ -218,7 +252,7 @@
         // add new entries
         for( var i = 0; i < playlist.length; i++ )
         {
-            var songTitle = playlist[i].name || playlist[i].title || playlist[i].uri;
+            var songTitle = getSongTitleText( playlist[i] );
             var songInfo = getSongInfoText( playlist[i] );
             var li = document.createElement( 'li' );
             li.id = 'songid_'+playlist[i].id;
