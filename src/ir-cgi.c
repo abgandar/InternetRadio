@@ -554,7 +554,7 @@ void rebootSystem( const int mode )
 // send some statistics
 void sendStatistics( )
 {
-    struct mpd_stats stat;
+    struct mpd_stats *stat;
     char str[64];
     time_t t;
 
@@ -566,11 +566,11 @@ void sendStatistics( )
     json_int( "artists", mpd_stats_get_number_of_artists( stat ), ',' );
     json_int( "albums", mpd_stats_get_number_of_albums( stat ), ',' );
     json_int( "songs", mpd_stats_get_number_of_songs( stat ), ',' );
-    json_int( "uptime", mpd_stats_get_number_of_uptime( stat ), ',' );
+    json_int( "uptime", mpd_stats_get_uptime( stat ), ',' );
     json_int( "playtime", mpd_stats_get_play_time( stat ), ',' );
     json_int( "totaltime", mpd_stats_get_db_play_time( stat ), ',' );
     t = mpd_stats_get_db_update_time( stat );
-    strftime( str, 64, "%+", localtime( &t ) );
+    strftime( str, 64, "%a, %d %b %Y %T %z", localtime( &t ) );
     json_str( "dbupdate", str, ' ' );
     fputs( "},", stdout );
 
