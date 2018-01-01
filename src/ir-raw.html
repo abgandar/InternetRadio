@@ -120,7 +120,7 @@
       function handletouchmove( e )
       {
           const y = e.touches[0].pageY;
-          if( (document.scrollingElement.scrollTop === 0) && (y > scrollStartY) && !document.body.classList.contains( 'refreshing' ) )
+          if( (document.scrollingElement.scrollTop === 0) && (y > scrollStartY+20) && !document.body.classList.contains( 'refreshing' ) )
               refresh( );
       }
 
@@ -135,6 +135,7 @@
         showMessage.timer = setTimeout( function( ) { div.className = ''; }, 5000 );
       }
 
+      // map playlist name to a unicode icon
       function getIcon( name )
       {
         const icons = [
@@ -163,6 +164,7 @@
                 return( icons[i].symbol );
       }
 
+      // get title for this song
       function getSongTitleText( song )
       {
           if( !song ) return( '' );
@@ -197,6 +199,7 @@
           return res;
       }
 
+      // get additional information for this song
       function getSongInfoText( song )
       {
           if( !song ) return( '' );
@@ -219,6 +222,7 @@
           return res;
       }
 
+      // handle successful responses from the server by uptating our local state
       function updateState( response )
       {
         // handle queue updates
@@ -273,6 +277,7 @@
         document.body.classList.remove( 'refreshing' );
       }
 
+      // fill queue with server response
       function populateQueue( playlist )
       {
         // if the queue is empty, populate it with the default playlist now
@@ -302,6 +307,7 @@
         }
       }
 
+      // fill playlists with server response
       function populatePlaylists( pls )
       {
         const list = document.getElementById( 'sidebar-playlists' );
@@ -347,11 +353,6 @@
         xhr.send( );
       }
 
-      function refreshQueue( )
-      {
-        XHR( 'queue' );
-      }
-
       function loadPlaylist( name )
       {
         XHR( 'load='+encodeURIComponent( name ) );
@@ -360,11 +361,6 @@
       function loadMusic( dir )
       {
         XHR( 'music='+encodeURIComponent( dir ) );
-      }
-
-      function refreshPlaylists( )
-      {
-        XHR( 'playlists' );
       }
 
       function refreshState( )
@@ -378,6 +374,7 @@
         XHR( 'queue&playlists' );
       }
 
+      // initialize the web interface after loading
       function init( )
       {
         refresh( );
@@ -391,6 +388,7 @@
         document.getElementById( 'stream' ).href = 'http://' + window.location.hostname + ':9000/'; // fix streaming link
       }
 
+      // play the given song, updating interface as needed
       function play( nr )
       {
         const ch = document.getElementById( 'sender' ).children;
@@ -411,9 +409,10 @@
         setTimeout( refreshState, 750 );
       }
 
+      // pause/unpause
       function pause( )
       {
-        // Pause or unpause. If we're stopped, start playing at the selected song
+        // If we're stopped, start playing at the selected song
         // find selected song
         var nr = -1;
         const ch = document.getElementById( 'sender' ).children;
@@ -427,6 +426,7 @@
         XHR( 'pause='+encodeURIComponent( i ) );
       }
 
+      // toggle the sidebar menu
       function toggleMenu( )
       {
         document.getElementById( 'sidebar-container' ).classList.toggle( 'aktiv' );
@@ -454,6 +454,7 @@
         searcher = setTimeout( suchen, 333, str );
       }
 
+      // activate search element and make sure sidebar is shown
       function sucheClick( )
       {
         document.getElementById( 'sidebar-container' ).classList.add( 'aktiv' );
@@ -461,6 +462,7 @@
         document.getElementById( 'suche' ).focus( );
       }
 
+      // handle key events for search field
       function sucheKeyDown(keyCode)
       {
         if( keyCode == 27 )
@@ -473,12 +475,14 @@
         suchen( document.getElementById( 'suche' ).value );
       }
 
+      // reset the search
       function sucheReset( )
       {
         document.getElementById( 'suche' ).value ='';
         suchen( '' );
       }
 
+      // set volume to value between 0 and 100
       function setVolume( vol )
       {
         // set mute state
@@ -514,6 +518,7 @@
           XHR( 'add='+encodeURIComponent( url ) );
       }
 
+      // handle drag events
       function dragEnter( ev )
       {
         document.body.classList.add( 'dragover' );
