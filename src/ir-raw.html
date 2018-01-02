@@ -117,10 +117,10 @@
           scrollStartY = e.touches[0].pageY;
       }
 
-      function handletouchmove( e )
+      function handletouchend( e )
       {
           const y = e.touches[0].pageY;
-          if( (document.scrollingElement.scrollTop === 0) && (y > scrollStartY+20) && !document.body.classList.contains( 'refreshing' ) )
+          if( (document.getElementById( 'sender' ).scrollTop === 0) && (y > scrollStartY+20) && !document.body.classList.contains( 'refreshing' ) )
               refresh( );
       }
 
@@ -384,7 +384,7 @@
         document.addEventListener( visibilityChange, handleVisibilityChange, {passive: true} );
         const liste = document.getElementById( 'sender' );
         liste.addEventListener( 'touchstart', handletouchstart, {passive: true} );
-        liste.addEventListener( 'touchmove', handletouchmove, {passive: true} );
+        liste.addEventListener( 'touchend', handletouchend, {passive: true} );
         document.getElementById( 'stream' ).href = 'http://' + window.location.hostname + ':9000/'; // fix streaming link
       }
 
