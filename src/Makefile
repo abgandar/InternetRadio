@@ -1,5 +1,6 @@
-LDLIBS += -lmpdclient -lsystemd
-CPPFLAGS += -Wall
+LDLIBS += -lmpdclient
+#LDLIBS += -lsystemd
+CPPFLAGS += -Wall -O2 -s -ffunction-sections -fdata-sections -Wl,--gc-sections
 DATESTAMP := `date +"%d%m%Y"`
 GITREV := `git rev-parse HEAD`
 

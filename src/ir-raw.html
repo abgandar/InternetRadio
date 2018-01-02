@@ -75,6 +75,7 @@
       const DEFAULT_PLAYLIST = 'Radio Auswahl';
       //const PASSWORD = '';
       const PASSWORD = 'password='+encodeURIComponent( '72TkJ98yo0mw' )+'&';
+      const AUTOREFRESH = 10000;
 
       // adapted from https://developer.mozilla.org/en-US/docs/Web/API/Page_Visibility_API
       var hidden, visibilityChange, updater = false, searcher = false;
@@ -106,7 +107,7 @@
         {
           refreshState( );
           if( updater === false )
-            updater = setInterval( refreshState, 10000 );
+            updater = setInterval( refreshState, AUTOREFRESH );
         }
       }
 
@@ -350,6 +351,8 @@
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
+        xhr.setRequestHeader( 'Connection', 'Keep-Alive' );     // tell server we make many similar requests
+        xhr.setRequestHeader( 'Keep-Alive', 'timeout='+Math.trunc(AUTOREFRESH/1000.0+1)+', max=9999' );
         xhr.send( );
       }
 
@@ -380,7 +383,7 @@
         refresh( );
         if( window.innerWidth >= 800 ) toggleMenu();
         if( !document[hidden] )
-            updater = setInterval( refreshState, 10000 );
+            updater = setInterval( refreshState, AUTOREFRESH );
         document.addEventListener( visibilityChange, handleVisibilityChange, {passive: true} );
         const liste = document.getElementById( 'sender' );
         liste.addEventListener( 'touchstart', handletouchstart, {passive: true} );
