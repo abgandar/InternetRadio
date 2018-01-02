@@ -114,12 +114,12 @@
       var scrollStartY;
       function handletouchstart( e )
       {
-          scrollStartY = e.touches[0].pageY;
+          scrollStartY = e.changedTouches[0].pageY;
       }
 
       function handletouchend( e )
       {
-          const y = e.touches[0].pageY;
+          const y = e.changedTouches[0].pageY;
           if( (document.getElementById( 'sender' ).scrollTop === 0) && (y > scrollStartY+20) && !document.body.classList.contains( 'refreshing' ) )
               refresh( );
       }
