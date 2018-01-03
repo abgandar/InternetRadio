@@ -351,8 +351,8 @@
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
         xhr.open( 'GET', url, true );
-        xhr.setRequestHeader( 'Connection', 'Keep-Alive' );     // tell server we make many similar requests
-        xhr.setRequestHeader( 'Keep-Alive', 'timeout='+Math.trunc(AUTOREFRESH/1000.0+1)+', max=9999' );
+//        xhr.setRequestHeader( 'Connection', 'Keep-Alive' );     // tell server we make many similar requests
+//        xhr.setRequestHeader( 'Keep-Alive', 'timeout='+Math.trunc(AUTOREFRESH/1000.0+1)+', max=9999' );
         xhr.send( );
       }
 
