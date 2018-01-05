@@ -238,7 +238,7 @@ int connectMPD( )
     // Open new connection to MPD
     conn = mpd_connection_new( SOCKET_PFAD, 0, 0 );
     if( (conn == NULL) || (mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS) )
-        return 501;
+        return 500;
     mpd_connection_set_keepalive( conn, true );
 
     return 0;
@@ -589,7 +589,7 @@ int add( char *arg )
 int sendPassword( const char *arg )
 {
     if( !connectMPD( ) )
-        return error( 500, "Internal Server Error", NULL );
+        return error( 501, "Internal Server Error", NULL );
     if( !mpd_run_password( conn, arg ) )
         return error( 403, "Forbidden", NULL );
     return 0;
