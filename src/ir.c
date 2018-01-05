@@ -47,6 +47,8 @@
 
 static struct mpd_connection *conn = NULL;
 
+// ========= Low level I/O
+
 // convert single hex digit to binary number
 char hex_to_char( const char c )
 {
@@ -217,6 +219,38 @@ void json_int( const char *name, const int value, const char comma )
         printf( "\"%s\":%i", name, value );
 }
 
+// ========= Low level MPD helpers
+
+// Ensure a clean connection to MPD is open. Does not output error message on failure!
+int connectMPD( )
+{
+    // is there a previous connection?
+    if( conn )
+    {
+        // clear errors if possible, else disconnect
+        if( mpd_connection_clear_error( conn ) )
+            return 0;
+        mpd_connection_free( conn );
+        conn = NULL;
+    }
+    
+    // Open new connection to MPD
+    conn = mpd_connection_new( SOCKET_PFAD, 0, 0 );
+    if( conn == NULL || mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS )
+        return 500;
+    mpd_connection_set_keepalive( conn, true );
+    return 0;
+}
+
+// Close connection to MPD
+void disconnectMPD( )
+{
+    if( conn ) mpd_connection_free( conn );
+    conn = NULL;
+}
+
+// ========= I/O routines
+
 // start outputting results
 int output_start( )
 {
@@ -322,6 +356,8 @@ int error( const int code, const char* msg, const char* message )
     free( m );
     return code;
 }
+
+// ========= Individual MPD commands
 
 // set mixer volume for all outputs to value between 0 and 100
 int setVolume( const unsigned int vol )
@@ -555,37 +591,6 @@ int sendPassword( const char *arg )
     return 0;
 }
 
-// reboot system (if priviliges allow)
-int rebootSystem( const int mode )
-{
-#ifdef SYSTEMD
-    sd_bus *bus = NULL;
-    sd_bus_error err = SD_BUS_ERROR_NULL;
-    int r;
-
-    /* Connect to the system bus (adapted from http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html) */
-    r = sd_bus_open_system( &bus );
-    if( r < 0 )
-        return error( 500, "Internal Server Error", strerror( -r ) );
-    r = sd_bus_call_method( bus, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
-                            "org.freedesktop.systemd1.Manager",
-                            mode == RB_POWER_OFF ? "PowerOff" : "Reboot",
-                            &err, NULL, NULL );
-    if( r < 0 )
-    {
-        sd_bus_unref( bus );
-        r = error( 500, "Internal Server Error", err.message );
-        sd_bus_error_free( &err );
-        return r;
-    }
-#else
-    sync( );
-    usleep( REBOOT_WAIT );     // wait for buffers to flush. Not done in systemctl reboot.
-    reboot( mode );
-#endif
-    return error( 500, "Internal Server Error", "Shutdown or reboot failed" );     // not reached
-}
-
 // send some statistics
 int sendStatistics( )
 {
@@ -611,6 +616,39 @@ int sendStatistics( )
 
     mpd_stats_free( stat );
 }
+
+// reboot system (if priviliges allow)
+int rebootSystem( const int mode )
+{
+#ifdef SYSTEMD
+    sd_bus *bus = NULL;
+    sd_bus_error err = SD_BUS_ERROR_NULL;
+    int r;
+    
+    /* Connect to the system bus (adapted from http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html) */
+    r = sd_bus_open_system( &bus );
+    if( r < 0 )
+        return error( 500, "Internal Server Error", strerror( -r ) );
+    r = sd_bus_call_method( bus, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
+                           "org.freedesktop.systemd1.Manager",
+                           mode == RB_POWER_OFF ? "PowerOff" : "Reboot",
+                           &err, NULL, NULL );
+    if( r < 0 )
+    {
+        sd_bus_unref( bus );
+        r = error( 500, "Internal Server Error", err.message );
+        sd_bus_error_free( &err );
+        return r;
+    }
+#else
+    sync( );
+    usleep( REBOOT_WAIT );     // wait for buffers to flush. Not done in systemctl reboot.
+    reboot( mode );
+#endif
+    return error( 500, "Internal Server Error", "Shutdown or reboot failed" );     // not reached
+}
+
+// ========= CGI command handlers
 
 // Parse a command
 int parseCommand( char *cmd )
@@ -712,34 +750,6 @@ int parseCommand( char *cmd )
     }
 }
 
-// Ensure a clean connection to MPD is open. Does not output error message on failure!
-int connectMPD( )
-{
-    // is there a previous connection?
-    if( conn )
-    {
-        // clear errors if possible, else disconnect
-        if( mpd_connection_clear_error( conn ) )
-            return 0;
-        mpd_connection_free( conn );
-        conn = NULL;
-    }
-
-    // Open new connection to MPD
-    conn = mpd_connection_new( SOCKET_PFAD, 0, 0 );
-    if( conn == NULL || mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS )
-        return 500;
-    mpd_connection_set_keepalive( conn, true );
-    return 0;
-}
-
-// Close connection to MPD
-void disconnectMPD( )
-{
-    if( conn ) mpd_connection_free( conn );
-    conn = NULL;
-}
-
 // Handle a CGI query string
 int handleQuery( const char *query )
 {
@@ -788,6 +798,8 @@ int main( int argc, char *argv[] )
     return handleQuery( env );
 }
 #endif
+
+// ========= Standalone mini HTTP/1.1 server
 
 #ifdef SERVER
 #endif
