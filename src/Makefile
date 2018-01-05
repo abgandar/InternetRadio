@@ -4,15 +4,20 @@ CPPFLAGS += -Wall -O2 -s -ffunction-sections -fdata-sections -Wl,--gc-sections
 DATESTAMP := `date +"%d%m%Y"`
 GITREV := `git rev-parse HEAD`
 
-all: ir.cgi ir.html
+all: ir ir.cgi ir.html
 
-ir.cgi: ir-cgi.c config.h
-	$(CC) -o $@ $< $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
+ir.cgi: ir.c config.h
+	$(CC) -o $@ $< $(CPPFLAGS) -D CGI $(LDFLAGS) $(LDLIBS)
+
+ir: ir.c config.h
+	$(CC) -o $@ $< $(CPPFLAGS) -D SERVER $(LDFLAGS) $(LDLIBS)
 
 ir.html: ir-raw.html
 	sed -e "s/%DATE%/$(DATESTAMP)/g" -e "s/%GITREV%/$(GITREV)/g" ir-raw.html > ir.html
 
-install: ir.cgi ir.html
+install: ir ir.cgi ir.html
+	cp ir /usr/local/bin
+	setcap CAP_SYS_BOOT+ep /usr/local/bin/ir
 	cp ir.cgi /usr/lib/cgi-bin
 	setcap CAP_SYS_BOOT+ep /usr/lib/cgi-bin/ir.cgi
 	cp ir.html radio.ico radio-0-75x.png radio-1x.png radio-2-6x.png radio-2x.png radio-4x.png radio-5-3x.png /var/www/html
@@ -24,4 +29,4 @@ uninstall:
 	@rm "/var/lib/mpd/playlists/Radio Auswahl.m3u" "/var/lib/mpd/playlists/Radio International.m3u" "/var/lib/mpd/playlists/Radio Deutschland.m3u"
 
 clean:
-	rm -f ir-cgi.o ir.cgi ir.html
+	rm -f ir.o ir.cgi ir ir.html
