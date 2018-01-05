@@ -46,6 +46,7 @@
 #include <mpd/client.h>
 
 static struct mpd_connection *conn = NULL;
+static FILE* output = stdout;
 
 // ========= Low level I/O
 
@@ -204,9 +205,9 @@ void json_str( const char *name, const char *value, const char comma )
 {
     char *json = jsonencode( value );
     if( comma )
-        printf( "\"%s\":\"%s\"%c", name, json, comma );
+        fprintf( output, "\"%s\":\"%s\"%c", name, json, comma );
     else
-        printf( "\"%s\":\"%s\"", name, json );
+        fprintf( output, "\"%s\":\"%s\"", name, json );
     free( json );
 }
 
@@ -214,9 +215,9 @@ void json_str( const char *name, const char *value, const char comma )
 void json_int( const char *name, const int value, const char comma )
 {
     if( comma )
-        printf( "\"%s\":%i%c", name, value, comma );
+        fprintf( output, "\"%s\":%i%c", name, value, comma );
     else
-        printf( "\"%s\":%i", name, value );
+        fprintf( output, "\"%s\":%i", name, value );
 }
 
 // ========= Low level MPD helpers
@@ -259,8 +260,8 @@ int output_start( )
     if( started ) return 0;   // only send once
     started = true;
 
-    fputs( "Content-type: application/json\nCache-control: no-cache\n\n", stdout );    // header
-    fputs( "{\"status\":200,\"message\":\"Request successful\",", stdout );    // start JSON output
+    fputs( "Content-type: application/json\nCache-control: no-cache\n\n", output );    // header
+    fputs( "{\"status\":200,\"message\":\"Request successful\",", output );    // start JSON output
     return 0;
 }
 
@@ -280,13 +281,13 @@ int output_end( )
     struct mpd_song *song = NULL;
 	if( !connectMPD( ) && mpd_command_list_begin( conn, true ) && mpd_send_status( conn ) && mpd_send_current_song( conn ) && mpd_command_list_end( conn ) && (status = mpd_recv_status( conn )) )
     {
-        fputs( "\"state\":{", stdout );
+        fputs( "\"state\":{", output );
 
         if( mpd_status_get_state( status ) == MPD_STATE_PLAY || mpd_status_get_state( status ) == MPD_STATE_PAUSE )
         {
             mpd_response_next( conn );
             song = mpd_recv_song( conn );
-            fputs( "\"song\":{", stdout );
+            fputs( "\"song\":{", output );
             json_int( "pos", mpd_status_get_song_pos( status ), ',' );
             json_int( "id", mpd_song_get_id( song ), ',' );
             json_str( "title", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ), ',' );
@@ -295,20 +296,20 @@ int output_end( )
             json_str( "track", mpd_song_get_tag( song, MPD_TAG_TRACK, 0 ), ',' );
             json_str( "album", mpd_song_get_tag( song, MPD_TAG_ALBUM, 0 ), ',' );
             json_str( "uri", mpd_song_get_uri( song ), ' ' );
-            fputs( "},", stdout );
+            fputs( "},", output );
             mpd_song_free( song );
         }
 
 		switch( mpd_status_get_state( status ) )
         {
             case MPD_STATE_PLAY:
-                fputs( "\"playing\":1,", stdout );
+                fputs( "\"playing\":1,", output );
                 break;
             case MPD_STATE_PAUSE:
-                fputs( "\"playing\":0,", stdout );
+                fputs( "\"playing\":0,", output );
                 break;
             default:
-                fputs( "\"playing\":0,", stdout );
+                fputs( "\"playing\":0,", output );
         }
 
         json_int( "repeat", mpd_status_get_repeat( status ) ? 1 : 0, ',' );
@@ -321,17 +322,18 @@ int output_end( )
 
         json_int( "volume", mpd_status_get_volume( status ), ' ' );
 
-        fputs( "}", stdout );
+        fputs( "}", output );
 		mpd_status_free( status );
         mpd_response_finish( conn );
     }
     else
     {
-        fputs( "state:{}", stdout );  // need to put this to prevent trailing comma
+        fputs( "state:{}", output );  // need to put this to prevent trailing comma
     }
 
-    fputs( "}", stdout );  // end JSON output
-    fflush( stdout );
+    fputs( "}", output );  // end JSON output
+    fflush( output );
+
     return 0;
 }
 
@@ -349,11 +351,12 @@ int error( const int code, const char* msg, const char* message )
     else
         m = jsonencode( message );
 
-    __fpurge( stdout );     // discard any previous buffered output
-    printf( "Status: %d %s\nContent-type: application/json\nCache-control: no-cache\n\n", code, msg );
-    printf( "{\"status\":%d,\"message\":\"%s\"}", code, m );
-    fflush( stdout );
+    __fpurge( output );     // discard any previous buffered output
+    fprintf( output, "Status: %d %s\nContent-type: application/json\nCache-control: no-cache\n\n", code, msg );
+    fprintf( output, "{\"status\":%d,\"message\":\"%s\"}", code, m );
+    fflush( output );
     free( m );
+
     return code;
 }
 
@@ -459,20 +462,20 @@ int sendPlaylists( )
 
     // print all playlists
     output_start( );
-    fputs( "\"playlists\":[", stdout );
+    fputs( "\"playlists\":[", output );
     int i = 0;
     while( (list = mpd_recv_playlist( conn ) ) )
     {
         if( i )
-            fputs( ",{", stdout );
+            fputs( ",{", output );
         else
-            fputs( "{", stdout );
+            fputs( "{", output );
         json_str( "name", mpd_playlist_get_path( list ), ' ' );
-        fputs( "}", stdout );
+        fputs( "}", output );
         mpd_playlist_free( list );
         i++;
     }
-    fputs( "],", stdout );
+    fputs( "],", output );
     
     mpd_response_finish( conn );
     return 0;
@@ -499,14 +502,14 @@ int sendPlaylist( const char *arg )
 
     // print the playlist
     output_start( );
-    fputs( "\"playlist\":[", stdout );
+    fputs( "\"playlist\":[", output );
     int i = 0;
     while( (song = mpd_recv_song( conn ) ) )
     {
         if( i )
-            fputs( ",{", stdout );
+            fputs( ",{", output );
         else
-            fputs( "{", stdout );
+            fputs( "{", output );
         json_int( "position", i, ',' );
         json_int( "id", mpd_song_get_id( song ), ',' );
         json_str( "title", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ), ',' );
@@ -515,11 +518,11 @@ int sendPlaylist( const char *arg )
         json_str( "track", mpd_song_get_tag( song, MPD_TAG_TRACK, 0 ), ',' );
         json_str( "album", mpd_song_get_tag( song, MPD_TAG_ALBUM, 0 ), ',' );
         json_str( "uri", mpd_song_get_uri( song ), ' ' );
-        fputs( "}", stdout );
+        fputs( "}", output );
         mpd_song_free( song );
         i++;
     }
-    fputs( "],", stdout );
+    fputs( "],", output );
 
     mpd_response_finish( conn );
     return 0;
@@ -602,7 +605,7 @@ int sendStatistics( )
         return error( 500, "Internal Server Error", NULL );
 
     output_start( );
-    fputs( "\"stats\":{", stdout );
+    fputs( "\"stats\":{", output );
     json_int( "artists", mpd_stats_get_number_of_artists( stat ), ',' );
     json_int( "albums", mpd_stats_get_number_of_albums( stat ), ',' );
     json_int( "songs", mpd_stats_get_number_of_songs( stat ), ',' );
@@ -612,7 +615,7 @@ int sendStatistics( )
     t = mpd_stats_get_db_update_time( stat );
     strftime( str, 64, "%a, %d %b %Y %T %z", localtime( &t ) );
     json_str( "dbupdate", str, ' ' );
-    fputs( "},", stdout );
+    fputs( "},", output );
 
     mpd_stats_free( stat );
 
@@ -777,9 +780,8 @@ int handleQuery( const char *query )
     if( rc )
         return rc;
 
-    // finish output and disconnect properly from MPD
+    // finish output
     output_end( );
-    disconnectMPD( );
 
     return 0;
 }
@@ -789,19 +791,26 @@ int handleQuery( const char *query )
 int main( int argc, char *argv[] )
 {
     // set up a large output buffer to allow errors occuring later to purge previous output
-    setvbuf( stdout, NULL, _IOFBF, OUTPUT_BUFFER_SIZE );
+    setvbuf( output, NULL, _IOFBF, OUTPUT_BUFFER_SIZE );
 
     // get query string from CGI environment
     const char *env = getenv( "QUERY_STRING" );
     if( env == NULL )
         return error( 400, "Bad Request", "Request incomplete" );
 
-    // handle query
-    return handleQuery( env );
+    // handle query and disconnect MPD afterwards
+    int rc = handleQuery( env );
+    disconnectMPD( );
+    return rc;
 }
 #endif
 
 // ========= Standalone mini HTTP/1.1 server
 
 #ifdef SERVER
+// Main HTTP server program entry point
+int main( int argc, char *argv[] )
+{
+    return 0;
+}
 #endif
