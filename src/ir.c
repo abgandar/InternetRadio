@@ -264,6 +264,30 @@ void disconnectMPD( )
 
 // ========= I/O routines
 
+// reset buffered output and output an error instead, then close the output buffer
+int error( const int code, const char* msg, const char* message )
+{
+    char *m;
+    
+    if( message == NULL )
+    {
+        if( conn && (mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS) )
+            m = jsonencode( mpd_connection_get_error_message( conn ) );
+        else
+            m = strdup( "???" );
+    }
+    else
+        m = jsonencode( message );
+    
+    rewind( outbuf );
+    fprintf( outbuf, "Status: %d %s\nContent-type: application/json\nCache-control: no-cache\n\n", code, msg );
+    fprintf( outbuf, "{\"status\":%d,\"message\":\"%s\"}", code, m );
+    fclose( outbuf );
+    free( m );
+    
+    return code;
+}
+
 // initialize output buffer and print HTTP/CGI headers
 int output_start( char **obuf, size_t *obuf_size )
 {
@@ -770,7 +794,8 @@ int cgi_main( int argc, char *argv[] )
 
     // get query string from CGI environment and duplicate so it is writeable
     int rc = 0;
-    const char *env = getenv( "QUERY_STRING" ), *arg = NULL;
+    char *arg = NULL;
+    const char *env = getenv( "QUERY_STRING" );
     if( env == NULL )
         rc = error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
     else
