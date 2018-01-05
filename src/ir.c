@@ -343,7 +343,7 @@ int error( const int code, const char* msg, const char* message )
     char *m;
     if( message == NULL )
     {
-        if( mpd_connection_get_error( conn ) == MPD_ERROR_SUCCESS )
+        if( conn && (mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS) )
             m = jsonencode( mpd_connection_get_error_message( conn ) );
         else
             m = strdup( "-" );
