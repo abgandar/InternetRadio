@@ -31,7 +31,6 @@
 #include "config.h"
 
 #include <stdio.h>
-#include <stdio_ext.h>  // __fpurge is some silly linux extension
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
@@ -47,7 +46,7 @@
 
 // global variables for output and MPD connection
 static struct mpd_connection *conn = NULL;
-static FILE* output = NULL;
+static FILE *outbuf = NULL;
 
 // HTTP error numbers and messages
 static const char* const SERVER_ERROR_MSG = "Internal server error";
@@ -216,9 +215,9 @@ void json_str( const char *name, const char *value, const char comma )
 {
     char *json = jsonencode( value );
     if( comma )
-        fprintf( output, "\"%s\":\"%s\"%c", name, json, comma );
+        fprintf( outbuf, "\"%s\":\"%s\"%c", name, json, comma );
     else
-        fprintf( output, "\"%s\":\"%s\"", name, json );
+        fprintf( outbuf, "\"%s\":\"%s\"", name, json );
     free( json );
 }
 
@@ -226,9 +225,9 @@ void json_str( const char *name, const char *value, const char comma )
 void json_int( const char *name, const int value, const char comma )
 {
     if( comma )
-        fprintf( output, "\"%s\":%i%c", name, value, comma );
+        fprintf( outbuf, "\"%s\":%i%c", name, value, comma );
     else
-        fprintf( output, "\"%s\":%i", name, value );
+        fprintf( outbuf, "\"%s\":%i", name, value );
 }
 
 // ========= Low level MPD helpers
@@ -264,25 +263,21 @@ void disconnectMPD( )
 
 // ========= I/O routines
 
-// start outputting results
-int output_start( )
+// initialize output buffer and print HTTP/CGI headers
+int output_start( char **obuf, size_t *obuf_size )
 {
-    static bool started = false;
+    if( !(outbuf = open_memstream( obuf, obuf_size )) )
+       return error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
 
-    if( started ) return 0;   // only send once
-    started = true;
+    fputs( "Content-type: application/json\nCache-control: no-cache\n\n", outbuf );     // header
+    fputs( "{\"status\":200,\"message\":\"Request successful\",", outbuf );             // start JSON output
 
-    fputs( "Content-type: application/json\nCache-control: no-cache\n\n", output );    // header
-    fputs( "{\"status\":200,\"message\":\"Request successful\",", output );    // start JSON output
     return 0;
 }
 
-// finish outputting results and end program
+// finish outputting results, general stats, and close the output buffer
 int output_end( )
 {
-    // always ensure output has been started
-    output_start( );
-
     // always attach our hostname (just for good measure)
     char host[HOST_NAME_MAX+1];
     if( gethostname( host, sizeof( host ) ) == 0 )
@@ -293,13 +288,13 @@ int output_end( )
     struct mpd_song *song = NULL;
 	if( !connectMPD( ) && mpd_command_list_begin( conn, true ) && mpd_send_status( conn ) && mpd_send_current_song( conn ) && mpd_command_list_end( conn ) && (status = mpd_recv_status( conn )) )
     {
-        fputs( "\"state\":{", output );
+        fputs( "\"state\":{", outbuf );
 
         if( mpd_status_get_state( status ) == MPD_STATE_PLAY || mpd_status_get_state( status ) == MPD_STATE_PAUSE )
         {
             mpd_response_next( conn );
             song = mpd_recv_song( conn );
-            fputs( "\"song\":{", output );
+            fputs( "\"song\":{", outbuf );
             json_int( "pos", mpd_status_get_song_pos( status ), ',' );
             json_int( "id", mpd_song_get_id( song ), ',' );
             json_str( "title", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ), ',' );
@@ -308,20 +303,20 @@ int output_end( )
             json_str( "track", mpd_song_get_tag( song, MPD_TAG_TRACK, 0 ), ',' );
             json_str( "album", mpd_song_get_tag( song, MPD_TAG_ALBUM, 0 ), ',' );
             json_str( "uri", mpd_song_get_uri( song ), ' ' );
-            fputs( "},", output );
+            fputs( "},", outbuf );
             mpd_song_free( song );
         }
 
 		switch( mpd_status_get_state( status ) )
         {
             case MPD_STATE_PLAY:
-                fputs( "\"playing\":1,", output );
+                fputs( "\"playing\":1,", outbuf );
                 break;
             case MPD_STATE_PAUSE:
-                fputs( "\"playing\":0,", output );
+                fputs( "\"playing\":0,", outbuf );
                 break;
             default:
-                fputs( "\"playing\":0,", output );
+                fputs( "\"playing\":0,", outbuf );
         }
 
         json_int( "repeat", mpd_status_get_repeat( status ) ? 1 : 0, ',' );
@@ -334,39 +329,40 @@ int output_end( )
 
         json_int( "volume", mpd_status_get_volume( status ), ' ' );
 
-        fputs( "}", output );
+        fputs( "}", outbuf );
 		mpd_status_free( status );
         mpd_response_finish( conn );
     }
     else
     {
-        fputs( "state:{}", output );  // need to put this to prevent trailing comma
+        fputs( "state:{}", outbuf );  // need to put this to prevent trailing comma
     }
 
-    fputs( "}", output );  // end JSON output
-    fflush( output );
+    fputs( "}", outbuf );  // end JSON output
+    fclose( outbuf );
 
     return 0;
 }
 
-// output an error and exit
+// reset buffered output and output an error instead, then close the output buffer
 int error( const int code, const char* msg, const char* message )
 {
     char *m;
+
     if( message == NULL )
     {
         if( conn && (mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS) )
             m = jsonencode( mpd_connection_get_error_message( conn ) );
         else
-            m = strdup( "-" );
+            m = strdup( "???" );
     }
     else
         m = jsonencode( message );
 
-    __fpurge( output );     // discard any previous buffered output
-    fprintf( output, "Status: %d %s\nContent-type: application/json\nCache-control: no-cache\n\n", code, msg );
-    fprintf( output, "{\"status\":%d,\"message\":\"%s\"}", code, m );
-    fflush( output );
+    rewind( outbuf );
+    fprintf( outbuf, "Status: %d %s\nContent-type: application/json\nCache-control: no-cache\n\n", code, msg );
+    fprintf( outbuf, "{\"status\":%d,\"message\":\"%s\"}", code, m );
+    fclose( outbuf );
     free( m );
 
     return code;
@@ -474,20 +470,20 @@ int sendPlaylists( )
 
     // print all playlists
     output_start( );
-    fputs( "\"playlists\":[", output );
+    fputs( "\"playlists\":[", outbuf );
     int i = 0;
     while( (list = mpd_recv_playlist( conn ) ) )
     {
         if( i )
-            fputs( ",{", output );
+            fputs( ",{", outbuf );
         else
-            fputs( "{", output );
+            fputs( "{", outbuf );
         json_str( "name", mpd_playlist_get_path( list ), ' ' );
-        fputs( "}", output );
+        fputs( "}", outbuf );
         mpd_playlist_free( list );
         i++;
     }
-    fputs( "],", output );
+    fputs( "],", outbuf );
     
     mpd_response_finish( conn );
     return 0;
@@ -514,14 +510,14 @@ int sendPlaylist( const char *arg )
 
     // print the playlist
     output_start( );
-    fputs( "\"playlist\":[", output );
+    fputs( "\"playlist\":[", outbuf );
     int i = 0;
     while( (song = mpd_recv_song( conn ) ) )
     {
         if( i )
-            fputs( ",{", output );
+            fputs( ",{", outbuf );
         else
-            fputs( "{", output );
+            fputs( "{", outbuf );
         json_int( "position", i, ',' );
         json_int( "id", mpd_song_get_id( song ), ',' );
         json_str( "title", mpd_song_get_tag( song, MPD_TAG_TITLE, 0 ), ',' );
@@ -530,11 +526,11 @@ int sendPlaylist( const char *arg )
         json_str( "track", mpd_song_get_tag( song, MPD_TAG_TRACK, 0 ), ',' );
         json_str( "album", mpd_song_get_tag( song, MPD_TAG_ALBUM, 0 ), ',' );
         json_str( "uri", mpd_song_get_uri( song ), ' ' );
-        fputs( "}", output );
+        fputs( "}", outbuf );
         mpd_song_free( song );
         i++;
     }
-    fputs( "],", output );
+    fputs( "],", outbuf );
 
     mpd_response_finish( conn );
     return 0;
@@ -617,7 +613,7 @@ int sendStatistics( )
         return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
     output_start( );
-    fputs( "\"stats\":{", output );
+    fputs( "\"stats\":{", outbuf );
     json_int( "artists", mpd_stats_get_number_of_artists( stat ), ',' );
     json_int( "albums", mpd_stats_get_number_of_albums( stat ), ',' );
     json_int( "songs", mpd_stats_get_number_of_songs( stat ), ',' );
@@ -627,7 +623,7 @@ int sendStatistics( )
     t = mpd_stats_get_db_update_time( stat );
     strftime( str, 64, "%a, %d %b %Y %T %z", localtime( &t ) );
     json_str( "dbupdate", str, ' ' );
-    fputs( "},", output );
+    fputs( "},", outbuf );
 
     mpd_stats_free( stat );
 
@@ -675,7 +671,7 @@ int parseCommand( char *cmd )
         // Send password
         return sendPassword( cmd+9 );
     }
-    else if( strcmp( cmd, "state" ) == 0 )
+    else if( *cmd == '\0' || strcmp( cmd, "state" ) == 0 )
     {
         // Send current state (current queue, current song, ...)
         // This is automatically added at the end to every successful request, so we do nothing
@@ -768,13 +764,8 @@ int parseCommand( char *cmd )
 }
 
 // Handle a CGI query string
-int handleQuery( const char *query )
+int handleQuery( char *arg )
 {
-    // duplicate query string so it is writeable
-    char *arg = strdup( query );
-    if( arg == NULL )
-        return error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
-
     // handle each request separately
     char *var, *str = arg;
     int rc = 0;
@@ -787,34 +778,45 @@ int handleQuery( const char *query )
         if( !rc ) rc = parseCommand( argdec );
         free( argdec );
     }
-    free( arg );
 
-    if( rc )
-        return rc;
-
-    // finish output
-    output_end( );
-
-    return 0;
+    return rc;
 }
 
 // Main CGI program entry point
 int cgi_main( int argc, char *argv[] )
 {
-    // Send all output to stdout
-    output = stdout;
+    // open output buffer
+    char *obuf = NULL;
+    size_t obuf_size = 0;
+    if( output_start( &obuf, &obuf_size ) )
+    {
+        outbuf = stdout;    // error allocating output buffer, use stdout directly to print error and exit
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
+    }
 
-    // set up a large output buffer to allow errors occuring later to purge previous output
-    setvbuf( output, NULL, _IOFBF, OUTPUT_BUFFER_SIZE );
-
-    // get query string from CGI environment
-    const char *env = getenv( "QUERY_STRING" );
+    // get query string from CGI environment and duplicate so it is writeable
+    int rc = 0;
+    const char *env = getenv( "QUERY_STRING" ), *arg;
     if( env == NULL )
-        return error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
+        rc = error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
+    else
+    {
+        arg = strdup( env );
+        if( arg == NULL )
+            rc = error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
+    }
 
-    // handle query and disconnect MPD afterwards
-    int rc = handleQuery( env );
+    // handle query
+    if( !rc ) rc = handleQuery( query );
+
+    // write output
+    if( !rc ) rc = output_end( output );
+    fwrite( obuf, obuf_size, 1, stdout );   // either error or output_end will have closed output buffer stream
+
+    // clean up
+    free( obuf );
     disconnectMPD( );
+
     return rc;
 }
 
