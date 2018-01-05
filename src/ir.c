@@ -17,7 +17,7 @@
  */
 
 /**
- * ir-cgi.c
+ * ir.c
  *
  * CGI program to connect to the mpd daemon and communicate various XML HTTP
  * requests from the client.
@@ -38,6 +38,11 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <time.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
 #include <sys/reboot.h>
 #ifdef SYSTEMD
 #include <systemd/sd-bus.h>
@@ -407,7 +412,7 @@ int skip( const int where )
     }
 
     if( !res )
-        return error( SERVER_ERROR, SERVER_ERROR_MSG, "Error skipping songs" );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
     return SUCCESS;
 }
@@ -638,16 +643,15 @@ int rebootSystem( const int mode )
 #ifdef SYSTEMD
     sd_bus *bus = NULL;
     sd_bus_error err = SD_BUS_ERROR_NULL;
-    int r;
-    
+
     /* Connect to the system bus (adapted from http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html) */
-    r = sd_bus_open_system( &bus );
+    int r = sd_bus_open_system( &bus );
     if( r < 0 )
         return error( SERVER_ERROR, SERVER_ERROR_MSG, strerror( -r ) );
     r = sd_bus_call_method( bus, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
-                           "org.freedesktop.systemd1.Manager",
-                           mode == RB_POWER_OFF ? "PowerOff" : "Reboot",
-                           &err, NULL, NULL );
+                            "org.freedesktop.systemd1.Manager",
+                            mode == RB_POWER_OFF ? "PowerOff" : "Reboot",
+                            &err, NULL, NULL );
     if( r < 0 )
     {
         sd_bus_unref( bus );
@@ -717,20 +721,17 @@ int parseCommand( char *cmd )
     else if( strncmp( cmd, "play=", 5 ) == 0 )
     {
         // Start playback at given position
-        const int i = strtol( cmd+5, NULL, 10 );
-        return play( i );
+        return play( strtol( cmd+5, NULL, 10 ) );
     }
     else if( strncmp( cmd, "playid=", 7 ) == 0 )
     {
         // Start playback at given id
-        const int i = strtol( cmd+7, NULL, 10 );
-        return playid( i );
+        return playid( strtol( cmd+7, NULL, 10 ) );
     }
     else if( strncmp( cmd, "pause=", 6 ) == 0 )
     {
         // Pause playback
-        const int i = strtol( cmd+6, NULL, 10 );
-        return pausemusic( i );
+        return pausemusic( strtol( cmd+6, NULL, 10 ) );
     }
     else if( strncmp( cmd, "add=", 4 ) == 0 )
     {
@@ -740,8 +741,7 @@ int parseCommand( char *cmd )
     else if( strncmp( cmd, "volume=", 7 ) == 0 )
     {
         // Set the mixer volume
-        const unsigned int i = strtol( cmd+7, NULL, 10 );
-        return setVolume( i );
+        return setVolume( strtol( cmd+7, NULL, 10 ) );
     }
     else if( strcmp( cmd, "reboot" ) == 0 )
     {
@@ -765,12 +765,12 @@ int parseCommand( char *cmd )
     }
 }
 
-// Handle a CGI query string
+// Handle each request in a CGI query string
 int handleQuery( char *arg )
 {
-    // handle each request separately
     char *var, *str = arg;
     int rc = 0;
+
     while( !rc && ((var = strsep( &str, "&" )) != NULL) )
     {
         // URL decode argument
@@ -790,6 +790,7 @@ int cgi_main( int argc, char *argv[] )
     // open output buffer
     char *obuf = NULL;
     size_t obuf_size = 0;
+
     if( output_start( &obuf, &obuf_size ) )
     {
         outbuf = stdout;    // error allocating output buffer, use stdout directly to print error and exit
@@ -800,6 +801,7 @@ int cgi_main( int argc, char *argv[] )
     int rc = 0;
     char *arg = NULL;
     const char *env = getenv( "QUERY_STRING" );
+
     if( env == NULL )
         rc = error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
     else
@@ -826,7 +828,220 @@ int cgi_main( int argc, char *argv[] )
 
 // ========= Standalone mini HTTP/1.1 server
 
-// Main HTTP server program entry point
+/*
+typedef struct {
+    unsigned int max, len, cl;
+    char *data;
+} client;
+
+int read_from_client( int fd, client *c )
+{
+    // increase buffer if needed
+    int len = c->max - c->len - 1;
+    if( len < 128 )
+    {
+        if( !(c->data = realloc( c->data, c->max+4096 )) )
+        {
+            perror( "realloc" );
+            exit( EXIT_FAILURE );
+        }
+        c->max += 4096;
+        len += 4096;
+    }
+
+    // read data
+    int nbytes = read( fd, c->data+c->len, len );
+    if( nbytes == 0 )
+        return -1;  // nothing to read from this socket, must be closed
+    else if( nbytes < 0 )
+    {
+        perror( "read" );
+        exit( EXIT_FAILURE );
+    }
+    c->len += nbytes;
+    c->data[c->len] = '\0';
+
+    // did we finish reading the headers for the first time?
+    char *tmp = strstr( c->data, "\r\n\r\n" );
+    if( !c->cl && tmp )
+    {
+        c->cl = (tmp - c->data)+2;  // length of the request + headers
+
+        // parse request line
+        tmp = strstr( c->data, "\r\n" ), *p = c->data;
+        if( tmp )
+        {
+            *tmp = '\0';
+            tmp += 2;
+        }
+        // do stuff with p
+        p = tmp;
+
+        // parse remaining headers line by line
+        do {
+            tmp = strstr( p, "\r\n" );
+            if( tmp )
+            {
+                *tmp = '\0';
+                tmp += 2;
+            }
+            if( *p == '\0' ) break;     // end of headers
+            if( strncmp( p, "Content-Length: ", 16 ) == 0 )
+                c->cl += strtol( p+16, NULL, 10 );
+            p = tmp;
+        } while( tmp );
+    }
+
+    // have we read the full request?
+    if( c->len >= c->cl )
+    {
+        // interpret request
+        char *method = c->data, *url, *version;
+        tmp = strcspn( method, " \t" );
+        if( *tmp )
+        {
+            *tmp = '\0';
+            tmp ++
+        }
+        tmp = strspn( tmp, " \t" );
+        url = tmp;
+        tmp = strcspn( method, " \t" );
+        if( *tmp )
+        {
+            *tmp = '\0';
+            tmp ++
+        }
+        tmp = strspn( tmp, " \t" );
+        version = tmp;
+
+        // send either file content or call handleQuery()
+        if( strncmp( url, "/cgi-bin/ir.cgi", 15 ) == 0 )
+        {
+            tmp = url+15;
+            if( *tmp == '?' ) tmp++;
+
+            // open output buffer
+            char *obuf = NULL;
+            size_t obuf_size = 0;
+            if( output_start( &obuf, &obuf_size ) )
+            {
+                perror( "output_start" );
+                exit( EXIT_FAILURE );
+            }
+            
+            int rc = 0;
+            if( !rc ) rc = handleQuery( tmp );
+            
+            // write output
+            if( !rc ) rc = output_end( );
+            if( !rc )
+                write( fd, "HTTP/1.1 200 OK\r\n", 17 );
+            else
+                write( fd, "HTTP/1.1 500 ERR\r\n", 18 );
+            write( fd, obuf, obuf_size );   // either error or output_end will have closed output buffer stream
+            
+            // clean up
+            free( obuf );
+        }
+        else
+            write( fd, "HTTP/1.1 404 ERR\r\n", 16 );
+        return -1;  // this read is done
+    }
+
+    return 0;
+}
+
+// Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
+int server_main( int argc, char *argv[] )
+{
+    int serverSocket = 0;
+    struct sockaddr_in serverAddr = { 0 };
+    struct sockaddr_storage serverStorage = { 0 };
+    socklen_t addr_size = sizeof(serverStorage);
+
+    serverSocket = socket( PF_INET, SOCK_STREAM, 0 );
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_port = htons( 80 );
+    inet_pton( AF_INET, "127.0.0.1", &serverAddr.sin_addr.s_addr );
+    bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) );
+
+    if( listen( serverSocket, 5 ) < 0 )
+    {
+        perror( "listen" );
+        exit( EXIT_FAILURE );
+    }
+
+    // initialize active sockets set
+    client clients[FD_SETSIZE] = { 0 };  // data buffer read from clients
+    fd_set active_fd_set, read_fd_set;
+    FD_ZERO( &active_fd_set );
+    FD_SET( sock, &active_fd_set );
+
+    while( true )
+    {
+        // wait for input
+        read_fd_set = active_fd_set;
+        if( select( FD_SETSIZE, &read_fd_set, NULL, NULL, NULL ) < 0 )
+        {
+            perror( "select" );
+            exit( EXIT_FAILURE );
+        }
+
+        // process input for active sockets
+        for( int i = 0; i < FD_SETSIZE; i++ )
+            if( FD_ISSET( i, &read_fd_set ) )
+            {
+                if( i == serverSocket )
+                {
+                    // Connection request on original socket
+                    addr_size = sizeof(clientname);
+                    const int new = accept( serverSocket, (struct sockaddr *) &serverAddr, &addr_size );
+                    if( new < 0 )
+                    {
+                        perror( "accept" );
+                        exit( EXIT_FAILURE );
+                    }
+                    FD_SET( new, &active_fd_set );
+
+                    // allocate/clear some memory for reading request
+                    if( !clients[i].data )
+                    {
+                        if( !(clients[i].data = malloc( 4096 )) )
+                        {
+                            perror( "malloc" );
+                            exit( EXIT_FAILURE );
+                        }
+                        clients[i].max = 4096;
+                    }
+                    clients[i].len = 0;
+                    clients[i].cl = 0;
+                    clients[i].data[0] = '\0';
+                }
+                else
+                {
+                    // data arriving from active socket
+                    if( read_from_client( i ) < 0 )
+                    {
+                        // close socket
+                        close( i );
+                        FD_CLR( i, &active_fd_set );
+
+                        // free previous request data
+                        free( clients[i].data );
+                        clients[i].data = NULL;
+                        clients[i].max = 0;
+                        clients[i].len = 0;
+                        clients[i].cl = 0;
+                    }
+                }
+            }
+    }
+
+    disconnectMPD( );
+    return SUCCESS;
+}
+*/
+
 int server_main( int argc, char *argv[] )
 {
     return SUCCESS;
