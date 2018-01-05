@@ -615,6 +615,8 @@ int sendStatistics( )
     fputs( "},", stdout );
 
     mpd_stats_free( stat );
+
+    return 0;
 }
 
 // reboot system (if priviliges allow)
@@ -754,7 +756,7 @@ int parseCommand( char *cmd )
 int handleQuery( const char *query )
 {
     // duplicate query string so it is writeable
-    char *arg = strdup( env );
+    char *arg = strdup( query );
     if( arg == NULL )
         return error( 500, "Internal Server Error", "Request failed" );
 
