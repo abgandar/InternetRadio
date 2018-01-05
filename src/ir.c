@@ -294,6 +294,10 @@ int output_start( char **obuf, size_t *obuf_size )
     if( !(outbuf = open_memstream( obuf, obuf_size )) )
        return SERVER_ERROR;
 
+    // allocate one memory page right away
+    fseek( outbuf, SEEK_SET, 4095 );    // allow for the implicit extra NULL
+    rewind( outbuf );
+
     fputs( "Content-type: application/json\nCache-control: no-cache\n\n", outbuf );     // header
     fputs( "{\"status\":200,\"message\":\"Request successful\",", outbuf );             // start JSON output
 
