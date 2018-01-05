@@ -48,7 +48,8 @@
 static struct mpd_connection *conn = NULL;
 static FILE *outbuf = NULL;
 
-// HTTP error numbers and messages
+// (HTTP) error numbers and messages
+static const int SUCCESS = 0;
 static const char* const SERVER_ERROR_MSG = "Internal server error";
 static const int SERVER_ERROR = 500;
 static const char* const BAD_REQUEST_MSG = "Bad request";
@@ -240,7 +241,7 @@ int connectMPD( )
     {
         // clear errors if possible, else disconnect
         if( mpd_connection_clear_error( conn ) )
-            return 0;
+            return SUCCESS;
         mpd_connection_free( conn );
         conn = NULL;
     }
@@ -251,7 +252,7 @@ int connectMPD( )
         return SERVER_ERROR;
     mpd_connection_set_keepalive( conn, true );
 
-    return 0;
+    return SUCCESS;
 }
 
 // Close connection to MPD
@@ -267,12 +268,12 @@ void disconnectMPD( )
 int output_start( char **obuf, size_t *obuf_size )
 {
     if( !(outbuf = open_memstream( obuf, obuf_size )) )
-       return error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
+       return SERVER_ERROR;
 
     fputs( "Content-type: application/json\nCache-control: no-cache\n\n", outbuf );     // header
     fputs( "{\"status\":200,\"message\":\"Request successful\",", outbuf );             // start JSON output
 
-    return 0;
+    return SUCCESS;
 }
 
 // finish outputting results, general stats, and close the output buffer
@@ -341,31 +342,7 @@ int output_end( )
     fputs( "}", outbuf );  // end JSON output
     fclose( outbuf );
 
-    return 0;
-}
-
-// reset buffered output and output an error instead, then close the output buffer
-int error( const int code, const char* msg, const char* message )
-{
-    char *m;
-
-    if( message == NULL )
-    {
-        if( conn && (mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS) )
-            m = jsonencode( mpd_connection_get_error_message( conn ) );
-        else
-            m = strdup( "???" );
-    }
-    else
-        m = jsonencode( message );
-
-    rewind( outbuf );
-    fprintf( outbuf, "Status: %d %s\nContent-type: application/json\nCache-control: no-cache\n\n", code, msg );
-    fprintf( outbuf, "{\"status\":%d,\"message\":\"%s\"}", code, m );
-    fclose( outbuf );
-    free( m );
-
-    return code;
+    return SUCCESS;
 }
 
 // ========= Individual MPD commands
@@ -376,7 +353,7 @@ int setVolume( const unsigned int vol )
     if( connectMPD( ) || !mpd_run_set_volume( conn, vol ) )
         return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
-    return 0;
+    return SUCCESS;
 }
 
 // skip by the given amount
@@ -404,7 +381,7 @@ int skip( const int where )
     if( !res )
         return error( SERVER_ERROR, SERVER_ERROR_MSG, "Error skipping songs" );
 
-    return 0;
+    return SUCCESS;
 }
 
 // play given song position
@@ -416,7 +393,7 @@ int play( const int position )
     if( position >= 0 && !mpd_run_play_pos( conn, position ) )
         return error( NOT_FOUND, NOT_FOUND_MSG, NULL );
 
-    return 0;
+    return SUCCESS;
 }
 
 // play given song id
@@ -428,7 +405,7 @@ int playid( const int id )
     if( id >= 0 && !mpd_run_play_id( conn, id ) )
         return error( NOT_FOUND, NOT_FOUND_MSG, NULL );
 
-    return 0;
+    return SUCCESS;
 }
 
 // pause / unpause playback
@@ -457,7 +434,7 @@ int pausemusic( const int position )
             break;
     }
 
-    return 0;
+    return SUCCESS;
 }
 
 // send list of all playlists on the server
@@ -469,7 +446,6 @@ int sendPlaylists( )
         error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
     // print all playlists
-    output_start( );
     fputs( "\"playlists\":[", outbuf );
     int i = 0;
     while( (list = mpd_recv_playlist( conn ) ) )
@@ -486,7 +462,7 @@ int sendPlaylists( )
     fputs( "],", outbuf );
     
     mpd_response_finish( conn );
-    return 0;
+    return SUCCESS;
 }
 
 // send content of specific playlist on server
@@ -509,7 +485,6 @@ int sendPlaylist( const char *arg )
     }
 
     // print the playlist
-    output_start( );
     fputs( "\"playlist\":[", outbuf );
     int i = 0;
     while( (song = mpd_recv_song( conn ) ) )
@@ -533,7 +508,7 @@ int sendPlaylist( const char *arg )
     fputs( "],", outbuf );
 
     mpd_response_finish( conn );
-    return 0;
+    return SUCCESS;
 }
 
 // load the specified playlist into the queue, replacing current queue
@@ -599,7 +574,7 @@ int sendPassword( const char *arg )
         return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
     if( !mpd_run_password( conn, arg ) )
         return error( FORBIDDEN, FORBIDDEN_MSG, NULL );
-    return 0;
+    return SUCCESS;
 }
 
 // send some statistics
@@ -612,7 +587,6 @@ int sendStatistics( )
     if( connectMPD( ) || !(stat = mpd_run_stats( conn )) )
         return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
-    output_start( );
     fputs( "\"stats\":{", outbuf );
     json_int( "artists", mpd_stats_get_number_of_artists( stat ), ',' );
     json_int( "albums", mpd_stats_get_number_of_albums( stat ), ',' );
@@ -627,7 +601,7 @@ int sendStatistics( )
 
     mpd_stats_free( stat );
 
-    return 0;
+    return SUCCESS;
 }
 
 // reboot system (if priviliges allow)
@@ -675,7 +649,7 @@ int parseCommand( char *cmd )
     {
         // Send current state (current queue, current song, ...)
         // This is automatically added at the end to every successful request, so we do nothing
-        return 0;
+        return SUCCESS;
     }
     else if( strcmp( cmd, "playlists" ) == 0 )
     {
@@ -796,7 +770,7 @@ int cgi_main( int argc, char *argv[] )
 
     // get query string from CGI environment and duplicate so it is writeable
     int rc = 0;
-    const char *env = getenv( "QUERY_STRING" ), *arg;
+    const char *env = getenv( "QUERY_STRING" ), *arg = NULL;
     if( env == NULL )
         rc = error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
     else
@@ -807,14 +781,15 @@ int cgi_main( int argc, char *argv[] )
     }
 
     // handle query
-    if( !rc ) rc = handleQuery( query );
+    if( !rc ) rc = handleQuery( arg );
 
     // write output
-    if( !rc ) rc = output_end( output );
+    if( !rc ) rc = output_end( );
     fwrite( obuf, obuf_size, 1, stdout );   // either error or output_end will have closed output buffer stream
 
     // clean up
     free( obuf );
+    free( arg );
     disconnectMPD( );
 
     return rc;
@@ -825,7 +800,7 @@ int cgi_main( int argc, char *argv[] )
 // Main HTTP server program entry point
 int server_main( int argc, char *argv[] )
 {
-    return 0;
+    return SUCCESS;
 }
 
 // select the right main function
@@ -836,5 +811,5 @@ int main( int argc, char *argv[] )
 #elif SERVER
     return server_main( argc, argv );
 #endif
-    return 0;
+    return SUCCESS;
 }
