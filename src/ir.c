@@ -366,7 +366,7 @@ int error( const int code, const char* msg, const char* message )
 // set mixer volume for all outputs to value between 0 and 100
 int setVolume( const unsigned int vol )
 {
-    if( !connectMPD( ) || !mpd_run_set_volume( conn, vol ) )
+    if( connectMPD( ) || !mpd_run_set_volume( conn, vol ) )
         return error( 500, "Internal Server Error", NULL );
 
     return 0;
@@ -375,7 +375,7 @@ int setVolume( const unsigned int vol )
 // skip by the given amount
 int skip( const int where )
 {
-    if( !connectMPD( ) )
+    if( connectMPD( ) )
         return error( 500, "Internal Server Error", NULL );
 
     bool res = false;
@@ -403,7 +403,7 @@ int skip( const int where )
 // play given song position
 int play( const int position )
 {
-    if( !connectMPD( ) )
+    if( connectMPD( ) )
         return error( 500, "Internal Server Error", NULL );
     
     if( position >= 0 && !mpd_run_play_pos( conn, position ) )
@@ -415,7 +415,7 @@ int play( const int position )
 // play given song id
 int playid( const int id )
 {
-    if( !connectMPD( ) )
+    if( connectMPD( ) )
         return error( 500, "Internal Server Error", NULL );
 
     if( id >= 0 && !mpd_run_play_id( conn, id ) )
@@ -429,7 +429,7 @@ int pausemusic( const int position )
 {
     struct mpd_status *status = NULL;
 
-    if( !connectMPD( ) || !(status = mpd_run_status( conn )) )
+    if( connectMPD( ) || !(status = mpd_run_status( conn )) )
         error( 500, "Internal Server Error", NULL );
 
     switch( mpd_status_get_state( status ) )
@@ -458,7 +458,7 @@ int sendPlaylists( )
 {
     struct mpd_playlist *list = NULL;
     
-    if( !connectMPD( ) || !mpd_send_list_playlists( conn ) )
+    if( connectMPD( ) || !mpd_send_list_playlists( conn ) )
         error( 500, "Internal Server Error", NULL );
 
     // print all playlists
@@ -487,7 +487,7 @@ int sendPlaylist( const char *arg )
 {
     struct mpd_song *song = NULL;
 
-    if( !connectMPD( ) )
+    if( connectMPD( ) )
         return error( 500, "Internal Server Error", NULL );
 
     if( arg )
@@ -532,7 +532,7 @@ int sendPlaylist( const char *arg )
 // load the specified playlist into the queue, replacing current queue
 int loadPlaylist( const char *arg )
 {
-    if( !connectMPD( ) )
+    if( connectMPD( ) )
         return error( 500, "Internal Server Error", NULL );
     mpd_run_clear( conn );
     if( !mpd_run_load( conn, arg ) )
@@ -546,7 +546,7 @@ int loadPlaylist( const char *arg )
 // load part of the music directory (recursively) into the queue, replacing current queue
 int loadMusic( const char *arg )
 {
-    if( !connectMPD( ) )
+    if( connectMPD( ) )
         return error( 500, "Internal Server Error", NULL );
     mpd_run_clear( conn );
     mpd_search_add_db_songs( conn, false );
@@ -568,7 +568,7 @@ int loadMusic( const char *arg )
 // add song(s) to playlist and send new queue
 int add( char *arg )
 {
-    if( !connectMPD( ) || !mpd_command_list_begin( conn, false ) )
+    if( connectMPD( ) || !mpd_command_list_begin( conn, false ) )
         return error( 500, "Internal Server Error", NULL );
 
     char *url;
@@ -588,8 +588,8 @@ int add( char *arg )
 // send password (unencrypted clear text, mostly window dressing)
 int sendPassword( const char *arg )
 {
-    if( !connectMPD( ) )
-        return error( 501, "Internal Server Error", NULL );
+    if( connectMPD( ) )
+        return error( 500, "Internal Server Error", NULL );
     if( !mpd_run_password( conn, arg ) )
         return error( 403, "Forbidden", NULL );
     return 0;
@@ -602,7 +602,7 @@ int sendStatistics( )
     char str[64];
     time_t t;
 
-    if( !connectMPD( ) || !(stat = mpd_run_stats( conn )) )
+    if( connectMPD( ) || !(stat = mpd_run_stats( conn )) )
         return error( 500, "Internal Server Error", NULL );
 
     output_start( );
