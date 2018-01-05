@@ -46,7 +46,7 @@
 #include <mpd/client.h>
 
 static struct mpd_connection *conn = NULL;
-static FILE* output = stdout;
+static FILE* output = NULL;
 
 // ========= Low level I/O
 
@@ -790,6 +790,7 @@ int handleQuery( const char *query )
 // Main CGI program entry point
 int main( int argc, char *argv[] )
 {
+    output = stdout;
     // set up a large output buffer to allow errors occuring later to purge previous output
     setvbuf( output, NULL, _IOFBF, OUTPUT_BUFFER_SIZE );
 
