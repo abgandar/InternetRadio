@@ -45,9 +45,11 @@
 #endif
 #include <mpd/client.h>
 
+// global variables for output and MPD connection
 static struct mpd_connection *conn = NULL;
 static FILE* output = NULL;
 
+// HTTP error numbers and messages
 static const char* const SERVER_ERROR_MSG = "Internal server error";
 static const int SERVER_ERROR = 500;
 static const char* const BAD_REQUEST_MSG = "Bad request";
@@ -796,9 +798,8 @@ int handleQuery( const char *query )
     return 0;
 }
 
-#ifdef CGI
 // Main CGI program entry point
-int main( int argc, char *argv[] )
+int cgi_main( int argc, char *argv[] )
 {
     // Send all output to stdout
     output = stdout;
@@ -816,14 +817,22 @@ int main( int argc, char *argv[] )
     disconnectMPD( );
     return rc;
 }
-#endif
 
 // ========= Standalone mini HTTP/1.1 server
 
-#ifdef SERVER
 // Main HTTP server program entry point
-int main( int argc, char *argv[] )
+int server_main( int argc, char *argv[] )
 {
     return 0;
 }
+
+// select the right main function
+int main( int argc, char *argv[] )
+{
+#ifdef CGI
+    return cgi_main( argc, argv );
+#elif SERVER
+    return server_main( argc, argv );
 #endif
+    return 0;
+}
