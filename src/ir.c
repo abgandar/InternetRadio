@@ -237,9 +237,10 @@ int connectMPD( )
     
     // Open new connection to MPD
     conn = mpd_connection_new( SOCKET_PFAD, 0, 0 );
-    if( conn == NULL || mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS )
-        return 500;
+    if( (conn == NULL) || (mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS) )
+        return 501;
     mpd_connection_set_keepalive( conn, true );
+
     return 0;
 }
 
