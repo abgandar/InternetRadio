@@ -29,7 +29,6 @@
 #define __USE_POSIX
 
 #include "config.h"
-#include "ir-common.h"
 
 #include <stdio.h>
 #include <stdio_ext.h>  // __fpurge is some silly linux extension
