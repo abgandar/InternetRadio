@@ -48,6 +48,15 @@
 static struct mpd_connection *conn = NULL;
 static FILE* output = NULL;
 
+static const char* const SERVER_ERROR_MSG = "Internal server error";
+static const int SERVER_ERROR = 500;
+static const char* const BAD_REQUEST_MSG = "Bad request";
+static const int BAD_REQUEST = 400;
+static const char* const FORBIDDEN_MSG = "Forbidden";
+static const int FORBIDDEN = 403;
+static const char* const NOT_FOUND_MSG = "Not found";
+static const int NOT_FOUND = 404;
+
 // ========= Low level I/O
 
 // convert single hex digit to binary number
@@ -238,7 +247,7 @@ int connectMPD( )
     // Open new connection to MPD
     conn = mpd_connection_new( SOCKET_PFAD, 0, 0 );
     if( (conn == NULL) || (mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS) )
-        return 500;
+        return SERVER_ERROR;
     mpd_connection_set_keepalive( conn, true );
 
     return 0;
@@ -367,7 +376,7 @@ int error( const int code, const char* msg, const char* message )
 int setVolume( const unsigned int vol )
 {
     if( connectMPD( ) || !mpd_run_set_volume( conn, vol ) )
-        return error( 500, "Internal Server Error", NULL );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
     return 0;
 }
@@ -376,7 +385,7 @@ int setVolume( const unsigned int vol )
 int skip( const int where )
 {
     if( connectMPD( ) )
-        return error( 500, "Internal Server Error", NULL );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
     bool res = false;
     switch( where )
@@ -395,7 +404,7 @@ int skip( const int where )
     }
 
     if( !res )
-        return error( 500, "Internal Server Error", "Error skipping songs" );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, "Error skipping songs" );
 
     return 0;
 }
@@ -404,10 +413,10 @@ int skip( const int where )
 int play( const int position )
 {
     if( connectMPD( ) )
-        return error( 500, "Internal Server Error", NULL );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
     
     if( position >= 0 && !mpd_run_play_pos( conn, position ) )
-        return error( 404, "Not found", NULL );
+        return error( NOT_FOUND, NOT_FOUND_MSG, NULL );
 
     return 0;
 }
@@ -416,10 +425,10 @@ int play( const int position )
 int playid( const int id )
 {
     if( connectMPD( ) )
-        return error( 500, "Internal Server Error", NULL );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
     if( id >= 0 && !mpd_run_play_id( conn, id ) )
-        return error( 404, "Not found", NULL );
+        return error( NOT_FOUND, NOT_FOUND_MSG, NULL );
 
     return 0;
 }
@@ -430,7 +439,7 @@ int pausemusic( const int position )
     struct mpd_status *status = NULL;
 
     if( connectMPD( ) || !(status = mpd_run_status( conn )) )
-        error( 500, "Internal Server Error", NULL );
+        error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
     switch( mpd_status_get_state( status ) )
     {
@@ -459,7 +468,7 @@ int sendPlaylists( )
     struct mpd_playlist *list = NULL;
     
     if( connectMPD( ) || !mpd_send_list_playlists( conn ) )
-        error( 500, "Internal Server Error", NULL );
+        error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
     // print all playlists
     output_start( );
@@ -488,17 +497,17 @@ int sendPlaylist( const char *arg )
     struct mpd_song *song = NULL;
 
     if( connectMPD( ) )
-        return error( 500, "Internal Server Error", NULL );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
     if( arg )
     {
         if( !mpd_send_list_playlist_meta( conn, arg ) )
-            return error( 404, "Not found", NULL );
+            return error( NOT_FOUND, NOT_FOUND_MSG, NULL );
     }
     else
     {
         if( !mpd_send_list_queue_meta( conn ) )
-            return error( 500, "Internal Server Error", NULL );
+            return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
     }
 
     // print the playlist
@@ -533,10 +542,10 @@ int sendPlaylist( const char *arg )
 int loadPlaylist( const char *arg )
 {
     if( connectMPD( ) )
-        return error( 500, "Internal Server Error", NULL );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
     mpd_run_clear( conn );
     if( !mpd_run_load( conn, arg ) )
-        return error( 404, "Not found", NULL );
+        return error( NOT_FOUND, NOT_FOUND_MSG, NULL );
 #ifdef AUTOPLAY
     mpd_run_play_pos( conn, 0 );  // try to autoplay the first song
 #endif
@@ -547,7 +556,7 @@ int loadPlaylist( const char *arg )
 int loadMusic( const char *arg )
 {
     if( connectMPD( ) )
-        return error( 500, "Internal Server Error", NULL );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
     mpd_run_clear( conn );
     mpd_search_add_db_songs( conn, false );
     mpd_search_add_any_tag_constraint( conn, MPD_OPERATOR_DEFAULT, "" );    // searches must have some constraint, this just matches everything
@@ -558,7 +567,7 @@ int loadMusic( const char *arg )
     //mpd_search_add_sort_tag( conn, MPD_TAG_ARTIST_SORT, false );    // are multiple sort tags supported?
     //mpd_search_add_sort_tag( conn, MPD_TAG_TITLE, false );
     if( !mpd_search_commit( conn ) || !mpd_response_finish( conn ) )
-        return error( 404, "Not found", NULL );
+        return error( NOT_FOUND, NOT_FOUND_MSG, NULL );
 #ifdef AUTOPLAY
     mpd_run_play_pos( conn, 0 );  // try to autoplay the first song
 #endif
@@ -569,17 +578,17 @@ int loadMusic( const char *arg )
 int add( char *arg )
 {
     if( connectMPD( ) || !mpd_command_list_begin( conn, false ) )
-        return error( 500, "Internal Server Error", NULL );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
     char *url;
     while( (url = strsep( &arg, "|" )) )
     {
         if( !mpd_send_add( conn, url ) )
-            return error( 404, "Not found", NULL );
+            return error( NOT_FOUND, NOT_FOUND_MSG, NULL );
     }
 
     if( !mpd_command_list_end( conn ) )
-        return error( 404, "Not found", NULL );
+        return error( NOT_FOUND, NOT_FOUND_MSG, NULL );
 
     mpd_response_finish( conn );
     return sendPlaylist( NULL );
@@ -589,9 +598,9 @@ int add( char *arg )
 int sendPassword( const char *arg )
 {
     if( connectMPD( ) )
-        return error( 500, "Internal Server Error", NULL );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
     if( !mpd_run_password( conn, arg ) )
-        return error( 403, "Forbidden", NULL );
+        return error( FORBIDDEN, FORBIDDEN_MSG, NULL );
     return 0;
 }
 
@@ -603,7 +612,7 @@ int sendStatistics( )
     time_t t;
 
     if( connectMPD( ) || !(stat = mpd_run_stats( conn )) )
-        return error( 500, "Internal Server Error", NULL );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
 
     output_start( );
     fputs( "\"stats\":{", output );
@@ -634,7 +643,7 @@ int rebootSystem( const int mode )
     /* Connect to the system bus (adapted from http://0pointer.net/blog/the-new-sd-bus-api-of-systemd.html) */
     r = sd_bus_open_system( &bus );
     if( r < 0 )
-        return error( 500, "Internal Server Error", strerror( -r ) );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, strerror( -r ) );
     r = sd_bus_call_method( bus, "org.freedesktop.systemd1", "/org/freedesktop/systemd1",
                            "org.freedesktop.systemd1.Manager",
                            mode == RB_POWER_OFF ? "PowerOff" : "Reboot",
@@ -642,7 +651,7 @@ int rebootSystem( const int mode )
     if( r < 0 )
     {
         sd_bus_unref( bus );
-        r = error( 500, "Internal Server Error", err.message );
+        r = error( SERVER_ERROR, SERVER_ERROR_MSG, err.message );
         sd_bus_error_free( &err );
         return r;
     }
@@ -651,7 +660,7 @@ int rebootSystem( const int mode )
     usleep( REBOOT_WAIT );     // wait for buffers to flush. Not done in systemctl reboot.
     reboot( mode );
 #endif
-    return error( 500, "Internal Server Error", "Shutdown or reboot failed" );     // not reached
+    return error( SERVER_ERROR, SERVER_ERROR_MSG, "Shutdown or reboot failed" );     // not reached
 }
 
 // ========= CGI command handlers
@@ -752,7 +761,7 @@ int parseCommand( char *cmd )
     else
     {
         // No idea what you want from me
-        return error( 400, "Bad Request", "Request not understood" );
+        return error( BAD_REQUEST, BAD_REQUEST_MSG, "Request not understood" );
     }
 }
 
@@ -762,7 +771,7 @@ int handleQuery( const char *query )
     // duplicate query string so it is writeable
     char *arg = strdup( query );
     if( arg == NULL )
-        return error( 500, "Internal Server Error", "Request failed" );
+        return error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
 
     // handle each request separately
     char *var, *str = arg;
@@ -772,7 +781,7 @@ int handleQuery( const char *query )
         // URL decode argument
         char *argdec = urldecode( var );
         if( argdec == NULL )
-            rc = error( 500, "Internal Server Error", "Request failed" );
+            rc = error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
         if( !rc ) rc = parseCommand( argdec );
         free( argdec );
     }
@@ -791,14 +800,16 @@ int handleQuery( const char *query )
 // Main CGI program entry point
 int main( int argc, char *argv[] )
 {
+    // Send all output to stdout
     output = stdout;
+
     // set up a large output buffer to allow errors occuring later to purge previous output
     setvbuf( output, NULL, _IOFBF, OUTPUT_BUFFER_SIZE );
 
     // get query string from CGI environment
     const char *env = getenv( "QUERY_STRING" );
     if( env == NULL )
-        return error( 400, "Bad Request", "Request incomplete" );
+        return error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
 
     // handle query and disconnect MPD afterwards
     int rc = handleQuery( env );
