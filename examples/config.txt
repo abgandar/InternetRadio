@@ -44,7 +44,9 @@ hdmi_blanking=2
 
 #uncomment to overclock the arm. 700 MHz is the default.
 #arm_freq=1000
-arm_freq_min=300        # sets min frequency
+arm_freq_min=300        # sets min frequency (default: 700)
+core_freq_min=200	# sets min core frequency (default: 250)
+sdram_freq_min=300	# sets min SDRAM frequency (default: 400)
 
 # Uncomment some or all of these to enable the optional hardware interfaces
 dtparam=i2c_arm=off
