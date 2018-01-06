@@ -29,5 +29,6 @@ COMMIT
 -A INPUT -p tcp -m tcp --dport 445 -m state --state NEW -j ACCEPT
 -A INPUT -p tcp -m tcp --dport 9000 -m state --state NEW -j ACCEPT
 -A INPUT -p tcp -m tcp --dport 6600 -m state --state NEW -j ACCEPT
+-A INPUT -p icmp --icmp-type 8 -j ACCEPT
 COMMIT
 # Completed on Sat Jan  6 13:45:53 2018
