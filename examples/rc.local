@@ -9,7 +9,6 @@
 # In order to enable or disable this script just change the execution
 # bits.
 #
-# By default this script does nothing.
 
 # Print the IP address
 _IP=$(hostname -I) || true

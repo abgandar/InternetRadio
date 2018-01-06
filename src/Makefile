@@ -4,7 +4,7 @@ CPPFLAGS += -Wall -O2 -s -ffunction-sections -fdata-sections -Wl,--gc-sections
 DATESTAMP := `date +"%d%m%Y"`
 GITREV := `git rev-parse HEAD`
 
-all: ir ir.cgi ir.html
+all: ir.cgi ir ir.html
 
 ir.cgi: ir.c config.h
 	$(CC) -o $@ $< $(CPPFLAGS) -D CGI $(LDFLAGS) $(LDLIBS)
@@ -25,6 +25,7 @@ install: ir ir.cgi ir.html
 
 uninstall:
 	@rm /usr/lib/cgi-bin/ir.cgi
+	@rm /usr/local/bin/ir
 	@rm /var/www/html/ir.html /var/www/html/radio.ico /var/www/html/radio-0-75x.png /var/www/html/radio-1x.png /var/www/html/radio-2-6x.png /var/www/html/radio-2x.png /var/www/html/radio-4x.png /var/www/html/radio-5-3x.png
 	@rm "/var/lib/mpd/playlists/Radio Auswahl.m3u" "/var/lib/mpd/playlists/Radio International.m3u" "/var/lib/mpd/playlists/Radio Deutschland.m3u"
 
