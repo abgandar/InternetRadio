@@ -56,6 +56,7 @@ static FILE *outbuf = NULL;
 
 // (HTTP) error numbers and messages
 static const int SUCCESS = 0;
+static const int WAIT_FOR_DATA = 1;
 static const char* const SERVER_ERROR_MSG = "Internal server error";
 static const int SERVER_ERROR = 500;
 static const char* const BAD_REQUEST_MSG = "Bad request";
@@ -882,10 +883,14 @@ int handle_head( req *c )
 {
     // did we finish reading the headers?
     char *tmp = strstr( c->head, c->rnrn ? "\r\n\r\n" : "\n\n" );
-    if( tmp == NULL ) return 0;         // need more data
+    if( tmp == NULL ) return WAIT_FOR_DATA;         // need more data
     c->body = tmp + 2*(1 + c->rnrn);    // this is where the body starts (2 or 4 forward)
     c->cl += c->body - c->data;         // length of the headers alone
 
+#ifdef DEBUG
+    printf( "Headers: %s\n", c->head );
+#endif
+    
     // hooray! we have headers, parse them
     char *p = c->head;
     while( *p )
@@ -914,8 +919,11 @@ int handle_head( req *c )
 // parse and handle request body
 int handle_body( req *c )
 {
-    if( c->len < c->cl ) return 0; // request is still expecting data
-    
+    if( c->len < c->cl ) return WAIT_FOR_DATA; // request is still expecting data
+#ifdef DEBUG
+    printf( "Body: %s\n", c->body );
+#endif
+
     // check what to do with this requst
     if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
     {
@@ -941,7 +949,7 @@ int handle_body( req *c )
     if( rem > 0 )
         memmove( c->data, c->data+c->cl, rem );
     c->len -= c->cl;
-    c->head = c->body = NULL;
+    c->version = c->method = c->url = c->head = c->body = NULL;
     c->cl = 0;
 
     return 0;
@@ -950,20 +958,13 @@ int handle_body( req *c )
 // attempt to handle a request (if it is ready to be handled)
 int handle_request( req *c )
 {
-    // process depending on where in request stage we are
-    if( c->body )
-        return handle_body( c );
-
-    if( c->head )
-        return handle_head( c );
-
-    // this is a brand new request. Try to read the request line
+    // Try to read the request line
     c->rnrn = 1;
     char *tmp = strstr( c->data, "\r\n" );
     if( tmp == NULL )
     {
         tmp = strstr( c->data, "\n" );
-        if( tmp == NULL ) return 0;     // we need more data
+        if( tmp == NULL ) return WAIT_FOR_DATA;     // we need more data
         c->rnrn = 0;
     }
 
@@ -971,6 +972,9 @@ int handle_request( req *c )
     *tmp = '\0';
     c->head = tmp+1+c->rnrn;  // where the headers begin
 
+#ifdef DEBUG
+    printf( "Request:\n%s", c->data );
+#endif
     // parse request line: version
     tmp += strspn( c->data, " \t" ); // skip whitespace
     c->version = tmp;
@@ -992,6 +996,48 @@ int handle_request( req *c )
     // url
     tmp += strspn( tmp, " \t" );
     c->url = tmp;
+
+#ifdef DEBUG
+    printf( "Version: %s\tMethod: %s\tURL: %s\n", c->version, c->method, c->url );
+#endif
+
+    return 0;
+}
+
+// find out where in the rquest phase this request is and try to handle new data accordingly
+handle_data( req *c )
+{
+    int rc;
+    bool cont;
+
+    do {
+#ifdef DEBUG
+        printf( "Data:\n%s", c->data );
+#endif
+        cont = false;
+
+        // request is new, waiting for request line
+        if( !c->head )
+        {
+            rc = handle_request( c );
+            if( rc ) return rc;
+        }
+
+        // request is waiting for headers to arrive
+        if( c->head )
+        {
+            int rc = handle_head( c );
+            if( rc ) return rc;
+        }
+
+        // request is waiting for body to arrive
+        if( c->body )
+        {
+            int rc = handle_body( c );
+            if( rc ) return rc;
+            cont = true;    // repeat with (potentially) next pipelined request
+        }
+    } while( cont );
 
     return 0;
 }
@@ -1039,8 +1085,7 @@ int server_main( int argc, char *argv[] )
     serverSocket = socket( PF_INET, SOCK_STREAM, 0 );
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons( SERVER_PORT );
-    //inet_pton( AF_INET, SERVER_IP, &serverAddr.sin_addr.s_addr );
-    serverAddr.sin_addr.s_addr = INADDR_ANY;
+    inet_pton( AF_INET, SERVER_IP, &serverAddr.sin_addr.s_addr );
     bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) );
 
     if( listen( serverSocket, 5 ) < 0 )
