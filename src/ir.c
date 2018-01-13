@@ -868,8 +868,9 @@ int handle_cgi( int fd, char *query )
 
     // write output
     if( !rc ) rc = output_end( );
-    char tmp[256];
-    int tmp_size = snprintf( tmp, 256, rc ? "HTTP/1.1 500 Server error\r\nContent-Length: %d\r\n" : "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n", obuf_size );
+    char tmp[256], *body = strstr( obuf, "\r\n\r\n" )+4;
+    if( body == 4 ) c = obuf;
+    int tmp_size = snprintf( tmp, 256, rc ? "HTTP/1.1 500 Server error\r\nContent-Length: %d\r\n" : "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n", obuf_size-(c-obuf) );
     write( fd, tmp, tmp_size );
     write( fd, obuf, obuf_size );   // either error or output_end will have closed output buffer stream
 
@@ -948,6 +949,7 @@ int handle_body( req *c )
     const unsigned int rem = c->len-c->cl;
     if( rem > 0 )
         memmove( c->data, c->data+c->cl, rem );
+    c->data[rem] = '\0';
     c->len -= c->cl;
     c->version = c->method = c->url = c->head = c->body = NULL;
     c->cl = 0;
