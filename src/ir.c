@@ -970,11 +970,11 @@ int handle_request( req *c )
 
     // zero terminate request line and mark header position
     *tmp = '\0';
-    tmp += 1+c->rnrn;
-    c->head = tmp;  // where the headers begin
+    c->head = tmp+1+c->rnrn;  // where the headers begin
 
+    tmp = c->data;
 #ifdef DEBUG
-    printf( "Request:\n%s", c->data );
+    printf( "Request:\n%s\n", tmp );
 #endif
     // parse request line: version
     tmp += strspn( c->data, " \t" ); // skip whitespace
