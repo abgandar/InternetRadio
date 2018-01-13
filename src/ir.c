@@ -1142,6 +1142,9 @@ int server_main( int argc, char *argv[] )
                     reqs[new].data[0] = '\0';
                     reqs[new].fd = new;
                     reqs[new].version = reqs[new].method = reqs[new].url = reqs[new].head = reqs[new].body = NULL;
+#ifdef DEBUG
+                    printf( "New connection\n" );
+#endif
                 }
                 else
                 {
@@ -1155,6 +1158,9 @@ int server_main( int argc, char *argv[] )
                         // free previous request data
                         free( reqs[i].data );
                         bzero( &reqs[i], sizeof(req) );
+#ifdef DEBUG
+                        printf( "Close connection\n" );
+#endif
                     }
                 }
             }
