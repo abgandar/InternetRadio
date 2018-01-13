@@ -970,7 +970,8 @@ int handle_request( req *c )
 
     // zero terminate request line and mark header position
     *tmp = '\0';
-    c->head = tmp+1+c->rnrn;  // where the headers begin
+    tmp += 1+c->rnrn;
+    c->head = tmp;  // where the headers begin
 
 #ifdef DEBUG
     printf( "Request:\n%s", c->data );
@@ -1071,7 +1072,7 @@ int read_from_client( req *c )
     c->data[c->len] = '\0';
 
     // try to handle the request
-    return handle_request( c );
+    return handle_data( c );
 }
 
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
