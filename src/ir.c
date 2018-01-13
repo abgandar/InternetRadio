@@ -976,17 +976,8 @@ int handle_request( req *c )
 #ifdef DEBUG
     printf( "Request:\n%s\n", tmp );
 #endif
-    // parse request line: version
+    // parse request line: method
     tmp += strspn( c->data, " \t" ); // skip whitespace
-    c->version = tmp;
-    tmp += strcspn( tmp, " \t" );
-    if( *tmp )
-    {
-        *tmp = '\0';
-        tmp++;
-    }
-    // method
-    tmp += strspn( tmp, " \t" );
     c->method = tmp;
     tmp += strcspn( tmp, " \t" );
     if( *tmp )
@@ -994,9 +985,18 @@ int handle_request( req *c )
         *tmp = '\0';
         tmp++;
     }
-    // url
+    // uri
     tmp += strspn( tmp, " \t" );
-    c->url = tmp;
+    c->uri = tmp;
+    tmp += strcspn( tmp, " \t" );
+    if( *tmp )
+    {
+        *tmp = '\0';
+        tmp++;
+    }
+    // version
+    tmp += strspn( tmp, " \t" );
+    c->version = tmp;
 
 #ifdef DEBUG
     printf( "Version: %s\tMethod: %s\tURL: %s\n", c->version, c->method, c->url );
