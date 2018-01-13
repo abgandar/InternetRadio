@@ -291,7 +291,7 @@ int error( const int code, const char* msg, const char* message )
         m = jsonencode( message );
     
     rewind( outbuf );
-    fprintf( outbuf, "Status: %d %s\nContent-type: application/json\nCache-control: no-cache\n\n", code, msg );
+    fprintf( outbuf, "Status: %d %s\r\nContent-type: application/json\r\nCache-control: no-cache\r\n\r\n", code, msg );
     fprintf( outbuf, "{\"status\":%d,\"message\":\"%s\"}\n", code, m );
     fclose( outbuf );
     free( m );
@@ -309,7 +309,7 @@ int output_start( char **obuf, size_t *obuf_size )
     fseek( outbuf, SEEK_SET, 4095 );    // allow for the implicit extra NULL
     rewind( outbuf );
 
-    fputs( "Content-type: application/json\nCache-control: no-cache\n\n", outbuf );     // header
+    fputs( "Content-type: application/json\r\nCache-control: no-cache\r\n\r\n", outbuf );     // header
     fputs( "{\"status\":200,\"message\":\"Request successful\",", outbuf );             // start JSON output
 
     return SUCCESS;
@@ -869,7 +869,7 @@ int handle_cgi( int fd, char *query )
     // write output
     if( !rc ) rc = output_end( );
     char tmp[256];
-    int tmp_size = snprintf( tmp, 256, rc ? "HTTP/1.1 500 Server error\r\nContent-Length: %d\r\n\r\n" : "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n", obuf_size );
+    int tmp_size = snprintf( tmp, 256, rc ? "HTTP/1.1 500 Server error\r\nContent-Length: %d\r\n" : "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n", obuf_size );
     write( fd, tmp, tmp_size );
     write( fd, obuf, obuf_size );   // either error or output_end will have closed output buffer stream
 
