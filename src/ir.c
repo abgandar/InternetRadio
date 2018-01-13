@@ -987,7 +987,7 @@ int handle_request( req *c )
     }
     // uri
     tmp += strspn( tmp, " \t" );
-    c->uri = tmp;
+    c->url = tmp;
     tmp += strcspn( tmp, " \t" );
     if( *tmp )
     {
