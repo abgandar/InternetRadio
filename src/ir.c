@@ -869,7 +869,7 @@ int handle_cgi( int fd, char *query )
     // write output
     if( !rc ) rc = output_end( );
     char tmp[256], *body = strstr( obuf, "\r\n\r\n" )+4;
-    if( body == 4 ) body = obuf;
+    if( body == (void*)4 ) body = obuf;
     int tmp_size = snprintf( tmp, 256, rc ? "HTTP/1.1 500 Server error\r\nContent-Length: %d\r\n" : "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n", obuf_size-(body-obuf) );
     write( fd, tmp, tmp_size );
     write( fd, obuf, obuf_size );   // either error or output_end will have closed output buffer stream
