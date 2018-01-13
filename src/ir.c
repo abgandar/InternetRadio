@@ -808,7 +808,7 @@ int cgi_main( int argc, char *argv[] )
         if( argc < 2 )
             rc = error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
         else
-            env = argv[1]
+            env = argv[1];
     }
 
     if( env )
