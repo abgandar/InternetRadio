@@ -1091,7 +1091,7 @@ int server_main( int argc, char *argv[] )
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons( SERVER_PORT );
     inet_pton( AF_INET, SERVER_IP, &serverAddr.sin_addr.s_addr );
-    if( !bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) ) )
+    if( bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) ) )
     {
         perror( "bind" );
         exit( EXIT_FAILURE );
