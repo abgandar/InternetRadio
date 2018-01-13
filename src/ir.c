@@ -286,7 +286,7 @@ int error( const int code, const char* msg, const char* message )
     
     rewind( outbuf );
     fprintf( outbuf, "Status: %d %s\nContent-type: application/json\nCache-control: no-cache\n\n", code, msg );
-    fprintf( outbuf, "{\"status\":%d,\"message\":\"%s\"}", code, m );
+    fprintf( outbuf, "{\"status\":%d,\"message\":\"%s\"}\n", code, m );
     fclose( outbuf );
     free( m );
     
@@ -372,7 +372,7 @@ int output_end( )
         fputs( "state:{}", outbuf );  // need to put this to prevent trailing comma
     }
 
-    fputs( "}", outbuf );  // end JSON output
+    fputs( "}\n", outbuf );  // end JSON output
     fclose( outbuf );
 
     return SUCCESS;
@@ -800,11 +800,18 @@ int cgi_main( int argc, char *argv[] )
     // get query string from CGI environment and duplicate so it is writeable
     int rc = 0;
     char *arg = NULL;
-    const char *env = getenv( "QUERY_STRING" );
+    char *env = getenv( "QUERY_STRING" );
 
     if( env == NULL )
-        rc = error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
-    else
+    {
+        // attempt to use command line argument(s) to simplify use as stand alone tool (similar to mpc)
+        if( argc < 2 )
+            rc = error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
+        else
+            env = argv[1]
+    }
+
+    if( env )
     {
         arg = strdup( env );
         if( arg == NULL )
