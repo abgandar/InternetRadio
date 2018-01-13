@@ -844,7 +844,7 @@ typedef struct {
     char *data;             // data pointer
     unsigned int max, len;  // max allocated length, current length
     unsigned int cl;        // content length (if known)
-    char *method, *url, *head, *body;      // request pointers
+    char *version, *method, *url, *head, *body;      // request pointers
     int rnrn;               // flag if the line delimiter is \r\n (1) or \n (0)
     int fd;                 // socket associated with this request
 } req;
@@ -862,7 +862,7 @@ int handle_cgi( int fd, char *query )
     }
 
     int rc = 0;
-    if( !rc ) rc = handleQuery( tmp );
+    if( !rc ) rc = handleQuery( query );
 
     // write output
     if( !rc ) rc = output_end( );
@@ -873,10 +873,11 @@ int handle_cgi( int fd, char *query )
 
     // clean up
     free( obuf );
+    return 0;
 }
 
 // parse request headers
-int handle_headers( req *c )
+int handle_head( req *c )
 {
     // did we finish reading the headers?
     char *tmp = strstr( c->head, c->rnrn ? "\r\n\r\n" : "\n\n" );
@@ -918,7 +919,7 @@ int handle_body( req *c )
     if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
     {
         char *query = c->url+15;
-        if( *query == '?' ) tmp++;
+        if( *query == '?' ) query++;
 
         if( strcmp( c->method, "POST" ) == 0 )
             query = c->body;
@@ -931,7 +932,7 @@ int handle_body( req *c )
     //}
     else
     {
-        write( fd, "HTTP/1.1 404 Not found\r\nContent-Length: 15\r\n\r\n404 - Not found", 62 );
+        write( c->fd, "HTTP/1.1 404 Not found\r\nContent-Length: 15\r\n\r\n404 - Not found", 62 );
     }
 
     // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
@@ -970,25 +971,25 @@ int handle_request( req *c )
     c->head = tmp+1+c->rnrn;  // where the headers begin
 
     // parse request line: version
-    tmp = strspn( c->data, " \t" ); // skip whitespace
+    tmp += strspn( c->data, " \t" ); // skip whitespace
     c->version = tmp;
-    tmp = strcspn( tmp, " \t" );
+    tmp += strcspn( tmp, " \t" );
     if( *tmp )
     {
         *tmp = '\0';
         tmp++;
     }
     // method
-    tmp = strspn( tmp, " \t" );
+    tmp += strspn( tmp, " \t" );
     c->method = tmp;
-    tmp = strcspn( tmp, " \t" );
+    tmp += strcspn( tmp, " \t" );
     if( *tmp )
     {
         *tmp = '\0';
-        tmp ++
+        tmp++;
     }
     // url
-    tmp = strspn( tmp, " \t" );
+    tmp += strspn( tmp, " \t" );
     c->url = tmp;
 
     return 0;
@@ -1047,7 +1048,7 @@ int server_main( int argc, char *argv[] )
     }
 
     // initialize active sockets set
-    client clients[FD_SETSIZE] = { 0 };  // data buffer read from clients
+    req reqs[FD_SETSIZE] = { 0 };  // data buffer read from clients
     fd_set active_fd_set, read_fd_set;
     FD_ZERO( &active_fd_set );
     FD_SET( sock, &active_fd_set );
@@ -1069,9 +1070,9 @@ int server_main( int argc, char *argv[] )
                 if( i == serverSocket )
                 {
                     // Connection request on original socket
-                    addr_size = sizeof(clientname);
+                    addr_size = sizeof(serverAddr);
                     const int new = accept( serverSocket, (struct sockaddr *) &serverAddr, &addr_size );
-                    if( new < 0 )
+                    if( new < 0 || new >= FD_SETSIZE )
                     {
                         perror( "accept" );
                         exit( EXIT_FAILURE );
@@ -1079,32 +1080,32 @@ int server_main( int argc, char *argv[] )
                     FD_SET( new, &active_fd_set );
 
                     // allocate/clear some memory for reading request
-                    if( !clients[new].data )
+                    if( !reqs[new].data )
                     {
-                        if( !(clients[new].data = malloc( 4096 )) )
+                        if( !(reqs[new].data = malloc( 4096 )) )
                         {
                             perror( "malloc" );
                             exit( EXIT_FAILURE );
                         }
-                        clients[new].max = 4096;
+                        reqs[new].max = 4096;
                     }
-                    clients[new].len = 0;
-                    clients[new].cl = 0;
-                    clients[new].data[0] = '\0';
-                    clients[new].fd = new;
+                    reqs[new].len = 0;
+                    reqs[new].cl = 0;
+                    reqs[new].data[0] = '\0';
+                    reqs[new].fd = new;
                 }
                 else
                 {
                     // data arriving from active socket
-                    if( read_from_client( i ) < 0 )
+                    if( read_from_client( reqs[i] ) < 0 )
                     {
                         // close socket
                         close( i );
                         FD_CLR( i, &active_fd_set );
 
                         // free previous request data
-                        free( clients[i].data );
-                        clients[i] = { 0 };
+                        free( reqs[i].data );
+                        reqs[i] = { 0 };
                     }
                 }
             }
