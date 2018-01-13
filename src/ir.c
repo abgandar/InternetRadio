@@ -1005,7 +1005,7 @@ int handle_request( req *c )
 }
 
 // find out where in the rquest phase this request is and try to handle new data accordingly
-handle_data( req *c )
+int handle_data( req *c )
 {
     int rc;
     bool cont;
