@@ -1036,7 +1036,7 @@ int server_main( int argc, char *argv[] )
 
     serverSocket = socket( PF_INET, SOCK_STREAM, 0 );
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons( 80 );
+    serverAddr.sin_port = htons( 8080 );
     inet_pton( AF_INET, "127.0.0.1", &serverAddr.sin_addr.s_addr );
     bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) );
 
