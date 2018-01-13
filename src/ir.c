@@ -42,6 +42,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <netdb.h>
 #include <sys/reboot.h>
 #ifdef SYSTEMD
@@ -1051,7 +1052,7 @@ int server_main( int argc, char *argv[] )
     req reqs[FD_SETSIZE] = { 0 };  // data buffer read from clients
     fd_set active_fd_set, read_fd_set;
     FD_ZERO( &active_fd_set );
-    FD_SET( sock, &active_fd_set );
+    FD_SET( serverSocket, &active_fd_set );
 
     while( true )
     {
@@ -1097,7 +1098,7 @@ int server_main( int argc, char *argv[] )
                 else
                 {
                     // data arriving from active socket
-                    if( read_from_client( reqs[i] ) < 0 )
+                    if( read_from_client( &reqs[i] ) < 0 )
                     {
                         // close socket
                         close( i );
@@ -1105,7 +1106,7 @@ int server_main( int argc, char *argv[] )
 
                         // free previous request data
                         free( reqs[i].data );
-                        reqs[i] = { 0 };
+                        bzero( &reqs[i], sizeof(req) );
                     }
                 }
             }
