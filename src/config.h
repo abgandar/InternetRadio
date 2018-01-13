@@ -5,3 +5,5 @@
 
 #define SERVER_PORT             8080                        // port to bind to
 #define SERVER_IP               "0.0.0.0"                   // IP address of interface to bind to
+
+#define DEBUG                   1                           // include debug output

@@ -1012,7 +1012,7 @@ int handle_data( req *c )
 
     do {
 #ifdef DEBUG
-        printf( "Data:\n%s", c->data );
+        printf( "Data:\n%s\n", c->data );
 #endif
         cont = false;
 
@@ -1140,6 +1140,7 @@ int server_main( int argc, char *argv[] )
                     reqs[new].cl = 0;
                     reqs[new].data[0] = '\0';
                     reqs[new].fd = new;
+                    reqs[new].version = reqs[new].method = reqs[new].url = reqs[new].head = reqs[new].body = NULL;
                 }
                 else
                 {
