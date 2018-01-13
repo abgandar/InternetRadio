@@ -1039,7 +1039,7 @@ int server_main( int argc, char *argv[] )
     serverSocket = socket( PF_INET, SOCK_STREAM, 0 );
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons( SERVER_PORT );
-    inet_pton( AF_INET, SERVER_IP, &serverAddr.sin_addr.s_addr );
+    //inet_pton( AF_INET, SERVER_IP, &serverAddr.sin_addr.s_addr );
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) );
 
