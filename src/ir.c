@@ -889,7 +889,7 @@ int handle_head( req *c )
     c->cl += c->body - c->data;         // length of the headers alone
 
 #ifdef DEBUG
-    printf( "Headers: %s\n", c->head );
+    printf( "===> Headers:\n%s\n", c->head );
 #endif
     
     // hooray! we have headers, parse them
@@ -922,7 +922,7 @@ int handle_body( req *c )
 {
     if( c->len < c->cl ) return WAIT_FOR_DATA; // request is still expecting data
 #ifdef DEBUG
-    printf( "Body: %s\n", c->body );
+    printf( "===> Body:\n%s\n", c->body );
 #endif
 
     // check what to do with this requst
@@ -976,7 +976,7 @@ int handle_request( req *c )
 
     tmp = c->data;
 #ifdef DEBUG
-    printf( "Request:\n%s\n", tmp );
+    printf( "===> Request:\n%s\n", tmp );
 #endif
     // parse request line: method
     tmp += strspn( c->data, " \t" ); // skip whitespace
@@ -1001,7 +1001,7 @@ int handle_request( req *c )
     c->version = tmp;
 
 #ifdef DEBUG
-    printf( "Version: %s\tMethod: %s\tURL: %s\n", c->version, c->method, c->url );
+    printf( "===> Version: %s\tMethod: %s\tURL: %s\n", c->version, c->method, c->url );
 #endif
 
     return 0;
@@ -1014,9 +1014,6 @@ int handle_data( req *c )
     bool cont;
 
     do {
-#ifdef DEBUG
-        printf( "Data:\n%s\n", c->data );
-#endif
         cont = false;
 
         // request is new, waiting for request line
@@ -1085,11 +1082,20 @@ int server_main( int argc, char *argv[] )
     struct sockaddr_storage serverStorage = { 0 };
     socklen_t addr_size = sizeof(serverStorage);
 
-    serverSocket = socket( PF_INET, SOCK_STREAM, 0 );
+    if( !(serverSocket = socket( PF_INET, SOCK_STREAM, 0 )) )
+    {
+        perror( "socket" );
+        exit( EXIT_FAILURE );
+    }
+
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons( SERVER_PORT );
     inet_pton( AF_INET, SERVER_IP, &serverAddr.sin_addr.s_addr );
-    bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) );
+    if( !bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) ) )
+    {
+        perror( "bind" );
+        exit( EXIT_FAILURE );
+    }
 
     if( listen( serverSocket, 5 ) < 0 )
     {
