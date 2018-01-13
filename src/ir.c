@@ -154,8 +154,12 @@ char* urldecode( const char *str )
             q++;
         }
 
-        // literal copy up to next % or end of string
-        for( ; *p != '\0' && *p != '%'; p++, q++ ) *q = *p;
+        // copy up to next % or end of string, replacing + by space (for POST request-like decoding)
+        for( ; *p != '\0' && *p != '%'; p++, q++ )
+        {
+            *q = *p;
+            if( *q == '+' ) *q = ' ';
+        }
     }
     *q = '\0';
 
@@ -835,13 +839,163 @@ int cgi_main( int argc, char *argv[] )
 
 // ========= Standalone mini HTTP/1.1 server
 
-/*
+/* */
 typedef struct {
-    unsigned int max, len, cl;
-    char *data;
-} client;
+    char *data;             // data pointer
+    unsigned int max, len;  // max allocated length, current length
+    unsigned int cl;        // content length (if known)
+    char *method, *url, *head, *body;      // request pointers
+    int rnrn;               // flag if the line delimiter is \r\n (1) or \n (0)
+    int fd;                 // socket associated with this request
+} req;
 
-int read_from_client( int fd, client *c )
+// handle a CGI query with given query string
+int handle_cgi( int fd, char *query )
+{
+    // open output buffer
+    char *obuf = NULL;
+    size_t obuf_size = 0;
+    if( output_start( &obuf, &obuf_size ) )
+    {
+        perror( "output_start" );
+        exit( EXIT_FAILURE );
+    }
+
+    int rc = 0;
+    if( !rc ) rc = handleQuery( tmp );
+
+    // write output
+    if( !rc ) rc = output_end( );
+    char tmp[256];
+    int tmp_size = snprintf( tmp, 256, rc ? "HTTP/1.1 500 Server error\r\nContent-Length: %d\r\n\r\n" : "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n", obuf_size );
+    write( fd, tmp, tmp_size );
+    write( fd, obuf, obuf_size );   // either error or output_end will have closed output buffer stream
+
+    // clean up
+    free( obuf );
+}
+
+// parse request headers
+int handle_headers( req *c )
+{
+    // did we finish reading the headers?
+    char *tmp = strstr( c->head, c->rnrn ? "\r\n\r\n" : "\n\n" );
+    if( tmp == NULL ) return 0;         // need more data
+    c->body = tmp + 2*(1 + c->rnrn);    // this is where the body starts (2 or 4 forward)
+    c->cl += c->body - c->data;         // length of the headers alone
+
+    // hooray! we have headers, parse them
+    char *p = c->head;
+    while( *p )
+    {
+        // find end of current header and zero terminate it
+        tmp = strstr( p, c->rnrn ? "\r\n" : "\n" );
+        if( tmp )
+        {
+            *tmp = '\0';
+            tmp++;
+            if( c->rnrn )
+            {
+                *tmp = '\0';
+                tmp++;
+            }
+        }
+        // check for Content-Length header, currently the only one we care about
+        if( strncmp( p, "Content-Length: ", 16 ) == 0 )
+            c->cl += strtol( p+16, NULL, 10 );
+        p = tmp;
+    }
+    
+    return 0;
+}
+
+// parse and handle request body
+int handle_body( req *c )
+{
+    if( c->len < c->cl ) return 0; // request is still expecting data
+    
+    // check what to do with this requst
+    if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
+    {
+        char *query = c->url+15;
+        if( *query == '?' ) tmp++;
+
+        if( strcmp( c->method, "POST" ) == 0 )
+            query = c->body;
+
+        handle_cgi( c->fd, query );
+    }
+    //else if()
+    //{
+    //
+    //}
+    else
+    {
+        write( fd, "HTTP/1.1 404 Not found\r\nContent-Length: 15\r\n\r\n404 - Not found", 62 );
+    }
+
+    // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
+    const unsigned int rem = c->len-c->cl;
+    if( rem > 0 )
+        memmove( c->data, c->data+c->cl, rem );
+    c->len -= c->cl;
+    c->head = c->body = NULL;
+    c->cl = 0;
+
+    return 0;
+}
+
+// attempt to handle a request (if it is ready to be handled)
+int handle_request( req *c )
+{
+    // process depending on where in request stage we are
+    if( c->body )
+        return handle_body( c );
+
+    if( c->head )
+        return handle_head( c );
+
+    // this is a brand new request. Try to read the request line
+    c->rnrn = 1;
+    char *tmp = strstr( c->data, "\r\n" );
+    if( tmp == NULL )
+    {
+        tmp = strstr( c->data, "\n" );
+        if( tmp == NULL ) return 0;     // we need more data
+        c->rnrn = 0;
+    }
+
+    // zero terminate request line and mark header position
+    *tmp = '\0';
+    c->head = tmp+1+c->rnrn;  // where the headers begin
+
+    // parse request line: version
+    tmp = strspn( c->data, " \t" ); // skip whitespace
+    c->version = tmp;
+    tmp = strcspn( tmp, " \t" );
+    if( *tmp )
+    {
+        *tmp = '\0';
+        tmp++;
+    }
+    // method
+    tmp = strspn( tmp, " \t" );
+    c->method = tmp;
+    tmp = strcspn( tmp, " \t" );
+    if( *tmp )
+    {
+        *tmp = '\0';
+        tmp ++
+    }
+    // url
+    tmp = strspn( tmp, " \t" );
+    c->url = tmp;
+
+    return 0;
+}
+
+// read from a socket and store data in request
+int read_from_client( req *c )
 {
     // increase buffer if needed
     int len = c->max - c->len - 1;
@@ -857,9 +1011,9 @@ int read_from_client( int fd, client *c )
     }
 
     // read data
-    int nbytes = read( fd, c->data+c->len, len );
+    int nbytes = read( c->fd, c->data+c->len, len );
     if( nbytes == 0 )
-        return -1;  // nothing to read from this socket, must be closed
+        return -1;  // nothing to read from this socket, must be closed => request finished
     else if( nbytes < 0 )
     {
         perror( "read" );
@@ -868,94 +1022,8 @@ int read_from_client( int fd, client *c )
     c->len += nbytes;
     c->data[c->len] = '\0';
 
-    // did we finish reading the headers for the first time?
-    char *tmp = strstr( c->data, "\r\n\r\n" );
-    if( !c->cl && tmp )
-    {
-        c->cl = (tmp - c->data)+2;  // length of the request + headers
-
-        // parse request line
-        tmp = strstr( c->data, "\r\n" ), *p = c->data;
-        if( tmp )
-        {
-            *tmp = '\0';
-            tmp += 2;
-        }
-        // do stuff with p
-        p = tmp;
-
-        // parse remaining headers line by line
-        do {
-            tmp = strstr( p, "\r\n" );
-            if( tmp )
-            {
-                *tmp = '\0';
-                tmp += 2;
-            }
-            if( *p == '\0' ) break;     // end of headers
-            if( strncmp( p, "Content-Length: ", 16 ) == 0 )
-                c->cl += strtol( p+16, NULL, 10 );
-            p = tmp;
-        } while( tmp );
-    }
-
-    // have we read the full request?
-    if( c->len >= c->cl )
-    {
-        // interpret request
-        char *method = c->data, *url, *version;
-        tmp = strcspn( method, " \t" );
-        if( *tmp )
-        {
-            *tmp = '\0';
-            tmp ++
-        }
-        tmp = strspn( tmp, " \t" );
-        url = tmp;
-        tmp = strcspn( method, " \t" );
-        if( *tmp )
-        {
-            *tmp = '\0';
-            tmp ++
-        }
-        tmp = strspn( tmp, " \t" );
-        version = tmp;
-
-        // send either file content or call handleQuery()
-        if( strncmp( url, "/cgi-bin/ir.cgi", 15 ) == 0 )
-        {
-            tmp = url+15;
-            if( *tmp == '?' ) tmp++;
-
-            // open output buffer
-            char *obuf = NULL;
-            size_t obuf_size = 0;
-            if( output_start( &obuf, &obuf_size ) )
-            {
-                perror( "output_start" );
-                exit( EXIT_FAILURE );
-            }
-            
-            int rc = 0;
-            if( !rc ) rc = handleQuery( tmp );
-            
-            // write output
-            if( !rc ) rc = output_end( );
-            if( !rc )
-                write( fd, "HTTP/1.1 200 OK\r\n", 17 );
-            else
-                write( fd, "HTTP/1.1 500 ERR\r\n", 18 );
-            write( fd, obuf, obuf_size );   // either error or output_end will have closed output buffer stream
-            
-            // clean up
-            free( obuf );
-        }
-        else
-            write( fd, "HTTP/1.1 404 ERR\r\n", 16 );
-        return -1;  // this read is done
-    }
-
-    return 0;
+    // try to handle the request
+    return handle_request( c );
 }
 
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
@@ -1011,18 +1079,19 @@ int server_main( int argc, char *argv[] )
                     FD_SET( new, &active_fd_set );
 
                     // allocate/clear some memory for reading request
-                    if( !clients[i].data )
+                    if( !clients[new].data )
                     {
-                        if( !(clients[i].data = malloc( 4096 )) )
+                        if( !(clients[new].data = malloc( 4096 )) )
                         {
                             perror( "malloc" );
                             exit( EXIT_FAILURE );
                         }
-                        clients[i].max = 4096;
+                        clients[new].max = 4096;
                     }
-                    clients[i].len = 0;
-                    clients[i].cl = 0;
-                    clients[i].data[0] = '\0';
+                    clients[new].len = 0;
+                    clients[new].cl = 0;
+                    clients[new].data[0] = '\0';
+                    clients[new].fd = new;
                 }
                 else
                 {
@@ -1035,10 +1104,7 @@ int server_main( int argc, char *argv[] )
 
                         // free previous request data
                         free( clients[i].data );
-                        clients[i].data = NULL;
-                        clients[i].max = 0;
-                        clients[i].len = 0;
-                        clients[i].cl = 0;
+                        clients[i] = { 0 };
                     }
                 }
             }
@@ -1047,13 +1113,13 @@ int server_main( int argc, char *argv[] )
     disconnectMPD( );
     return SUCCESS;
 }
-*/
+/*
 
 int server_main( int argc, char *argv[] )
 {
     return SUCCESS;
 }
-
+*/
 // select the right main function
 int main( int argc, char *argv[] )
 {
