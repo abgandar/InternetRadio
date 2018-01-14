@@ -916,8 +916,11 @@ static int running = true;
 // signal handler
 void handle_signal( int sig )
 {
-    if( sig == SIGHUP || sig == SIGTERM || sig == SIGINT )
+    if( sig == SIGTERM || sig == SIGINT )
+    {
         running = false;
+        debug_printf( "Received signal\n" );
+    }
 }
 
 // guess a mime type for a filename
@@ -1294,7 +1297,6 @@ int server_main( int argc, char *argv[] )
     sigemptyset( &sa_new.sa_mask );
     sa_new.sa_flags = 0;
     sigaction( SIGINT, &sa_new, NULL );
-    sigaction( SIGHUP, &sa_new, NULL );
     sigaction( SIGTERM, &sa_new, NULL );
     
     // get and set up server socket
