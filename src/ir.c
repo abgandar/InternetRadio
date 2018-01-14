@@ -954,7 +954,7 @@ const char* get_mime( const char* fn )
 // automatically adds Date header and respects HEAD requests
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and cl is non-null, the value
-void write_response( const req *c, const char* headers, const char* body, unsigned int bodylen )
+void write_response( const req *c, char* headers, char* body, unsigned int bodylen )
 {
     char *tmp, str[64];
     int tmp_size;
@@ -992,7 +992,7 @@ void write_response( const req *c, const char* headers, const char* body, unsign
         niov++;
     }
 
-    writev( c->fd, &iov, niov );
+    writev( c->fd, iov, niov );
     free( tmp );
 }
 
