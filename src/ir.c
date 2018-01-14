@@ -27,6 +27,7 @@
  */
 
 #define __USE_POSIX
+#define _GNU_SOURCE         // for asprintf
 
 #include "config.h"
 
@@ -858,7 +859,7 @@ typedef enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M
 typedef enum version_enum { V_UNKNOWN, V_10, V_11 } version;
 
 // some MIME types (note: extensions must be backwards for faster matching later!)
-typedef struct { const char *ext; const char *mime } mimetype;
+typedef struct { const char *ext; const char *mime; } mimetype;
 static const mimetype mimetypes[] = {
     { "gnp.", "image/png" },
     { "lmth.", "text/html" },
@@ -922,11 +923,11 @@ void handle_signal( int sig )
 // guess a mime type for a filename
 const char* get_mime( const char* fn )
 {
-    const char* end = fn+strlen( fn )-1;
+    const char const* end = fn+strlen( fn )-1;
 
     for( int i = 0; mimetypes[i].ext; i++ )
     {
-        char *p, *q;
+        const char *p, *q;
         for( p = end, q = mimetypes[i].ext; *q && p >= fn && *p == *q; p--, q++ );
         if( *q == '\0' )
             return mimetypes[i].mime;
