@@ -1356,6 +1356,29 @@ int server_main( int argc, char *argv[] )
         exit( EXIT_FAILURE );
     }
 
+#ifdef UNPRIV_USER
+    // drop privileges now that init is done
+    if( getuid( ) == 0 )
+    {
+        const struct passwd *pwd = getpwnam( UNPRIV_USER );
+        if( pwd == NULL )
+        {
+            perror( "getpwnam" );
+            exit( EXIT_FAILURE );
+        }
+        if( initgroups( UNPRIV_USER, pwd->pw_gid ) != 0 )
+        {
+            perror( "initgroups" );
+            exit( EXIT_FAILURE );
+        }
+        if( setuid( pwd->pw_uid ) != 0 )
+        {
+            perror( "setuid" );
+            exit( EXIT_FAILURE );
+        }
+    }
+#endif
+
     // initialize active sockets set
     req reqs[FD_SETSIZE] = { 0 };
     fd_set active_fd_set, read_fd_set;
