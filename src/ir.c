@@ -885,9 +885,9 @@ void write_response( const req *c, const char* headers, const char* body, unsign
 
     // prepare additional headers
     if( bodylen == 0 || c->m == HEAD )
-        tmp_size = snprintf( tmp, 256, "Date: %s\r\n\r\n", str );
+        tmp_size = snprintf( tmp, 256, "Connection: Keep-Alive\r\nKeep-Alive: timeout=60, max=999999\r\nDate: %s\r\n\r\n", str );
     else
-        tmp_size = snprintf( tmp, 256, "Content-Length: %d\r\nDate: %s\r\n\r\n", bodylen, str );
+        tmp_size = snprintf( tmp, 256, "Connection: Keep-Alive\r\nKeep-Alive: timeout=60, max=999999\r\nContent-Length: %d\r\nDate: %s\r\n\r\n", bodylen, str );
 
     // write everything
     if( headers )
@@ -978,6 +978,7 @@ int handle_head( req *c )
         // check for known headers we care about (currently only Content-Length)
         if( strncmp( p, "Content-Length: ", 16 ) == 0 )
             c->cl += strtol( p+16, NULL, 10 );
+        // TODO: check for other mandatory headers (Host)
         // point p to next header
         p = tmp;
     }
@@ -988,6 +989,7 @@ int handle_head( req *c )
 // parse and handle request body
 int handle_body( req *c )
 {
+    // TODO: add support for other request types without content length (chunked, old, faulty)
     if( c->len < c->cl ) return WAIT_FOR_DATA; // request is still expecting data
     debug_printf( "===> Body:\n%s\n", c->body );
 
@@ -1006,6 +1008,7 @@ int handle_body( req *c )
 
             handle_cgi( c, query );
         }
+        // TODO: handle file system loads here
         //else if()
         //{
         //
