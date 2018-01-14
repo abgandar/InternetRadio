@@ -996,7 +996,7 @@ int handle_cgi( const req *c )
     if( *query == '?' ) query++;
     if( c->m == M_POST )
         query = c->body;
-    debug_printf( "CGI query string: %s\n", query );
+    debug_printf( "===> CGI query string: %s\n", query );
     int rc = 0;
     if( !rc ) rc = handleQuery( query );
 
@@ -1020,7 +1020,7 @@ int handle_cgi( const req *c )
         body = obuf;
 
     write_response( c, head, body, obuf_size );
-    debug_printf( "CGI response:\n%s\n", body );
+    debug_printf( "===> CGI response:\n%s\n", body );
 
     // clean up
     free( obuf );
