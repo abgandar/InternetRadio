@@ -858,7 +858,8 @@ typedef enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M
 typedef enum version_enum { V_UNKNOWN, V_10, V_11 } version;
 
 // some MIME types (note: extensions must be backwards for faster matching later!)
-static const struct { const char* ext, const char* mime } mimetypes[] = {
+typedef struct { const char* ext, const char* mime } mimetype;
+static const mimetype mimetypes[] = {
     { "gnp.", "image/png" },
     { "lmth.", "text/html" },
     { "oci.", "image/x-icon" },
