@@ -846,6 +846,7 @@ int cgi_main( int argc, char *argv[] )
     return rc;
 }
 
+#ifdef SERVER
 // ========= Standalone mini HTTP/1.1 server
 
 // request method
@@ -1262,13 +1263,8 @@ int server_main( int argc, char *argv[] )
     disconnectMPD( );
     return SUCCESS;
 }
-/*
+#endif
 
-int server_main( int argc, char *argv[] )
-{
-    return SUCCESS;
-}
-*/
 // select the right main function
 int main( int argc, char *argv[] )
 {
