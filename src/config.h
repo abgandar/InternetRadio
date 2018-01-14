@@ -11,3 +11,6 @@
 #define MAX_REQ_LEN             1024*1024*1                 // Maximum allowed size of a request (1 MB)
 #define WWW_DIR                 "/var/www/html"             // directory where to look for files (must end in /)
 #define DIR_INDEX               "ir.html"                   // directory index file used when requesting a directory
+
+#define SETSIZE                 32                          // max number of file descriptors (= concurrent connections)
+//#define SETSIZE                 FD_SETSIZE                  // max number of file descriptors (= concurrent connections)

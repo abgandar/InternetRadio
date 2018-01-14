@@ -1382,7 +1382,7 @@ int server_main( int argc, char *argv[] )
 #endif
 
     // initialize active sockets set
-    req reqs[FD_SETSIZE] = { 0 };
+    req reqs[SETSIZE] = { 0 };
     fd_set active_fd_set, read_fd_set;
     FD_ZERO( &active_fd_set );
     FD_SET( serverSocket, &active_fd_set );
@@ -1391,7 +1391,7 @@ int server_main( int argc, char *argv[] )
     {
         // wait for input
         read_fd_set = active_fd_set;
-        if( select( FD_SETSIZE, &read_fd_set, NULL, NULL, NULL ) < 0 )
+        if( select( SETSIZE, &read_fd_set, NULL, NULL, NULL ) < 0 )
         {
             if( errno == EINTR ) continue;  // ignore interrupted system calls
             perror( "select" );
@@ -1399,7 +1399,7 @@ int server_main( int argc, char *argv[] )
         }
 
         // process input for active sockets
-        for( int i = 0; i < FD_SETSIZE; i++ )
+        for( int i = 0; i < SETSIZE; i++ )
             if( FD_ISSET( i, &read_fd_set ) )
             {
                 if( i == serverSocket )
@@ -1414,7 +1414,7 @@ int server_main( int argc, char *argv[] )
                         perror( "accept" );
                         exit( EXIT_FAILURE );
                     }
-                    else if( new >= FD_SETSIZE )
+                    else if( new >= SETSIZE )
                     {
                         // can't handle FDs this high. Client will have to retry later.
                         write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
