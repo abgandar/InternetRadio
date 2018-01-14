@@ -1033,7 +1033,7 @@ int handle_body( req *c )
         // check what to do with this requst
         if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
             handle_cgi( c );
-        else if( !handle_file( c ) )
+        else if( handle_file( c ) )
             write_response( c, "HTTP/1.1 404 Not found\r\n", "404 - Not found", 0 );
     }
 
