@@ -993,6 +993,7 @@ int handle_file( const req *c )
     memcpy( fn, WWW_DIR, len_WWW_DIR );
     memcpy( fn+len_WWW_DIR, c->url, len_url );
     fn[len_WWW_DIR+len_url] = '\0';
+    debug_printf( "Trying to open file: %s\n", fn );
     
     // open file
     int fd = open( fn, O_RDONLY );
@@ -1007,6 +1008,7 @@ int handle_file( const req *c )
         close( fd );
         return SUCCESS;
     }
+    debug_printf( "File size: %d\n", len );
 
     // write output
     write_response( c, "HTTP/1.1 200 OK\r\n", NULL, len );
