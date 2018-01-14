@@ -857,6 +857,22 @@ typedef enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M
 // request version
 typedef enum version_enum { V_UNKNOWN, V_10, V_11 } version;
 
+// some MIME types (note: extensions must be backwards for faster matching later!)
+static const struct { const char* ext, const char* mime } mimetypes[] = {
+    { "gnp.", "image/png" },
+    { "lmth.", "text/html" },
+    { "oci.", "image/x-icon" },
+    { "ssc.", "text/css" },
+    { "sj.", "text/javascript" },
+    { "gpj.", "image/jpeg" },
+    { "fig.", "image/gif" },
+    { "mth.", "text/html" },
+    { "gepj.", "image/jpeg" },
+    { "txt.", "text/plain" },
+    { "tad.", "application/octet-stream" },
+    { NULL, NULL }
+};
+
 // an active request
 typedef struct {
     int fd;                 // socket associated with this request
@@ -899,7 +915,23 @@ static int running = true;
 void handle_signal( int sig )
 {
     if( sig == SIGHUP || sig == SIGTERM || sig == SIGINT )
-    running = false;
+        running = false;
+}
+
+// guess a mime type for a filename
+const char* get_mime( const char* fn )
+{
+    const char* end = fn+strlen( fn )-1;
+
+    for( int i = 0; mimetypes[i].ext; i++ )
+    {
+        char *p, *q;
+        for( p = end, q = mimetypes[i].ext; *q && p >= fn && *p == *q; p--, q++ );
+        if( *q == '\0' )
+            return mimetypes[i].mime;
+    }
+
+    return "application/octet-stream";  // don't know, fall back to this
 }
 
 // write a response with given body and headers (must include the initial HTTP response header)
@@ -908,7 +940,7 @@ void handle_signal( int sig )
 // if body is NULL, and cl is non-null, the value
 void write_response( const req *c, const char* headers, const char* body, unsigned int bodylen )
 {
-    char tmp[256], str[64];
+    char *tmp, str[64];
     int tmp_size;
 
     // autodetermine length
@@ -921,9 +953,9 @@ void write_response( const req *c, const char* headers, const char* body, unsign
 
     // prepare additional headers
     if( bodylen == 0 || c->m == M_HEAD )
-        tmp_size = snprintf( tmp, 256, "Connection: Keep-Alive\r\nKeep-Alive: timeout=60, max=999999\r\nDate: %s\r\n\r\n", str );
+        tmp_size = asprintf( &tmp, "Connection: Keep-Alive\r\nKeep-Alive: timeout=60, max=999999\r\nDate: %s\r\n\r\n", str );
     else
-        tmp_size = snprintf( tmp, 256, "Connection: Keep-Alive\r\nKeep-Alive: timeout=60, max=999999\r\nContent-Length: %d\r\nDate: %s\r\n\r\n", bodylen, str );
+        tmp_size = asprintf( &tmp, "Connection: Keep-Alive\r\nKeep-Alive: timeout=60, max=999999\r\nContent-Length: %d\r\nDate: %s\r\n\r\n", bodylen, str );
 
     // write everything
     if( headers )
@@ -931,6 +963,7 @@ void write_response( const req *c, const char* headers, const char* body, unsign
     write( c->fd, tmp, tmp_size );
     if( body && c->m != M_HEAD && bodylen > 0 )
         write( c->fd, body, bodylen );
+    free( tmp );
 }
 
 // handle a CGI query
@@ -950,6 +983,7 @@ int handle_cgi( const req *c )
     if( *query == '?' ) query++;
     if( c->m == M_POST )
         query = c->body;
+    debug_printf( "CGI query string: %s\n", query );
     int rc = 0;
     if( !rc ) rc = handleQuery( query );
 
@@ -973,6 +1007,7 @@ int handle_cgi( const req *c )
         body = obuf;
 
     write_response( c, head, body, obuf_size );
+    debug_printf( "CGI response:\n%s\n", body );
 
     // clean up
     free( obuf );
@@ -1016,7 +1051,10 @@ int handle_file( const req *c )
     debug_printf( "File size: %d\n", len );
 
     // write output
-    write_response( c, "HTTP/1.1 200 OK\r\n", NULL, len );
+    char *str;
+    asprintf( &str, "HTTP/1.1 200 OK\r\nContent-Type: %s\r\n", get_mime( fn ) );
+    write_response( c, str, NULL, len );
+    free( str );
     lseek( fd, 0, SEEK_SET );
     sendfile( c->fd, fd, NULL, len );
     close( fd );
@@ -1289,7 +1327,6 @@ int server_main( int argc, char *argv[] )
     FD_ZERO( &active_fd_set );
     FD_SET( serverSocket, &active_fd_set );
 
-    running = true;
     while( running )
     {
         // wait for input
@@ -1322,6 +1359,7 @@ int server_main( int argc, char *argv[] )
                         // can't handle FDs this high. Client will have to retry later.
                         write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
                         close( new );
+                        debug_printf( "Dropped connection\n" );
                         continue;
                     }
 
@@ -1348,6 +1386,7 @@ int server_main( int argc, char *argv[] )
             }
     }
 
+    debug_printf( "Quitting regularly\n" );
     disconnectMPD( );
     close( serverSocket );
     return SUCCESS;
