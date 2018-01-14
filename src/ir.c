@@ -910,6 +910,14 @@ inline void FREE_REQ( req *c )
     c->data = NULL; c->max = 0;
 }
 
+// reset a request keeping its data and buffer untouched
+inline void RESET_REQ( req *c )
+{
+    c->cl = 0;
+    c->version = c->method = c->url = c->head = c->body = NULL;
+    c-> rnrn = c->v = c->m = 0;
+}
+
 // indicator if the main loop is still running (used for signalling)
 static int running = true;
 
@@ -1091,8 +1099,7 @@ int handle_body( req *c )
         memmove( c->data, c->data+c->cl, rem );
     c->data[rem] = '\0';
     c->len -= c->cl;
-    c->version = c->method = c->url = c->head = c->body = NULL;
-    c->cl = 0;
+    RESET_REQ( c );
 
     return 0;
 }
