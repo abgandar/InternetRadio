@@ -37,6 +37,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <limits.h>
+#include <pwd.h>
+#include <grp.h>
 #include <stdbool.h>
 #include <time.h>
 #include <locale.h>
