@@ -985,14 +985,19 @@ int handle_file( const req *c )
     if( strstr( c->url, ".." ) != NULL )
         return NOT_FOUND;
 
-    const int len_WWW_DIR = strlen( WWW_DIR ), len_url = strlen( c->url );
-    if( len_WWW_DIR+len_url >= PATH_MAX )
+    const int len_WWW_DIR = strlen( WWW_DIR ), len_url = strlen( c->url ), len_DIR_INDEX = strlen( DIR_INDEX );
+    if( len_WWW_DIR+len_url+len_DIR_INDEX >= PATH_MAX )
         return NOT_FOUND;
     
     char fn[PATH_MAX];
     memcpy( fn, WWW_DIR, len_WWW_DIR );
     memcpy( fn+len_WWW_DIR, c->url, len_url );
     fn[len_WWW_DIR+len_url] = '\0';
+    if( len_url == 0 || c->url[len_url-1] == '/' )
+    {
+        memcpy( fn+len_WWW_DIR+len_url, DIR_INDEX, len_DIR_INDEX );
+        fn[len_WWW_DIR+len_url+len_DIR_INDEX] = '\0';
+    }
     debug_printf( "Trying to open file: %s\n", fn );
     
     // open file

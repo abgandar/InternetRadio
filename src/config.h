@@ -7,5 +7,5 @@
 
 #define SERVER_PORT             8080                        // port to bind to
 #define SERVER_IP               "0.0.0.0"                   // IP address of interface to bind to
-#define WWW_DIR                 "/var/www/"                 // directory where to look for files (must end in /)
-
+#define WWW_DIR                 "/var/www/html"             // directory where to look for files (must end in /)
+#define DIR_INDEX               "ir.html"                   // directory index file
