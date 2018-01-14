@@ -38,6 +38,7 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <time.h>
+#include <locale.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -49,6 +50,12 @@
 #include <systemd/sd-bus.h>
 #endif
 #include <mpd/client.h>
+
+#ifdef DEBUG
+#define debug_printf(...) printf(__VA_ARGS__)
+#else
+#define debug_printf(...)
+#endif
 
 // global variables for output and MPD connection
 static struct mpd_connection *conn = NULL;
@@ -841,18 +848,57 @@ int cgi_main( int argc, char *argv[] )
 
 // ========= Standalone mini HTTP/1.1 server
 
-/* */
+// request method
+typedef enum method_enum { GET, POST, HEAD, OTHER } method;
+
+// request version
+typedef enum version_enum { V10, V11 } version;
+
+// an active reqeust
 typedef struct {
-    char *data;             // data pointer
+    int fd;                 // socket associated with this request
+    char *data;             // data buffer pointer
     unsigned int max, len;  // max allocated length, current length
     unsigned int cl;        // content length (if known)
     char *version, *method, *url, *head, *body;      // request pointers
     int rnrn;               // flag if the line delimiter is \r\n (1) or \n (0)
-    int fd;                 // socket associated with this request
+    version v;              // HTTP version of request
+    method m;               // enumerated method
 } req;
 
+// write a response with given body and headers (must include the initial HTTP response header)
+// automatically adds Date header and respects HEAD requests
+// if body is non-NULL, it is sent as a string with appropriate Content-Length header
+// if body is NULL, and cl is non-null, the value
+void write_response( const req *c, const char* headers, const char* body, unsigned int bodylen )
+{
+    char tmp[256], str[64];
+    int tmp_size;
+
+    // autodetermine length
+    if( body != NULL && bodylen == 0 )
+        bodylen = strlen( body );
+
+    // get current time
+    const time_t t = time( );
+    strftime( str, 64, "%a, %d %b %Y %T %z", localtime( t ) );
+
+    // prepare additional headers
+    if( bodylen == 0 || c->m == HEAD )
+        tmp_size = snprintf( tmp, 256, "Date: %s\r\n\r\n", str );
+    else
+        tmp_size = snprintf( tmp, 256, "Content-Length: %d\r\nDate: %s\r\n\r\n", bodylen, str );
+
+    // write everything
+    if( headers )
+        write( c->fd, headers, strlen( headers ) );
+    write( c->fd, tmp, tmp_size );
+    if( body && c->m != HEAD && bodylen > 0 )
+        write( c->fd, body, bodylen );
+}
+
 // handle a CGI query with given query string
-int handle_cgi( int fd, char *query )
+int handle_cgi( req *c, char *query )
 {
     // open output buffer
     char *obuf = NULL;
@@ -868,11 +914,26 @@ int handle_cgi( int fd, char *query )
 
     // write output
     if( !rc ) rc = output_end( );
-    char tmp[256], *body = strstr( obuf, "\r\n\r\n" )+4;
-    if( body == (void*)4 ) body = obuf;
-    int tmp_size = snprintf( tmp, 256, rc ? "HTTP/1.1 500 Server error\r\nContent-Length: %d\r\n" : "HTTP/1.1 200 OK\r\nContent-Length: %d\r\n", obuf_size-(body-obuf) );
-    write( fd, tmp, tmp_size );
-    write( fd, obuf, obuf_size );   // either error or output_end will have closed output buffer stream
+    if( rc )
+        write( c->fd, "HTTP/1.1 500 Server error\r\n", 27 );
+    else
+        write( c->fd, "HTTP/1.1 200 OK\r\n", 17 );
+
+    // split CGI output into headers (if applicable) and body
+    char *head = NULL, *body = strstr( obuf, "\r\n\r\n" );
+    if( body )
+    {
+        head = obuf;
+        body[2] = '\0';     // keep one \r\n pair
+        body += 4;
+        obuf_size -= (body-obuf);
+    }
+    else
+    {
+        body = obuf;
+    }
+
+    write_response( c, head, body, obuf_size );
 
     // clean up
     free( obuf );
@@ -884,19 +945,24 @@ int handle_head( req *c )
 {
     // did we finish reading the headers?
     char *tmp = strstr( c->head, c->rnrn ? "\r\n\r\n" : "\n\n" );
-    if( tmp == NULL ) return WAIT_FOR_DATA;         // need more data
-    c->body = tmp + 2*(1 + c->rnrn);    // this is where the body starts (2 or 4 forward)
+    if( tmp == NULL )
+    {
+        // in case no headers were sent at all there's only one empty line
+        if( strncmp( c->head, c->rnrn ? "\r\n" : "\n", 1+c->rnrn ) == 0 )
+            tmp = c->head;
+        else
+            return WAIT_FOR_DATA;         // need more data
+    }
+    c->body = tmp + 2*(1+c->rnrn);      // this is where the body starts (2 or 4 forward)
     c->cl += c->body - c->data;         // length of the headers alone
 
-#ifdef DEBUG
-    printf( "===> Headers:\n%s\n", c->head );
-#endif
+    debug_printf( "===> Headers:\n%s\n", c->head );
     
     // hooray! we have headers, parse them
     char *p = c->head;
-    while( *p )
+    while( p )
     {
-        // find end of current header and zero terminate it
+        // find end of current header and zero terminate it => p points to current header line
         tmp = strstr( p, c->rnrn ? "\r\n" : "\n" );
         if( tmp )
         {
@@ -908,12 +974,14 @@ int handle_head( req *c )
                 tmp++;
             }
         }
-        // check for Content-Length header, currently the only one we care about
+        if( !*p ) break; // found empty header => done reading headers
+        // check for known headers we care about (currently only Content-Length)
         if( strncmp( p, "Content-Length: ", 16 ) == 0 )
             c->cl += strtol( p+16, NULL, 10 );
+        // point p to next header
         p = tmp;
     }
-    
+
     return 0;
 }
 
@@ -921,28 +989,29 @@ int handle_head( req *c )
 int handle_body( req *c )
 {
     if( c->len < c->cl ) return WAIT_FOR_DATA; // request is still expecting data
-#ifdef DEBUG
-    printf( "===> Body:\n%s\n", c->body );
-#endif
+    debug_printf( "===> Body:\n%s\n", c->body );
 
-    // check what to do with this requst
-    if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
-    {
-        char *query = c->url+15;
-        if( *query == '?' ) query++;
-
-        if( strcmp( c->method, "POST" ) == 0 )
-            query = c->body;
-
-        handle_cgi( c->fd, query );
-    }
-    //else if()
-    //{
-    //
-    //}
+    if( c->m == OTHER )
+        write_response( c, "HTTP/1.1 405 Method not allowed\r\n", "405 - Not allowed", 0 );
     else
     {
-        write( c->fd, "HTTP/1.1 404 Not found\r\nContent-Length: 15\r\n\r\n404 - Not found", 62 );
+        // check what to do with this requst
+        if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
+        {
+            char *query = c->url+15;
+            if( *query == '?' ) query++;
+
+            if( c->m == POST )
+                query = c->body;
+
+            handle_cgi( c, query );
+        }
+        //else if()
+        //{
+        //
+        //}
+        else
+            write_response( c, "HTTP/1.1 404 Not found\r\n", "404 - Not found", 0 );
     }
 
     // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
@@ -975,9 +1044,7 @@ int handle_request( req *c )
     c->head = tmp+1+c->rnrn;  // where the headers begin
 
     tmp = c->data;
-#ifdef DEBUG
-    printf( "===> Request:\n%s\n", tmp );
-#endif
+    debug_printf( "===> Request:\n%s\n", tmp );
     // parse request line: method
     tmp += strspn( c->data, " \t" ); // skip whitespace
     c->method = tmp;
@@ -1000,10 +1067,25 @@ int handle_request( req *c )
     tmp += strspn( tmp, " \t" );
     c->version = tmp;
 
-#ifdef DEBUG
-    printf( "===> Version: %s\tMethod: %s\tURL: %s\n", c->version, c->method, c->url );
-#endif
+    // identify method
+    if( strcmp( c->method, "GET" ) == 0 )
+        c->m = GET;
+    else if( strcmp( c->method, "POST" ) == 0 )
+        c->m = POST;
+    else if( strcmp( c->method, "HEAD" ) == 0 )
+        c->m = HEAD;
+    else
+        c->m = OTHER;
 
+    // identify version
+    if( strcmp( c->head, "HTTP/1.0" ) == 0 )
+        c->v = V10;
+    else if( strcmp( c->head, "HTTP/1.1" ) == 0 )
+        c->v = V11;
+    else
+        c->v = VERR;
+
+    debug_printf( "===> Version: %s\tMethod: %s\tURL: %s\n", c->version, c->method, c->url );
     return 0;
 }
 
@@ -1082,6 +1164,10 @@ int server_main( int argc, char *argv[] )
     struct sockaddr_storage serverStorage = { 0 };
     socklen_t addr_size = sizeof(serverStorage);
 
+    // set up environment
+    setlocale( LC_ALL, "C" );
+    setenv( "TZ", "UTC", true );
+
     if( !(serverSocket = socket( PF_INET, SOCK_STREAM, 0 )) )
     {
         perror( "socket" );
@@ -1150,9 +1236,7 @@ int server_main( int argc, char *argv[] )
                     reqs[new].data[0] = '\0';
                     reqs[new].fd = new;
                     reqs[new].version = reqs[new].method = reqs[new].url = reqs[new].head = reqs[new].body = NULL;
-#ifdef DEBUG
-                    printf( "New connection\n" );
-#endif
+                    debug_printf( "New connection\n" );
                 }
                 else
                 {
@@ -1166,9 +1250,7 @@ int server_main( int argc, char *argv[] )
                         // free previous request data
                         free( reqs[i].data );
                         bzero( &reqs[i], sizeof(req) );
-#ifdef DEBUG
-                        printf( "Close connection\n" );
-#endif
+                        debug_printf( "Close connection\n" );
                     }
                 }
             }
