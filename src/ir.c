@@ -48,6 +48,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <sys/uio.h>
 #include <sys/reboot.h>
 #ifdef SYSTEMD
 #include <systemd/sd-bus.h>
@@ -972,12 +973,26 @@ void write_response( const req *c, const char* headers, const char* body, unsign
     else
         tmp_size = asprintf( &tmp, "Connection: Keep-Alive\r\nKeep-Alive: timeout=60, max=999999\r\nContent-Length: %d\r\nDate: %s\r\n\r\n", bodylen, str );
 
-    // write everything
+    // write everything using a single call
+    struct iovec iov[3];
+    int niov = 0;
     if( headers )
-        write( c->fd, headers, strlen( headers ) );
-    write( c->fd, tmp, tmp_size );
+    {
+        iov[niov].iov_base = headers;
+        iov[niov].iov_len = strlen( headers );
+        niov++;
+    }
+    iov[niov].iov_base = tmp;
+    iov[niov].iov_len = tmp_size;
+    niov++;
     if( body && c->m != M_HEAD && bodylen > 0 )
-        write( c->fd, body, bodylen );
+    {
+        iov[niov].iov_base = body;
+        iov[niov].iov_len = bodylen;
+        niov++;
+    }
+
+    writev( c->fd, &iov, niov );
     free( tmp );
 }
 
@@ -1264,7 +1279,7 @@ int handle_data( req *c )
 // read from a socket and store data in request
 int read_from_client( req *c )
 {
-    // speculatively increase buffer if needed
+    // speculatively increase buffer if needed to avoid short reads
     int len = c->max - c->len - 1;
     if( len < 128 )
     {
@@ -1378,6 +1393,7 @@ int server_main( int argc, char *argv[] )
                     {
                         // can't handle FDs this high. Client will have to retry later.
                         write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
+                        shutdown( new, SHUT_RDWR );
                         close( new );
                         debug_printf( "Dropped connection\n" );
                         continue;
@@ -1395,6 +1411,7 @@ int server_main( int argc, char *argv[] )
                     if( read_from_client( &reqs[i] ) < 0 )
                     {
                         // close socket
+                        shutdown( i, SHUT_RDWR );
                         close( i );
                         FD_CLR( i, &active_fd_set );
 
