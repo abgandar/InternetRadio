@@ -42,6 +42,7 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/sendfile.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -850,12 +851,12 @@ int cgi_main( int argc, char *argv[] )
 // ========= Standalone mini HTTP/1.1 server
 
 // request method
-typedef enum method_enum { GET, POST, HEAD, OTHER } method;
+typedef enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M_DELETE, M_TRACE, M_CONNECT } method;
 
 // request version
-typedef enum version_enum { V10, V11, VERR } version;
+typedef enum version_enum { V_UNKNOWN, V_10, V_11 } version;
 
-// an active reqeust
+// an active request
 typedef struct {
     int fd;                 // socket associated with this request
     char *data;             // data buffer pointer
@@ -866,6 +867,39 @@ typedef struct {
     version v;              // HTTP version of request
     method m;               // enumerated method
 } req;
+
+// allocate memory and set everything to zero
+inline void INIT_REQ( req *c, const int fd )
+{
+    if( c->data ) free( c->data );  // should never happen but just to be safe
+    bzero( c, sizeof(req) );
+
+    if( !(c->data = malloc( 4096 )) )
+    {
+        perror( "malloc" );
+        exit( EXIT_FAILURE );
+    }
+    c->data[0] = '\0';
+    c->max = 4096;
+    c->fd = fd;
+}
+
+// free request memory
+inline void FREE_REQ( req *c )
+{
+    if( c->data ) free( c->data );
+    c->data = NULL; c->max = 0;
+}
+
+// indicator if the main loop is still running (used for signalling)
+static int running = true;
+
+// signal handler
+void handle_signal( int sig )
+{
+    if( sig == SIGHUP || sig == SIGTERM || sig == SIGINT )
+    running = false;
+}
 
 // write a response with given body and headers (must include the initial HTTP response header)
 // automatically adds Date header and respects HEAD requests
@@ -885,7 +919,7 @@ void write_response( const req *c, const char* headers, const char* body, unsign
     strftime( str, 64, "%a, %d %b %Y %T %z", localtime( &t ) );
 
     // prepare additional headers
-    if( bodylen == 0 || c->m == HEAD )
+    if( bodylen == 0 || c->m == M_HEAD )
         tmp_size = snprintf( tmp, 256, "Connection: Keep-Alive\r\nKeep-Alive: timeout=60, max=999999\r\nDate: %s\r\n\r\n", str );
     else
         tmp_size = snprintf( tmp, 256, "Connection: Keep-Alive\r\nKeep-Alive: timeout=60, max=999999\r\nContent-Length: %d\r\nDate: %s\r\n\r\n", bodylen, str );
@@ -894,12 +928,12 @@ void write_response( const req *c, const char* headers, const char* body, unsign
     if( headers )
         write( c->fd, headers, strlen( headers ) );
     write( c->fd, tmp, tmp_size );
-    if( body && c->m != HEAD && bodylen > 0 )
+    if( body && c->m != M_HEAD && bodylen > 0 )
         write( c->fd, body, bodylen );
 }
 
-// handle a CGI query with given query string
-int handle_cgi( req *c, char *query )
+// handle a CGI query
+int handle_cgi( const req *c )
 {
     // open output buffer
     char *obuf = NULL;
@@ -910,6 +944,11 @@ int handle_cgi( req *c, char *query )
         exit( EXIT_FAILURE );
     }
 
+    // find correct query string and run actual query
+    char *query = c->url+15;
+    if( *query == '?' ) query++;
+    if( c->m == M_POST )
+        query = c->body;
     int rc = 0;
     if( !rc ) rc = handleQuery( query );
 
@@ -930,14 +969,78 @@ int handle_cgi( req *c, char *query )
         obuf_size -= (body-obuf);
     }
     else
-    {
         body = obuf;
-    }
 
     write_response( c, head, body, obuf_size );
 
     // clean up
     free( obuf );
+    return 0;
+}
+
+// handle a file query
+int handle_file( const req *c )
+{
+    if( strstr( c->url, ".." ) != NULL )
+        return NOT_FOUND;
+
+    const int len_WWW_DIR = strlen( WWW_DIR ), len_url = strlen( c->url );
+    if( len_WWW_DIR+len_url >= PATH_MAX )
+        return NOT_FOUND;
+    
+    char fn[PATH_MAX];
+    memcpy( fn, WWW_DIR, len_WWW_DIR );
+    memcpy( fn+len_WWW_DIR, c->url, len_url );
+    fn[len_WWW_DIR+len_url] = '\0';
+    
+    // open file
+    int fd = open( fn, O_RDONLY );
+    if( fd < 0 )
+        return NOT_FOUND;
+
+    // determine file size
+    int len = lseek( fd, 0, SEEK_END );
+    if( len < 0 )
+    {
+        write_response( c, "HTTP/1.1 500 Server error\r\n", "500 - Server error", 0 );
+        close( fd );
+        return SUCCESS;
+    }
+
+    // write output
+    write_response( c, "HTTP/1.1 200 OK\r\n", NULL, len );
+    lseek( fd, 0, SEEK_SET );
+    sendfile( c->fd, fd, NULL, len );
+    close( fd );
+}
+
+// parse and handle request body
+int handle_body( req *c )
+{
+    // TODO: add support for other request types without content length (chunked, old, faulty)
+    if( c->len < c->cl ) return WAIT_FOR_DATA; // request is still expecting data
+    debug_printf( "===> Body:\n%s\n", c->body );
+
+    if( c->m != M_GET && c->m != M_POST && c->m != M_HEAD )
+        write_response( c, "HTTP/1.1 405 Method not allowed\r\n", "405 - Not allowed", 0 );
+    else
+    {
+        // check what to do with this requst
+        if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
+            handle_cgi( c );
+        else if( !handle_file( c ) )
+            write_response( c, "HTTP/1.1 404 Not found\r\n", "404 - Not found", 0 );
+    }
+
+    // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
+    const unsigned int rem = c->len-c->cl;
+    if( rem > 0 )
+        memmove( c->data, c->data+c->cl, rem );
+    c->data[rem] = '\0';
+    c->len -= c->cl;
+    c->version = c->method = c->url = c->head = c->body = NULL;
+    c->cl = 0;
+
     return 0;
 }
 
@@ -956,7 +1059,7 @@ int handle_head( req *c )
     }
     c->body = tmp + 2*(1+c->rnrn);      // this is where the body starts (2 or 4 forward)
     c->cl += c->body - c->data;         // length of the headers alone
-
+    
     debug_printf( "===> Headers:\n%s\n", c->head );
     
     // hooray! we have headers, parse them
@@ -983,50 +1086,7 @@ int handle_head( req *c )
         // point p to next header
         p = tmp;
     }
-
-    return 0;
-}
-
-// parse and handle request body
-int handle_body( req *c )
-{
-    // TODO: add support for other request types without content length (chunked, old, faulty)
-    if( c->len < c->cl ) return WAIT_FOR_DATA; // request is still expecting data
-    debug_printf( "===> Body:\n%s\n", c->body );
-
-    if( c->m == OTHER )
-        write_response( c, "HTTP/1.1 405 Method not allowed\r\n", "405 - Not allowed", 0 );
-    else
-    {
-        // check what to do with this requst
-        if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
-        {
-            char *query = c->url+15;
-            if( *query == '?' ) query++;
-
-            if( c->m == POST )
-                query = c->body;
-
-            handle_cgi( c, query );
-        }
-        // TODO: handle file system loads here
-        //else if()
-        //{
-        //
-        //}
-        else
-            write_response( c, "HTTP/1.1 404 Not found\r\n", "404 - Not found", 0 );
-    }
-
-    // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
-    const unsigned int rem = c->len-c->cl;
-    if( rem > 0 )
-        memmove( c->data, c->data+c->cl, rem );
-    c->data[rem] = '\0';
-    c->len -= c->cl;
-    c->version = c->method = c->url = c->head = c->body = NULL;
-    c->cl = 0;
-
+    
     return 0;
 }
 
@@ -1047,10 +1107,11 @@ int handle_request( req *c )
     *tmp = '\0';
     c->head = tmp+1+c->rnrn;  // where the headers begin
 
+    // parse request line
     tmp = c->data;
     debug_printf( "===> Request:\n%s\n", tmp );
-    // parse request line: method
-    tmp += strspn( c->data, " \t" ); // skip whitespace
+    // method
+    tmp += strspn( c->data, " \t" );
     c->method = tmp;
     tmp += strcspn( tmp, " \t" );
     if( *tmp )
@@ -1073,27 +1134,37 @@ int handle_request( req *c )
 
     // identify method
     if( strcmp( c->method, "GET" ) == 0 )
-        c->m = GET;
+        c->m = M_GET;
     else if( strcmp( c->method, "POST" ) == 0 )
-        c->m = POST;
+        c->m = M_POST;
     else if( strcmp( c->method, "HEAD" ) == 0 )
-        c->m = HEAD;
+        c->m = M_HEAD;
+    else if( strcmp( c->method, "OPTIONS" ) == 0 )
+        c->m = M_OPTIONS;
+    else if( strcmp( c->method, "PUT" ) == 0 )
+        c->m = M_PUT;
+    else if( strcmp( c->method, "DELETE" ) == 0 )
+        c->m = M_DELETE;
+    else if( strcmp( c->method, "TRACE" ) == 0 )
+        c->m = M_TRACE;
+    else if( strcmp( c->method, "CONNECT" ) == 0 )
+        c->m = M_CONNECT;
     else
-        c->m = OTHER;
+        c->m = M_UNKNOWN;
 
     // identify version
     if( strcmp( c->head, "HTTP/1.0" ) == 0 )
-        c->v = V10;
+        c->v = V_10;
     else if( strcmp( c->head, "HTTP/1.1" ) == 0 )
-        c->v = V11;
+        c->v = V_11;
     else
-        c->v = VERR;
+        c->v = V_UNKNOWN;
 
     debug_printf( "===> Version: %s\tMethod: %s\tURL: %s\n", c->version, c->method, c->url );
     return 0;
 }
 
-// find out where in the rquest phase this request is and try to handle new data accordingly
+// find out where in the request phase this request is and try to handle new data accordingly
 int handle_data( req *c )
 {
     int rc;
@@ -1121,7 +1192,7 @@ int handle_data( req *c )
         {
             int rc = handle_body( c );
             if( rc ) return rc;
-            cont = true;    // repeat with (potentially) next pipelined request
+            cont = true;    // if body was fully handeled, continue with (potentially) next pipelined request
         }
     } while( cont );
 
@@ -1131,7 +1202,7 @@ int handle_data( req *c )
 // read from a socket and store data in request
 int read_from_client( req *c )
 {
-    // increase buffer if needed
+    // speculatively increase buffer if needed
     int len = c->max - c->len - 1;
     if( len < 128 )
     {
@@ -1163,21 +1234,31 @@ int read_from_client( req *c )
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
 int server_main( int argc, char *argv[] )
 {
-    int serverSocket = 0;
-    struct sockaddr_in serverAddr = { 0 };
-    struct sockaddr_storage serverStorage = { 0 };
-    socklen_t addr_size = sizeof(serverStorage);
-
     // set up environment
+    setenv( "TZ", "GMT", true );
     setlocale( LC_ALL, "C" );
-    setenv( "TZ", "UTC", true );
 
+    // connect signal handlers
+    struct sigaction sa_new;
+    sa_new.sa_handler = handle_signal;
+    sigemptyset( &sa_new.sa_mask );
+    sa_new.sa_flags = 0;
+    sigaction( SIGINT, &sa_new, NULL );
+    sigaction( SIGHUP, &sa_new, NULL );
+    sigaction( SIGTERM, &sa_new, NULL );
+    
+    // get and set up server socket
+    int serverSocket;
     if( !(serverSocket = socket( PF_INET, SOCK_STREAM, 0 )) )
     {
         perror( "socket" );
         exit( EXIT_FAILURE );
     }
+    int yes = 1;
+    setsockopt( serverSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int) );
 
+    // bind and listen on correct port and IP address
+    struct sockaddr_in serverAddr = { 0 };
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons( SERVER_PORT );
     inet_pton( AF_INET, SERVER_IP, &serverAddr.sin_addr.s_addr );
@@ -1186,20 +1267,20 @@ int server_main( int argc, char *argv[] )
         perror( "bind" );
         exit( EXIT_FAILURE );
     }
-
-    if( listen( serverSocket, 5 ) < 0 )
+    if( listen( serverSocket, 10 ) < 0 )
     {
         perror( "listen" );
         exit( EXIT_FAILURE );
     }
 
     // initialize active sockets set
-    req reqs[FD_SETSIZE] = { 0 };  // data buffer read from clients
+    req reqs[FD_SETSIZE] = { 0 };
     fd_set active_fd_set, read_fd_set;
     FD_ZERO( &active_fd_set );
     FD_SET( serverSocket, &active_fd_set );
 
-    while( true )
+    running = true;
+    while( running )
     {
         // wait for input
         read_fd_set = active_fd_set;
@@ -1216,30 +1297,27 @@ int server_main( int argc, char *argv[] )
                 if( i == serverSocket )
                 {
                     // Connection request on original socket
-                    addr_size = sizeof(serverAddr);
-                    const int new = accept( serverSocket, (struct sockaddr *) &serverAddr, &addr_size );
-                    if( new < 0 || new >= FD_SETSIZE )
+                    struct sockaddr_in clientAddr = { 0 };
+                    socklen_t addr_size = sizeof(clientAddr);
+                    const int new = accept( serverSocket, (struct sockaddr *) &clientAddr, &addr_size );
+
+                    if( new < 0 )
                     {
                         perror( "accept" );
                         exit( EXIT_FAILURE );
                     }
+                    else if( new >= FD_SETSIZE )
+                    {
+                        // can't handle FDs this high. Client will have to retry later.
+                        write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
+                        close( new );
+                        continue;
+                    }
+
+                    // initialize request and add to watchlist
+                    INIT_REQ( &reqs[new], new );
                     FD_SET( new, &active_fd_set );
 
-                    // allocate/clear some memory for reading request
-                    if( !reqs[new].data )
-                    {
-                        if( !(reqs[new].data = malloc( 4096 )) )
-                        {
-                            perror( "malloc" );
-                            exit( EXIT_FAILURE );
-                        }
-                        reqs[new].max = 4096;
-                    }
-                    reqs[new].len = 0;
-                    reqs[new].cl = 0;
-                    reqs[new].data[0] = '\0';
-                    reqs[new].fd = new;
-                    reqs[new].version = reqs[new].method = reqs[new].url = reqs[new].head = reqs[new].body = NULL;
                     debug_printf( "New connection\n" );
                 }
                 else
@@ -1251,16 +1329,16 @@ int server_main( int argc, char *argv[] )
                         close( i );
                         FD_CLR( i, &active_fd_set );
 
-                        // free previous request data
-                        free( reqs[i].data );
-                        bzero( &reqs[i], sizeof(req) );
-                        debug_printf( "Close connection\n" );
+                        // free request data
+                        FREE_REQ( &reqs[i] );
+                        debug_printf( "Closed connection\n" );
                     }
                 }
             }
     }
 
     disconnectMPD( );
+    close( serverSocket );
     return SUCCESS;
 }
 #endif
