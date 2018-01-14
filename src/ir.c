@@ -39,6 +39,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <locale.h>
+#include <signal.h>
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -975,7 +976,7 @@ int handle_cgi( const req *c )
 
     // clean up
     free( obuf );
-    return 0;
+    return SUCCESS;
 }
 
 // handle a file query
@@ -1012,6 +1013,8 @@ int handle_file( const req *c )
     lseek( fd, 0, SEEK_SET );
     sendfile( c->fd, fd, NULL, len );
     close( fd );
+
+    return SUCCESS;
 }
 
 // parse and handle request body
@@ -1255,7 +1258,7 @@ int server_main( int argc, char *argv[] )
         exit( EXIT_FAILURE );
     }
     int yes = 1;
-    setsockopt( serverSocket, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int) );
+    setsockopt( serverSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int) );
 
     // bind and listen on correct port and IP address
     struct sockaddr_in serverAddr = { 0 };
