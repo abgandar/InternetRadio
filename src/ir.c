@@ -852,7 +852,7 @@ int cgi_main( int argc, char *argv[] )
 typedef enum method_enum { GET, POST, HEAD, OTHER } method;
 
 // request version
-typedef enum version_enum { V10, V11 } version;
+typedef enum version_enum { V10, V11, VERR } version;
 
 // an active reqeust
 typedef struct {
@@ -880,8 +880,8 @@ void write_response( const req *c, const char* headers, const char* body, unsign
         bodylen = strlen( body );
 
     // get current time
-    const time_t t = time( );
-    strftime( str, 64, "%a, %d %b %Y %T %z", localtime( t ) );
+    const time_t t = time( NULL );
+    strftime( str, 64, "%a, %d %b %Y %T %z", localtime( &t ) );
 
     // prepare additional headers
     if( bodylen == 0 || c->m == HEAD )
