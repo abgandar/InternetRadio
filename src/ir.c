@@ -260,9 +260,11 @@ int connectMPD( )
     // is there a previous connection?
     if( conn )
     {
+        debug_printf( "===> Trying to connect to MPD\n" );
         // clear errors if possible, else disconnect
         if( mpd_connection_clear_error( conn ) )
             return SUCCESS;
+        debug_printf( "     Failed\n" );
         mpd_connection_free( conn );
         conn = NULL;
     }
