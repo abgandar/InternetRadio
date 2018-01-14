@@ -956,18 +956,18 @@ const char* get_mime( const char* fn )
 // if body is NULL, and cl is non-null, the value
 void write_response( const req *c, char* headers, char* body, unsigned int bodylen )
 {
-    char *tmp, str[64];
-    int tmp_size;
-
     // autodetermine length
     if( body != NULL && bodylen == 0 )
         bodylen = strlen( body );
 
     // get current time
+    char str[64];
     const time_t t = time( NULL );
     strftime( str, 64, "%a, %d %b %Y %T %z", localtime( &t ) );
 
     // prepare additional headers
+    char *tmp;
+    int tmp_size;
     if( bodylen == 0 || c->m == M_HEAD )
         tmp_size = asprintf( &tmp, "Connection: Keep-Alive\r\nKeep-Alive: timeout=60, max=999999\r\nDate: %s\r\n\r\n", str );
     else
@@ -991,8 +991,8 @@ void write_response( const req *c, char* headers, char* body, unsigned int bodyl
         iov[niov].iov_len = bodylen;
         niov++;
     }
-
     writev( c->fd, iov, niov );
+
     free( tmp );
 }
 
@@ -1423,7 +1423,7 @@ int server_main( int argc, char *argv[] )
             }
     }
 
-    debug_printf( "Quitting regularly\n" );
+    debug_printf( "Exiting\n" );
     disconnectMPD( );
     close( serverSocket );
     return SUCCESS;
