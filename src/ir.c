@@ -1268,6 +1268,11 @@ int read_from_client( req *c )
     int len = c->max - c->len - 1;
     if( len < 128 )
     {
+        if( c->max > MAX_REQ_LEN )
+        {
+            write_response( c, "HTTP/1.1 413 Payload too large\r\n", "413 - Payload too large", 0 );
+            return -1;  // request is finished
+        }
         if( !(c->data = realloc( c->data, c->max+4096 )) )
         {
             perror( "realloc" );
@@ -1307,7 +1312,9 @@ int server_main( int argc, char *argv[] )
     sa_new.sa_flags = 0;
     sigaction( SIGINT, &sa_new, NULL );
     sigaction( SIGTERM, &sa_new, NULL );
-    
+    sa_new.sa_handler = SIG_IGN;
+    sigaction( SIGPIPE, &sa_new, NULL );    // ignore pipe errors so we can reopen pipe to MPD instead of dying
+
     // get and set up server socket
     int serverSocket;
     if( !(serverSocket = socket( PF_INET, SOCK_STREAM, 0 )) )
