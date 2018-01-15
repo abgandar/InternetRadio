@@ -1333,7 +1333,7 @@ int server_main( int argc, char *argv[] )
     sigaction( SIGPIPE, &sa_new, NULL );    // ignore pipe errors so we can reopen pipe to MPD instead of dying
 
     // block signals temporarily (re-enabled only in pselect)
-    sigset_t sset_diabled, sset_enabled;
+    sigset_t sset_disabled, sset_enabled;
     sigemptyset( &sset_disabled );
     sigaddset( &sset_disabled, SIGINT );
     sigaddset( &sset_disabled, SIGTERM );
