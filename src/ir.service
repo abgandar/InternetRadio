@@ -1,0 +1,15 @@
+[Unit]
+Description=Internetradio Web Server
+After=multi-user.target network.target mpd.socket
+
+[Service]
+Type=idle
+ExecStart=/usr/local/bin/ir
+Restart=always
+RestartSec=10s
+KillSignal=SIGINT
+ProtectSystem=full
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target
