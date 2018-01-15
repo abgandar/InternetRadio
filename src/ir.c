@@ -1332,6 +1332,15 @@ int server_main( int argc, char *argv[] )
     sa_new.sa_handler = SIG_IGN;
     sigaction( SIGPIPE, &sa_new, NULL );    // ignore pipe errors so we can reopen pipe to MPD instead of dying
 
+    // block signals temporarily (re-enabled only in pselect)
+    sigset_t sset_diabled, sset_enabled;
+    sigemptyset( &sset_disabled );
+    sigaddset( &sset_disabled, SIGINT );
+    sigaddset( &sset_disabled, SIGTERM );
+    sigprocmask( SIG_BLOCK, &sset_disabled, &sset_enabled );
+    sigdelset( &sset_enabled, SIGINT );
+    sigdelset( &sset_enabled, SIGTERM );
+
     // get and set up server socket
     int serverSocket;
     if( !(serverSocket = socket( PF_INET, SOCK_STREAM, 0 )) )
@@ -1382,16 +1391,17 @@ int server_main( int argc, char *argv[] )
 #endif
 
     // initialize active sockets set
-    req reqs[SETSIZE] = { 0 };
+    req reqs[MAX_CONNECTIONS] = { 0 };
     fd_set active_fd_set, read_fd_set;
     FD_ZERO( &active_fd_set );
     FD_SET( serverSocket, &active_fd_set );
 
+    // main loop (exited only via signal handler)
     while( running )
     {
         // wait for input
         read_fd_set = active_fd_set;
-        if( select( SETSIZE, &read_fd_set, NULL, NULL, NULL ) < 0 )
+        if( pselect( MAX_CONNECTIONS, &read_fd_set, NULL, NULL, NULL, &sset_enabled ) < 0 )
         {
             if( errno == EINTR ) continue;  // ignore interrupted system calls
             perror( "select" );
@@ -1399,7 +1409,7 @@ int server_main( int argc, char *argv[] )
         }
 
         // process input for active sockets
-        for( int i = 0; i < SETSIZE; i++ )
+        for( int i = 0; i < MAX_CONNECTIONS; i++ )
             if( FD_ISSET( i, &read_fd_set ) )
             {
                 if( i == serverSocket )
@@ -1414,7 +1424,7 @@ int server_main( int argc, char *argv[] )
                         perror( "accept" );
                         exit( EXIT_FAILURE );
                     }
-                    else if( new >= SETSIZE )
+                    else if( new >= MAX_CONNECTIONS )
                     {
                         // can't handle FDs this high. Client will have to retry later.
                         write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );

@@ -12,5 +12,5 @@
 #define WWW_DIR                 "/var/www/html"             // directory where to look for files (must end in /)
 #define DIR_INDEX               "ir.html"                   // directory index file used when requesting a directory
 
-#define SETSIZE                256                          // max number of file descriptors (= concurrent connections)
-//#define SETSIZE                 FD_SETSIZE                  // max number of file descriptors (= concurrent connections), max FD_SETSIZE
+#define MAX_CONNECTIONS         32                          // max number of file descriptors (= concurrent connections)
+//#define MAX_CONNECTIONS       FD_SETSIZE                  // max number of file descriptors (= concurrent connections), max FD_SETSIZE
