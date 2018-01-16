@@ -869,6 +869,9 @@ typedef enum version_enum { V_UNKNOWN, V_10, V_11 } version;
 // request flags (bitfield!)
 typedef enum flags_enum { FL_NONE = 0, FL_CRLF = 1, FL_CHUNKED = 2, FL_UNKNOWN = 4 } flags;
 
+// state
+typedef enum state_enum { STATE_NEW, STATE_HEAD, STATE_BODY, STATE_TAIL, STATE_READY, STATE_FINISH } state;
+
 // some MIME types (note: extensions must be backwards for faster matching later!)
 typedef struct { const char *ext; const char *mime; } mimetype;
 static const mimetype mimetypes[] = {
@@ -893,6 +896,7 @@ typedef struct {
     unsigned int max, len;  // max allocated length, current length
     unsigned int rl, cl;    // total request length parsed, total body content length
     char *version, *method, *url, *head, *body, *tail;      // request pointers into data buffer
+    state s;                // state of this request
     flags f;                // flags for this request
     version v;              // HTTP version of request
     method m;               // enumerated method
@@ -926,7 +930,7 @@ inline void RESET_REQ( req *c )
 {
     c->rl = c->cl = 0;
     c->version = c->method = c->url = c->head = c->body = c->tail = NULL;
-    c->f = c->v = c->m = 0;
+    c->s = c->f = c->v = c->m = 0;
 }
 
 // indicator if the main loop is still running (used for signalling)
@@ -1131,6 +1135,49 @@ int handle_request( req *c )
             write_response( c, "HTTP/1.1 404 Not found\r\n", "404 - Not found", 0 );
     }
 
+    c->s = STATE_FINISH;
+    return SUCCESS;
+}
+
+// parse request trailer
+int read_tail( req *c )
+{
+    // did we finish reading the tailers?
+    char *tmp = strstr( c->tail, (c->f & FL_CRLF) ? "\r\n\r\n" : "\n\n" );
+    if( tmp == NULL )
+    {
+        // in case no tailers were sent at all there's only one empty line
+        if( strncmp( c->tail, (c->f & FL_CRLF) ? "\r\n" : "\n", 1+(c->f & FL_CRLF) ) == 0 )
+        {
+            tmp = c->tail;
+            c->rl = tmp - c->data + 1 + (c->f & FL_CRLF);
+        }
+        else
+            return WAIT_FOR_DATA;           // need more data
+    }
+    else
+        c->rl = tmp - c->data + 2 + 2*(c->f & FL_CRLF);
+
+    debug_printf( "===> Trailers:\n%s\n", c->tail );
+
+    // hooray! we have trailers, parse them
+    char *p = c->tail;
+    while( p )
+    {
+        // find end of current header and zero terminate it => p points to current header line
+        tmp = strstr( p, (c->f & FL_CRLF) ? "\r\n" : "\n" );
+        if( tmp )
+        {
+            tmp[0] = '\0';
+            if( c->f & FL_CRLF )
+                tmp[1] = '\0';
+        }
+        if( !*p ) break; // found empty header => done reading headers
+        // point p to next header
+        p = tmp+2;
+    }
+    
+    c->s = STATE_READY;
     return SUCCESS;
 }
 
@@ -1139,17 +1186,44 @@ int read_body( req *c )
 {
     if( c->f & FL_CHUNKED )
     {
-        // TODO: add support for request types without content length (i.e. Transfer-Encoding: chunked)
-        write_response( c, "HTTP/1.1 501 Not implemented\r\n", "501 - Transfer-Encoding not implemented", 0 );
-        return CLOSE_SOCKET;
+        // Read as many chunks as there are
+        while( true )
+        {
+            char *tmp = strstr( c->data + c->rl, "\r\n" );
+            if( !tmp ) return WAIT_FOR_DATA;
+            // get next chunk length
+            tmp += 2;
+            char *perr;
+            unsigned int chunklen = strtol( c->data + c->rl, &perr, 16 );
+            if( *perr != '\r' && *perr != ';' )
+            {
+                write_response( c, "HTTP/1.1 400 Bad request\r\n", "400 - Bad request", 0 );
+                return CLOSE_SOCKET;
+            }
+            // if this is the last chunk, eat the line and finish request
+            if( chunklen == 0 )
+            {
+                c->rl = tmp - c->data;
+                break;
+            }
+            // wait till the entire chunk is here
+            if( c->len < (tmp - c->data + chunklen + 2) )
+                return WAIT_FOR_DATA;
+            // copy the chunk back to the end of the body
+            memmove( c->body + c->cl, tmp, chunklen );
+            c->cl += chunklen;
+            c->rl = tmp - c->data + chunklen + 2;   // skip the terminating CRLF
+        }
+        cl->tail = c->data+c->rl;
+        c->s = STATE_TAIL;
     }
     else
     {
         // Normal read of given content length
         if( c->len < c->rl ) return WAIT_FOR_DATA;
-        c->tail = c->body-(1+(c->f & FL_CRLF));  // no tail in this type of request, point to terminator of headers
-        debug_printf( "===> Body:\n%s\n", c->body );
+        c->s = STATE_READY;
     }
+    debug_printf( "===> Body:\n%s\n", c->body );
 
     return SUCCESS;
 }
@@ -1183,13 +1257,9 @@ int read_head( req *c )
         tmp = strstr( p, (c->f & FL_CRLF) ? "\r\n" : "\n" );
         if( tmp )
         {
-            *tmp = '\0';
-            tmp++;
+            tmp[0] = '\0';
             if( c->f & FL_CRLF )
-            {
-                *tmp = '\0';
-                tmp++;
-            }
+                tmp[1] = '\0';
         }
         if( !*p ) break; // found empty header => done reading headers
         // check for known headers we care about (currently only Content-Length)
@@ -1222,13 +1292,14 @@ int read_head( req *c )
             c->rl = c->body - c->data;  // request length so far
         }
         // point p to next header
-        p = tmp;
+        p = tmp+2;
     }
 
+    c->s = STATE_BODY;
     return SUCCESS;
 }
 
-// attempt to handle a request (if it is ready to be handled)
+// parse the request line if it is available
 int read_request( req *c )
 {
     char* data = c->data;
@@ -1315,6 +1386,7 @@ int read_request( req *c )
         return CLOSE_SOCKET;  // garbage request received, drop this connection
     }
 
+    c->s = STATE_HEAD;
     return SUCCESS;
 }
 
@@ -1323,38 +1395,38 @@ int parse_data( req *c )
 {
     int rc;
 
-    while( true ) {
-        // request is new, waiting for request line
-        if( !c->head )
+    while( true )
+        switch( c->s )
         {
-            rc = read_request( c );
-            if( rc ) return rc;
-        }
+            case STATE_NEW:
+                rc = read_request( c );
+                if( rc ) return rc;
+                break;
 
-        // request is waiting for headers to arrive
-        if( c->head )
-        {
-            rc = read_head( c );
-            if( rc ) return rc;
-        }
+            case STATE_HEAD:
+                rc = read_head( c );
+                if( rc ) return rc;
+                break;
 
-        // request is waiting for body to arrive
-        if( c->body )
-        {
-            rc = read_body( c );
-            if( rc ) return rc;
-        }
+            case STATE_BODY:
+                rc = read_body( c );
+                if( rc ) return rc;
+                break;
 
-        // request has tailer fully read and parsed, it's ready to be handled and finished
-        if( c->tail )
-        {
-            rc = handle_request( c );
-            if( rc ) return rc;
+            case STATE_TAIL:
+                rc = read_tail( c );
+                if( rc ) return rc;
+                break;
 
-            rc = finish_request( c );
-            if( rc ) return rc;
+            case STATE_READY:
+                rc = handle_request( c );
+                if( rc ) return rc;
+
+            case STATE_FINISH:
+                rc = finish_request( c );
+                if( rc ) return rc;
+                break;
         }
-    }
 
     return SUCCESS;
 }
