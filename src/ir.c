@@ -1306,7 +1306,7 @@ int read_request( req *c )
 {
     char* data = c->data;
 
-    debug_printf( "===> Reading new request\n" );
+    debug_printf( "===> Reading new request: %s\n", data );
     // Optionally ignore an empty line at beginning of request (rfc7230, 3.5)
     if( data[0] == '\r' && data[1] == '\n' )
         data+=2;
