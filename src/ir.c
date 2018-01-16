@@ -885,9 +885,9 @@ typedef struct {
     int fd;                 // socket associated with this request
     char *data;             // data buffer pointer
     unsigned int max, len;  // max allocated length, current length
-    unsigned int cl;        // content length (if known)
-    char *version, *method, *url, *head, *body;      // request pointers
-    int rnrn;               // flag if the line delimiter is \r\n (1) or \n (0)
+    unsigned int cl;        // body content length
+    char *version, *method, *url, *head, *body, *tail;      // request pointers into data buffer
+    int crlf;               // flag if the line delimiter is \r\n (1) or \n (0)
     version v;              // HTTP version of request
     method m;               // enumerated method
 } req;
@@ -919,8 +919,8 @@ inline void FREE_REQ( req *c )
 inline void RESET_REQ( req *c )
 {
     c->cl = 0;
-    c->version = c->method = c->url = c->head = c->body = NULL;
-    c-> rnrn = c->v = c->m = 0;
+    c->version = c->method = c->url = c->head = c->body = c->tail = NULL;
+    c-> crlf = c->v = c->m = 0;
 }
 
 // indicator if the main loop is still running (used for signalling)
@@ -955,7 +955,7 @@ const char* get_mime( const char* fn )
 // write a response with given body and headers (must include the initial HTTP response header)
 // automatically adds Date header and respects HEAD requests
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
-// if body is NULL, and cl is non-null, the value
+// if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
 void write_response( const req *c, char* headers, char* body, unsigned int bodylen )
 {
     // autodetermine length
@@ -1055,7 +1055,7 @@ int handle_file( const req *c )
     const int len_WWW_DIR = strlen( WWW_DIR ), len_url = strlen( c->url ), len_DIR_INDEX = strlen( DIR_INDEX );
     if( len_WWW_DIR+len_url+len_DIR_INDEX >= PATH_MAX )
         return NOT_FOUND;
-    
+
     char fn[PATH_MAX];
     memcpy( fn, WWW_DIR, len_WWW_DIR );
     memcpy( fn+len_WWW_DIR, c->url, len_url );
@@ -1066,7 +1066,7 @@ int handle_file( const req *c )
         fn[len_WWW_DIR+len_url+len_DIR_INDEX] = '\0';
     }
     debug_printf( "Trying to open file: %s\n", fn );
-    
+
     // open file
     int fd = open( fn, O_RDONLY );
     if( fd < 0 )
@@ -1094,13 +1094,24 @@ int handle_file( const req *c )
     return SUCCESS;
 }
 
-// parse and handle request body
-int handle_body( req *c )
+// finish request after had been handled
+int finish_request( req *c )
 {
-    // TODO: add support for other request types without content length (chunked, old, faulty)
-    if( c->len < c->cl ) return WAIT_FOR_DATA; // request is still expecting data
-    debug_printf( "===> Body:\n%s\n", c->body );
+    // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
+    const char* end = c->body + c->cl;
+    const unsigned int rem = c->len - (end - c->body);
+    if( rem > 0 )
+        memmove( c->data, end, rem );
+    c->data[rem] = '\0';
+    c->len = rem;
+    RESET_REQ( c );
 
+    return 0;
+}
+
+// handle request after it was completely read
+int handle_request( req *c )
+{
     if( c->m != M_GET && c->m != M_POST && c->m != M_HEAD )
         write_response( c, "HTTP/1.1 405 Method not allowed\r\n", "405 - Not allowed", 0 );
     else
@@ -1112,46 +1123,53 @@ int handle_body( req *c )
             write_response( c, "HTTP/1.1 404 Not found\r\n", "404 - Not found", 0 );
     }
 
-    // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
-    const unsigned int rem = c->len-c->cl;
-    if( rem > 0 )
-        memmove( c->data, c->data+c->cl, rem );
-    c->data[rem] = '\0';
-    c->len -= c->cl;
-    RESET_REQ( c );
+    return 0;
+}
+
+// parse request body
+int read_body( req *c )
+{
+    // TODO: add support for request types without content length (i.e. Transfer-Encoding: chunked)
+    // possibly marked by cl < 0?
+    if( c->len < c->cl + (c->body - c->data) ) return WAIT_FOR_DATA; // request is still expecting data
+    c->tail = c->body-(1+c->crlf);  // no tail in this type of request, point to terminator of headers
+    debug_printf( "===> Body:\n%s\n", c->body );
 
     return 0;
 }
 
 // parse request headers
-int handle_head( req *c )
+int read_head( req *c )
 {
     // did we finish reading the headers?
-    char *tmp = strstr( c->head, c->rnrn ? "\r\n\r\n" : "\n\n" );
+    char *tmp = strstr( c->head, c->crlf ? "\r\n\r\n" : "\n\n" );
     if( tmp == NULL )
     {
         // in case no headers were sent at all there's only one empty line
-        if( strncmp( c->head, c->rnrn ? "\r\n" : "\n", 1+c->rnrn ) == 0 )
+        if( strncmp( c->head, c->crlf ? "\r\n" : "\n", 1+c->crlf ) == 0 )
+        {
             tmp = c->head;
+            c->body = tmp + 1 + c->crlf;    // this is where the body starts (1 or 2 forward)
+        }
         else
-            return WAIT_FOR_DATA;         // need more data
+            return WAIT_FOR_DATA;           // need more data
     }
-    c->body = tmp + 2*(1+c->rnrn);      // this is where the body starts (2 or 4 forward)
-    c->cl += c->body - c->data;         // length of the headers alone
-    
+    else
+        c->body = tmp + 2*(1+c->crlf);      // this is where the body starts (2 or 4 forward)
+
     debug_printf( "===> Headers:\n%s\n", c->head );
-    
+
     // hooray! we have headers, parse them
     char *p = c->head;
     while( p )
     {
         // find end of current header and zero terminate it => p points to current header line
-        tmp = strstr( p, c->rnrn ? "\r\n" : "\n" );
+        tmp = strstr( p, c->crlf ? "\r\n" : "\n" );
         if( tmp )
         {
             *tmp = '\0';
             tmp++;
-            if( c->rnrn )
+            if( c->crlf )
             {
                 *tmp = '\0';
                 tmp++;
@@ -1161,6 +1179,8 @@ int handle_head( req *c )
         // check for known headers we care about (currently only Content-Length)
         if( strncmp( p, "Content-Length: ", 16 ) == 0 )
             c->cl += strtol( p+16, NULL, 10 );
+        // TODO: handle number parsing errors
+        // TODO: handle more than one content length headers as error
         // TODO: check for other mandatory headers (Host)
         // point p to next header
         p = tmp;
@@ -1170,27 +1190,35 @@ int handle_head( req *c )
 }
 
 // attempt to handle a request (if it is ready to be handled)
-int handle_request( req *c )
+int read_request( req *c )
 {
+    char* data = c->data;
+
+    // Optionally ignore an empty line at beginning of request (rfc7230, 3.5)
+    if( data[0] == '\r' && data[1] == '\n' )
+        data+=2;
+    else if( data[0] == '\n' )
+        data++;
+    
     // Try to read the request line
-    c->rnrn = 1;
-    char *tmp = strstr( c->data, "\r\n" );
+    c->crlf = 1;
+    char *tmp = strstr( data, "\r\n" );
     if( tmp == NULL )
     {
-        tmp = strstr( c->data, "\n" );
+        tmp = strstr( data, "\n" );
         if( tmp == NULL ) return WAIT_FOR_DATA;     // we need more data
-        c->rnrn = 0;
+        c->crlf = 0;
     }
 
     // zero terminate request line and mark header position
     *tmp = '\0';
-    c->head = tmp+1+c->rnrn;  // where the headers begin
+    c->head = tmp+1+c->crlf;  // where the headers begin
 
     // parse request line
-    tmp = c->data;
+    tmp = data;
     debug_printf( "===> Request:\n%s\n", tmp );
     // method
-    tmp += strspn( c->data, " \t" );
+    tmp += strspn( data, " \t" );
     c->method = tmp;
     tmp += strcspn( tmp, " \t" );
     if( *tmp )
@@ -1240,40 +1268,54 @@ int handle_request( req *c )
         c->v = V_UNKNOWN;
 
     debug_printf( "===> Version: %s\tMethod: %s\tURL: %s\n", c->version, c->method, c->url );
+
+    // does it look like a valid request?
+    if( c->v == V_UNKNOWN || c->m == M_UNKNOWN )
+    {
+        write_response( c, "HTTP/1.1 400 Bad request\r\n", "400 - Bad request", 0 );
+        return -1;  // garbage request received, drop this connection
+    }
+
     return 0;
 }
 
 // find out where in the request phase this request is and try to handle new data accordingly
-int handle_data( req *c )
+int parse_data( req *c )
 {
     int rc;
-    bool cont;
 
-    do {
-        cont = false;
-
+    while( true ) {
         // request is new, waiting for request line
         if( !c->head )
         {
-            rc = handle_request( c );
+            rc = read_request( c );
             if( rc ) return rc;
         }
 
         // request is waiting for headers to arrive
         if( c->head )
         {
-            int rc = handle_head( c );
+            rc = read_head( c );
             if( rc ) return rc;
         }
 
         // request is waiting for body to arrive
         if( c->body )
         {
-            int rc = handle_body( c );
+            rc = read_body( c );
             if( rc ) return rc;
-            cont = true;    // if body was fully handeled, continue with (potentially) next pipelined request
         }
-    } while( cont );
+
+        // request has tailer fully read and parsed, it's ready to be handled and finished
+        if( c->tail )
+        {
+            rc = handle_request( c );
+            if( rc ) return rc;
+
+            rc = finish_request( c );
+            if( rc ) return rc;
+        }
+    }
 
     return 0;
 }
@@ -1311,8 +1353,8 @@ int read_from_client( req *c )
     c->len += nbytes;
     c->data[c->len] = '\0';
 
-    // try to handle the request
-    return handle_data( c );
+    // try to parse the new data
+    return parse_data( c );
 }
 
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
