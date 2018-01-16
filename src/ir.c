@@ -67,9 +67,12 @@
 static struct mpd_connection *conn = NULL;
 static FILE *outbuf = NULL;
 
-// (HTTP) error numbers and messages
+// some return codes
 static const int SUCCESS = 0;
 static const int WAIT_FOR_DATA = 1;
+static const int CLOSE_SOCKET = -1;
+
+// HTTP error numbers and messages
 static const char* const SERVER_ERROR_MSG = "Internal server error";
 static const int SERVER_ERROR = 500;
 static const char* const BAD_REQUEST_MSG = "Bad request";
@@ -1108,7 +1111,7 @@ int finish_request( req *c )
     c->len = rem;
     RESET_REQ( c );
 
-    return 0;
+    return SUCCESS;
 }
 
 // handle request after it was completely read
@@ -1125,7 +1128,7 @@ int handle_request( req *c )
             write_response( c, "HTTP/1.1 404 Not found\r\n", "404 - Not found", 0 );
     }
 
-    return 0;
+    return SUCCESS;
 }
 
 // parse request body
@@ -1137,7 +1140,7 @@ int read_body( req *c )
     c->tail = c->body-(1+c->crlf);  // no tail in this type of request, point to terminator of headers
     debug_printf( "===> Body:\n%s\n", c->body );
 
-    return 0;
+    return SUCCESS;
 }
 
 // parse request headers
@@ -1180,15 +1183,21 @@ int read_head( req *c )
         if( !*p ) break; // found empty header => done reading headers
         // check for known headers we care about (currently only Content-Length)
         if( strncmp( p, "Content-Length: ", 16 ) == 0 )
-            c->cl += strtol( p+16, NULL, 10 );
-        // TODO: handle number parsing errors
+        {
+            unsigned int cl = strtol( p+16, &perr, 10 );
+            if( *perr != '\0' || (c->cl > 0 && cl != c->cl) )
+            {
+                write_response( c, "HTTP/1.1 400 Bad request\r\n", "400 - Bad request", 0 );
+                return CLOSE_SOCKET;
+            }
+        }
         // TODO: handle more than one content length headers as error
         // TODO: check for other mandatory headers (Host)
         // point p to next header
         p = tmp;
     }
-    
-    return 0;
+
+    return SUCCESS;
 }
 
 // attempt to handle a request (if it is ready to be handled)
@@ -1275,10 +1284,10 @@ int read_request( req *c )
     if( c->v == V_UNKNOWN || c->m == M_UNKNOWN )
     {
         write_response( c, "HTTP/1.1 400 Bad request\r\n", "400 - Bad request", 0 );
-        return -1;  // garbage request received, drop this connection
+        return CLOSE_SOCKET;  // garbage request received, drop this connection
     }
 
-    return 0;
+    return SUCCESS;
 }
 
 // find out where in the request phase this request is and try to handle new data accordingly
@@ -1319,7 +1328,7 @@ int parse_data( req *c )
         }
     }
 
-    return 0;
+    return SUCCESS;
 }
 
 // read from a socket and store data in request
@@ -1332,7 +1341,7 @@ int read_from_client( req *c )
         if( c->max > MAX_REQ_LEN )
         {
             write_response( c, "HTTP/1.1 413 Payload too large\r\n", "413 - Payload too large", 0 );
-            return -1;  // request is finished
+            return CLOSE_SOCKET;  // request is finished
         }
         if( !(c->data = realloc( c->data, c->max+4096 )) )
         {
@@ -1346,7 +1355,7 @@ int read_from_client( req *c )
     // read data
     int nbytes = read( c->fd, c->data+c->len, len );
     if( nbytes == 0 )
-        return -1;  // nothing to read from this socket, must be closed => request finished
+        return CLOSE_SOCKET;  // nothing to read from this socket, must be closed => request finished
     else if( nbytes < 0 )
     {
         perror( "read" );
