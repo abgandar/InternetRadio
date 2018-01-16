@@ -866,6 +866,9 @@ typedef enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M
 // request version
 typedef enum version_enum { V_UNKNOWN, V_10, V_11 } version;
 
+// request flags (bitfield!)
+typedef enum flags_enum { FL_NONE = 0, FL_CRLF = 1, FL_CHUNKED = 2, FL_UNKNOWN = 4 } flags;
+
 // some MIME types (note: extensions must be backwards for faster matching later!)
 typedef struct { const char *ext; const char *mime; } mimetype;
 static const mimetype mimetypes[] = {
@@ -888,9 +891,9 @@ typedef struct {
     int fd;                 // socket associated with this request
     char *data;             // data buffer pointer
     unsigned int max, len;  // max allocated length, current length
-    unsigned int cl;        // body content length
+    unsigned int rl, cl;    // total request length parsed, total body content length
     char *version, *method, *url, *head, *body, *tail;      // request pointers into data buffer
-    int crlf;               // flag if the line delimiter is \r\n (1) or \n (0)
+    flags f;                // flags for this request
     version v;              // HTTP version of request
     method m;               // enumerated method
 } req;
@@ -921,9 +924,9 @@ inline void FREE_REQ( req *c )
 // reset a request keeping its data and buffer untouched
 inline void RESET_REQ( req *c )
 {
-    c->cl = 0;
+    c->rl = c->cl = 0;
     c->version = c->method = c->url = c->head = c->body = c->tail = NULL;
-    c-> crlf = c->v = c->m = 0;
+    c->f = c->v = c->m = 0;
 }
 
 // indicator if the main loop is still running (used for signalling)
@@ -1101,7 +1104,7 @@ int handle_file( const req *c )
 int finish_request( req *c )
 {
     // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
-    const char* end = c->body + c->cl;
+    const char* end = c->body + c->rl;
     unsigned int rem = c->len - (end - c->data);    // should never underflow but just to be sure
     if( rem > 0 )
         memmove( c->data, end, rem );
@@ -1134,11 +1137,19 @@ int handle_request( req *c )
 // parse request body
 int read_body( req *c )
 {
-    // TODO: add support for request types without content length (i.e. Transfer-Encoding: chunked)
-    // possibly marked by cl < 0?
-    if( c->len < c->cl + (c->body - c->data) ) return WAIT_FOR_DATA; // request is still expecting data
-    c->tail = c->body-(1+c->crlf);  // no tail in this type of request, point to terminator of headers
-    debug_printf( "===> Body:\n%s\n", c->body );
+    if( c->f & FL_CHUNKED )
+    {
+        // TODO: add support for request types without content length (i.e. Transfer-Encoding: chunked)
+        write_response( c, "HTTP/1.1 501 Not implemented\r\n", "501 - Transfer-Encoding not implemented", 0 );
+        return CLOSE_SOCKET;
+    }
+    else
+    {
+        // Normal read of given content length
+        if( c->len < c->rl ) return WAIT_FOR_DATA;
+        c->tail = c->body-(1+(c->f & FL_CRLF));  // no tail in this type of request, point to terminator of headers
+        debug_printf( "===> Body:\n%s\n", c->body );
+    }
 
     return SUCCESS;
 }
@@ -1147,20 +1158,20 @@ int read_body( req *c )
 int read_head( req *c )
 {
     // did we finish reading the headers?
-    char *tmp = strstr( c->head, c->crlf ? "\r\n\r\n" : "\n\n" );
+    char *tmp = strstr( c->head, (c->f & FL_CRLF) ? "\r\n\r\n" : "\n\n" );
     if( tmp == NULL )
     {
         // in case no headers were sent at all there's only one empty line
-        if( strncmp( c->head, c->crlf ? "\r\n" : "\n", 1+c->crlf ) == 0 )
+        if( strncmp( c->head, (c->f & FL_CRLF) ? "\r\n" : "\n", 1+(c->f & FL_CRLF) ) == 0 )
         {
             tmp = c->head;
-            c->body = tmp + 1 + c->crlf;    // this is where the body starts (1 or 2 forward)
+            c->body = tmp + 1 + (c->f & FL_CRLF);    // this is where the body starts (1 or 2 forward)
         }
         else
             return WAIT_FOR_DATA;           // need more data
     }
     else
-        c->body = tmp + 2*(1 + c->crlf);      // this is where the body starts (2 or 4 forward)
+        c->body = tmp + 2*(1 + (c->f & FL_CRLF));      // this is where the body starts (2 or 4 forward)
 
     debug_printf( "===> Headers:\n%s\n", c->head );
 
@@ -1169,12 +1180,12 @@ int read_head( req *c )
     while( p )
     {
         // find end of current header and zero terminate it => p points to current header line
-        tmp = strstr( p, c->crlf ? "\r\n" : "\n" );
+        tmp = strstr( p, (c->f & FL_CRLF) ? "\r\n" : "\n" );
         if( tmp )
         {
             *tmp = '\0';
             tmp++;
-            if( c->crlf )
+            if( c->f & FL_CRLF )
             {
                 *tmp = '\0';
                 tmp++;
@@ -1186,15 +1197,30 @@ int read_head( req *c )
         {
             char *perr;
             unsigned int cl = strtol( p+16, &perr, 10 );
-            if( *perr != '\0' || (c->cl > 0 && cl != c->cl) )
+            if( *perr != '\0' || cl < 0 || (c->cl > 0 && cl != c->cl) )
             {
                 write_response( c, "HTTP/1.1 400 Bad request\r\n", "400 - Bad request", 0 );
                 return CLOSE_SOCKET;
             }
+            if( cl > MAX_REQ_LEN )
+            {
+                write_response( c, "HTTP/1.1 413 Payload too large\r\n", "413 - Payload too large", 0 );
+                return CLOSE_SOCKET;
+            }
             c->cl = cl;
+            c->rl = c->cl + (c->body - c->data);    // total request length
         }
-        // TODO: handle more than one content length headers as error
-        // TODO: check for other mandatory headers (Host)
+        else if( strncmp( p, "Transfer-Encoding: ", 19 ) == 0 )
+        {
+            if( strncmp( p+19, "chunked", 7 ) != 0 )
+            {
+                // c.f. http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2
+                write_response( c, "HTTP/1.1 501 Not implemented\r\n", "501 - Transfer-Encoding not implemented", 0 );
+                return CLOSE_SOCKET;
+            }
+            c->flags |= FL_CHUNKED;
+            c->rl = c->body - c->data;  // request length so far
+        }
         // point p to next header
         p = tmp;
     }
@@ -1214,18 +1240,18 @@ int read_request( req *c )
         data++;
     
     // Try to read the request line
-    c->crlf = 1;
+    c->flags |= FL_CRLF;
     char *tmp = strstr( data, "\r\n" );
     if( tmp == NULL )
     {
         tmp = strstr( data, "\n" );
         if( tmp == NULL ) return WAIT_FOR_DATA;     // we need more data
-        c->crlf = 0;
+        c->flags &= ~FL_CRLF;
     }
 
     // zero terminate request line and mark header position
     *tmp = '\0';
-    c->head = tmp+1+c->crlf;  // where the headers begin
+    c->head = tmp+1+(c->flags & FL_CRLF);  // where the headers begin
 
     // parse request line
     tmp = data;
