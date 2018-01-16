@@ -1108,7 +1108,7 @@ int handle_file( const req *c )
 int finish_request( req *c )
 {
     // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
-    unsigned int rem = c->len - c->rl;    // should never underflow but just to be sure
+    int rem = c->len - c->rl;    // should never underflow but just to be sure
     debug_printf( "===> Finish: %d bytes left\n", rem );
     if( rem > 0 )
         memmove( c->data, c->data+c->rl, rem );
@@ -1396,7 +1396,7 @@ int read_request( req *c )
 // find out where in the request phase this request is and try to handle new data accordingly
 int parse_data( req *c )
 {
-    int rc;
+    int rc, cl;
     char cc;
 
     while( true )
@@ -1423,10 +1423,11 @@ int parse_data( req *c )
                 break;
 
             case STATE_READY:
-                cc = c->body[c->cl];    // zero terminate message body without overwriting start of next request
-                c->body[c->cl] = '\0';
+                cl = c->cl;
+                cc = c->body[cl];    // zero terminate message body without overwriting start of next request
+                c->body[cl] = '\0';
                 rc = handle_request( c );
-                c->body[c->cl] = cc;
+                c->body[cl] = cc;
                 if( rc ) return rc;
 
             case STATE_FINISH:
