@@ -1108,7 +1108,7 @@ int handle_file( const req *c )
 int finish_request( req *c )
 {
     // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
-    const char* end = c->body + c->rl;
+    const char* end = c->data + c->rl;
     unsigned int rem = c->len - (end - c->data);    // should never underflow but just to be sure
     if( rem > 0 )
         memmove( c->data, end, rem );
@@ -1215,6 +1215,7 @@ int read_body( req *c )
             c->cl += chunklen;
             c->rl = tmp - c->data + chunklen + 1 + (c->f & FL_CRLF);   // skip the terminating CRLF
         }
+        *(c->body+c->cl) = '\0';    // zero terminate body (OK because of removing chunk size lines)
         c->tail = c->data+c->rl;
         c->s = STATE_TAIL;
     }
@@ -1395,6 +1396,7 @@ int read_request( req *c )
 int parse_data( req *c )
 {
     int rc;
+    char cc;
 
     while( true )
         switch( c->s )
@@ -1420,7 +1422,10 @@ int parse_data( req *c )
                 break;
 
             case STATE_READY:
+                cc = c->body[c->cl];    // zero terminate message body without overwriting start of next request
+                c->body[c->cl] = '\0';
                 rc = handle_request( c );
+                c->body[c->cl] = cc;
                 if( rc ) return rc;
 
             case STATE_FINISH:
