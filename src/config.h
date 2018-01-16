@@ -1,4 +1,4 @@
-//#define DEBUG                   1                           // include debug output
+#define DEBUG                   1                           // include debug output
 
 #define SOCKET_PFAD             "/run/mpd/socket"           // MPD socket
 #define REBOOT_WAIT             100000                      // time in micro-seconds to wait after sync()ing

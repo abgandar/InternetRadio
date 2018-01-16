@@ -1155,7 +1155,7 @@ int read_head( req *c )
             return WAIT_FOR_DATA;           // need more data
     }
     else
-        c->body = tmp + 2*(1+c->crlf);      // this is where the body starts (2 or 4 forward)
+        c->body = tmp + 2*(1 + c->crlf);      // this is where the body starts (2 or 4 forward)
 
     debug_printf( "===> Headers:\n%s\n", c->head );
 
