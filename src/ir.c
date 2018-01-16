@@ -1099,9 +1099,11 @@ int finish_request( req *c )
 {
     // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
     const char* end = c->body + c->cl;
-    const unsigned int rem = c->len - (end - c->body);
+    const int rem = c->len - (end - c->data);
     if( rem > 0 )
         memmove( c->data, end, rem );
+    else if( rem < 0 )
+        rem = 0;    // should never happen but just to be sure
     c->data[rem] = '\0';
     c->len = rem;
     RESET_REQ( c );
