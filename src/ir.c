@@ -1260,9 +1260,9 @@ int read_request( req *c )
         c->m = M_UNKNOWN;
 
     // identify version
-    if( strcmp( c->head, "HTTP/1.0" ) == 0 )
+    if( strcmp( c->version, "HTTP/1.0" ) == 0 )
         c->v = V_10;
-    else if( strcmp( c->head, "HTTP/1.1" ) == 0 )
+    else if( strcmp( c->version, "HTTP/1.1" ) == 0 )
         c->v = V_11;
     else
         c->v = V_UNKNOWN;
