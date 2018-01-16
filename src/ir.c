@@ -1174,7 +1174,7 @@ int read_tail( req *c )
         }
         if( !*p ) break; // found empty header => done reading headers
         // point p to next header
-        p = tmp+2;
+        p = tmp + 1 + (c->f & FL_CRLF);
     }
     
     c->s = STATE_READY;
@@ -1189,13 +1189,13 @@ int read_body( req *c )
         // Read as many chunks as there are
         while( true )
         {
-            char *tmp = strstr( c->data + c->rl, "\r\n" );
+            char *tmp = strstr( c->data + c->rl, (c->f & FL_CRLF) ? "\r\n" : "\n" );
             if( !tmp ) return WAIT_FOR_DATA;
             // get next chunk length
-            tmp += 2;
+            tmp += 1 + (c->f & FL_CRLF);
             char *perr;
             unsigned int chunklen = strtol( c->data + c->rl, &perr, 16 );
-            if( *perr != '\r' && *perr != ';' )
+            if( *perr != 'n' && *perr != '\r' && *perr != ';' )
             {
                 write_response( c, "HTTP/1.1 400 Bad request\r\n", "400 - Bad request", 0 );
                 return CLOSE_SOCKET;
@@ -1207,12 +1207,13 @@ int read_body( req *c )
                 break;
             }
             // wait till the entire chunk is here
-            if( c->len < (tmp - c->data + chunklen + 2) )
+            if( c->len < (tmp - c->data + chunklen + 1 + (c->f & FL_CRLF)) )
                 return WAIT_FOR_DATA;
+            debug_printf( "===> Reading chunk size %d\n", chunklen );
             // copy the chunk back to the end of the body
             memmove( c->body + c->cl, tmp, chunklen );
             c->cl += chunklen;
-            c->rl = tmp - c->data + chunklen + 2;   // skip the terminating CRLF
+            c->rl = tmp - c->data + chunklen + 1 + (c->f & FL_CRLF);   // skip the terminating CRLF
         }
         c->tail = c->data+c->rl;
         c->s = STATE_TAIL;
@@ -1292,7 +1293,7 @@ int read_head( req *c )
             c->rl = c->body - c->data;  // request length so far
         }
         // point p to next header
-        p = tmp+2;
+        p = tmp + 1 + (c->f & FL_CRLF);
     }
 
     c->s = STATE_BODY;
