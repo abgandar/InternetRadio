@@ -1218,7 +1218,7 @@ int read_head( req *c )
                 write_response( c, "HTTP/1.1 501 Not implemented\r\n", "501 - Transfer-Encoding not implemented", 0 );
                 return CLOSE_SOCKET;
             }
-            c->flags |= FL_CHUNKED;
+            c->f |= FL_CHUNKED;
             c->rl = c->body - c->data;  // request length so far
         }
         // point p to next header
@@ -1240,18 +1240,18 @@ int read_request( req *c )
         data++;
     
     // Try to read the request line
-    c->flags |= FL_CRLF;
+    c->f |= FL_CRLF;
     char *tmp = strstr( data, "\r\n" );
     if( tmp == NULL )
     {
         tmp = strstr( data, "\n" );
         if( tmp == NULL ) return WAIT_FOR_DATA;     // we need more data
-        c->flags &= ~FL_CRLF;
+        c->f &= ~FL_CRLF;
     }
 
     // zero terminate request line and mark header position
     *tmp = '\0';
-    c->head = tmp+1+(c->flags & FL_CRLF);  // where the headers begin
+    c->head = tmp+1+(c->f & FL_CRLF);  // where the headers begin
 
     // parse request line
     tmp = data;
