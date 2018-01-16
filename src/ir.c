@@ -1184,12 +1184,14 @@ int read_head( req *c )
         // check for known headers we care about (currently only Content-Length)
         if( strncmp( p, "Content-Length: ", 16 ) == 0 )
         {
+            char *perr;
             unsigned int cl = strtol( p+16, &perr, 10 );
             if( *perr != '\0' || (c->cl > 0 && cl != c->cl) )
             {
                 write_response( c, "HTTP/1.1 400 Bad request\r\n", "400 - Bad request", 0 );
                 return CLOSE_SOCKET;
             }
+            c->cl = cl;
         }
         // TODO: handle more than one content length headers as error
         // TODO: check for other mandatory headers (Host)
