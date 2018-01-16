@@ -1109,6 +1109,7 @@ int finish_request( req *c )
 {
     // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
     unsigned int rem = c->len - c->rl;    // should never underflow but just to be sure
+    debug_printf( "===> Finish: %d bytes left\n", rem );
     if( rem > 0 )
         memmove( c->data, c->data+c->rl, rem );
     else if( rem < 0 )
@@ -1305,6 +1306,7 @@ int read_request( req *c )
 {
     char* data = c->data;
 
+    debug_printf( "===> Reading new request\n" );
     // Optionally ignore an empty line at beginning of request (rfc7230, 3.5)
     if( data[0] == '\r' && data[1] == '\n' )
         data+=2;
