@@ -1214,7 +1214,7 @@ int read_body( req *c )
             c->cl += chunklen;
             c->rl = tmp - c->data + chunklen + 2;   // skip the terminating CRLF
         }
-        cl->tail = c->data+c->rl;
+        c->tail = c->data+c->rl;
         c->s = STATE_TAIL;
     }
     else
