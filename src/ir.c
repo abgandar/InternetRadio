@@ -1109,7 +1109,7 @@ int finish_request( req *c )
 {
     // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
     int rem = c->len - c->rl;    // should never underflow but just to be sure
-    debug_printf( "===> Finish: %d bytes left\n", rem );
+    debug_printf( "===> Finish: %d bytes left (%d)\n", rem, c->rl );
     if( rem > 0 )
         memmove( c->data, c->data+c->rl, rem );
     else if( rem < 0 )
@@ -1281,6 +1281,7 @@ int read_head( req *c )
             }
             c->cl = cl;
             c->rl = c->cl + (c->body - c->data);    // total request length
+            debug_printf( "===> Content-Length: %d (%d total)\n", c->cl, c->rl );
         }
         else if( strncmp( p, "Transfer-Encoding: ", 19 ) == 0 )
         {
