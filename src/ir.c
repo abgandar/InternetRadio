@@ -1396,7 +1396,7 @@ int read_request( req *c )
 // find out where in the request phase this request is and try to handle new data accordingly
 int parse_data( req *c )
 {
-    int rc, cl;
+    int rc;
     char cc;
 
     while( true )
@@ -1423,12 +1423,12 @@ int parse_data( req *c )
                 break;
 
             case STATE_READY:
-                cl = c->cl;
-                cc = c->body[cl];    // zero terminate message body without overwriting start of next request
-                c->body[cl] = '\0';
+                cc = c->body[c->cl];    // zero terminate message body without overwriting start of next request
+                c->body[c->cl] = '\0';
                 rc = handle_request( c );
-                c->body[cl] = cc;
+                c->body[c->cl] = cc;
                 if( rc ) return rc;
+                break;
 
             case STATE_FINISH:
                 rc = finish_request( c );
