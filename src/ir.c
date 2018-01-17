@@ -1248,6 +1248,7 @@ int read_head( req *c )
     }
     else
         c->body = tmp + 2*(1 + (c->f & FL_CRLF));      // this is where the body starts (2 or 4 forward)
+    c->rl = c->body - c->data;  // request length so far (not including body)
 
     debug_printf( "===> Headers:\n%s\n", c->head );
 
@@ -1280,7 +1281,7 @@ int read_head( req *c )
                 return CLOSE_SOCKET;
             }
             c->cl = cl;
-            c->rl = c->cl + (c->body - c->data);    // total request length
+            c->rl += cl;
             debug_printf( "===> Content-Length: %d (%d total)\n", c->cl, c->rl );
         }
         else if( strncmp( p, "Transfer-Encoding: ", 19 ) == 0 )
@@ -1292,7 +1293,6 @@ int read_head( req *c )
                 return CLOSE_SOCKET;
             }
             c->f |= FL_CHUNKED;
-            c->rl = c->body - c->data;  // request length so far
         }
         // point p to next header
         p = tmp + 1 + (c->f & FL_CRLF);
