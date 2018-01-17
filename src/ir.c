@@ -1225,7 +1225,7 @@ int read_body( req *c )
         if( c->len < c->rl ) return WAIT_FOR_DATA;
         c->s = STATE_READY;
     }
-    debug_printf( "===> Body:\n%s\n", c->body );
+    debug_printf( "===> Body (%d bytes):\n%s\n", c->cl, c->body );
 
     return SUCCESS;
 }
