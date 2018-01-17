@@ -1158,7 +1158,7 @@ int read_tail( req *c )
     else
         c->rl = tmp - c->data + 2 + 2*(c->f & FL_CRLF);
 
-    debug_printf( "===> Trailers:\n%s\n", c->tail );
+    debug_printf( "===> Trailers:\n" );
 
     // hooray! we have trailers, parse them
     char *p = c->tail;
@@ -1173,6 +1173,7 @@ int read_tail( req *c )
                 tmp[1] = '\0';
         }
         if( !*p ) break; // found empty header => done reading headers
+        debug_printf( "    %s\n", p );
         // point p to next header
         p = tmp + 1 + (c->f & FL_CRLF);
     }
@@ -1250,7 +1251,7 @@ int read_head( req *c )
         c->body = tmp + 2*(1 + (c->f & FL_CRLF));      // this is where the body starts (2 or 4 forward)
     c->rl = c->body - c->data;  // request length so far (not including body)
 
-    debug_printf( "===> Headers:\n%s\n", c->head );
+    debug_printf( "===> Headers:\n" );
 
     // hooray! we have headers, parse them
     char *p = c->head;
@@ -1265,6 +1266,7 @@ int read_head( req *c )
                 tmp[1] = '\0';
         }
         if( !*p ) break; // found empty header => done reading headers
+        debug_printf( "    %s\n", p );
         // check for known headers we care about (currently only Content-Length)
         if( strncmp( p, "Content-Length: ", 16 ) == 0 )
         {
@@ -1307,7 +1309,6 @@ int read_request( req *c )
 {
     char* data = c->data;
 
-    debug_printf( "===> Reading new request: %s\n", data );
     // Optionally ignore an empty line at beginning of request (rfc7230, 3.5)
     if( data[0] == '\r' && data[1] == '\n' )
         data+=2;
@@ -1424,7 +1425,8 @@ int parse_data( req *c )
                 break;
 
             case STATE_READY:
-                cc = c->body[c->cl];    // zero terminate message body without overwriting start of next request
+                // zero terminate message body without overwriting start of next request
+                cc = c->body[c->cl];
                 c->body[c->cl] = '\0';
                 rc = handle_request( c );
                 c->body[c->cl] = cc;
