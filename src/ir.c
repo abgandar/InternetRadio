@@ -942,7 +942,7 @@ void handle_signal( int sig )
     if( sig == SIGTERM || sig == SIGINT )
     {
         running = false;
-        debug_printf( "Received signal\n" );
+        debug_printf( "===> Received signal\n" );
     }
 }
 
@@ -1024,7 +1024,7 @@ int handle_cgi( const req *c )
     char *query = c->url+15;
     if( *query == '?' ) query++;
     if( c->m == M_POST )
-        query = c->body;
+        query = c->body;    // rely on body being null terminated
     debug_printf( "===> CGI query string: %s\n", query );
     int rc = 0;
     if( !rc ) rc = handleQuery( query );
@@ -1075,7 +1075,7 @@ int handle_file( const req *c )
         memcpy( fn+len_WWW_DIR+len_url, DIR_INDEX, len_DIR_INDEX );
         fn[len_WWW_DIR+len_url+len_DIR_INDEX] = '\0';
     }
-    debug_printf( "Trying to open file: %s\n", fn );
+    debug_printf( "===> Trying to open file: %s\n", fn );
 
     // open file
     int fd = open( fn, O_RDONLY );
@@ -1090,7 +1090,7 @@ int handle_file( const req *c )
         close( fd );
         return SUCCESS;
     }
-    debug_printf( "File size: %d\n", len );
+    debug_printf( "===> File size: %d\n", len );
 
     // write output
     char *str;
@@ -1173,7 +1173,7 @@ int read_tail( req *c )
                 tmp[1] = '\0';
         }
         if( !*p ) break; // found empty header => done reading headers
-        debug_printf( "    %s\n", p );
+        debug_printf( "     %s\n", p );
         // point p to next header
         p = tmp + 1 + (c->f & FL_CRLF);
     }
@@ -1216,7 +1216,6 @@ int read_body( req *c )
             c->cl += chunklen;
             c->rl = tmp - c->data + chunklen + 1 + (c->f & FL_CRLF);   // skip the terminating CRLF
         }
-        *(c->body+c->cl) = '\0';    // zero terminate body (OK because of removing chunk size lines)
         c->tail = c->data+c->rl;
         c->s = STATE_TAIL;
     }
@@ -1266,7 +1265,7 @@ int read_head( req *c )
                 tmp[1] = '\0';
         }
         if( !*p ) break; // found empty header => done reading headers
-        debug_printf( "    %s\n", p );
+        debug_printf( "     %s\n", p );
         // check for known headers we care about (currently only Content-Length)
         if( strncmp( p, "Content-Length: ", 16 ) == 0 )
         {
@@ -1399,7 +1398,7 @@ int read_request( req *c )
 int parse_data( req *c )
 {
     int rc;
-    char cc;
+    char *pcc, cc;
 
     while( true )
         switch( c->s )
@@ -1426,10 +1425,14 @@ int parse_data( req *c )
 
             case STATE_READY:
                 // zero terminate message body without overwriting start of next request
-                cc = c->body[c->cl];
-                c->body[c->cl] = '\0';
+                // works because in chunked encoding there's space between body and trailers
+                // from concatenating chunks, and without encoding there is nothing after
+                // the body except for the null terminating data[] or the next request
+                pcc = c->body+c->cl;
+                cc = *pcc;
+                *pcc = '\0';
                 rc = handle_request( c );
-                c->body[c->cl] = cc;
+                *pcc = cc;
                 if( rc ) return rc;
                 break;
 
@@ -1602,7 +1605,7 @@ int server_main( int argc, char *argv[] )
                     INIT_REQ( &reqs[new], new );
                     FD_SET( new, &active_fd_set );
 
-                    debug_printf( "New connection\n" );
+                    debug_printf( "===> New connection\n" );
                 }
                 else
                 {
@@ -1616,13 +1619,13 @@ int server_main( int argc, char *argv[] )
 
                         // free request data
                         FREE_REQ( &reqs[i] );
-                        debug_printf( "Closed connection\n" );
+                        debug_printf( "===> Closed connection\n" );
                     }
                 }
             }
     }
 
-    debug_printf( "Exiting\n" );
+    debug_printf( "===> Exiting\n" );
     disconnectMPD( );
     close( serverSocket );
     return SUCCESS;
