@@ -1196,7 +1196,7 @@ int read_body( req *c )
             tmp += 1 + (c->f & FL_CRLF);
             char *perr;
             unsigned int chunklen = strtol( c->data + c->rl, &perr, 16 );
-            if( *perr != 'n' && *perr != '\r' && *perr != ';' )
+            if( *perr != '\n' && *perr != '\r' && *perr != ';' )
             {
                 write_response( c, "HTTP/1.1 400 Bad request\r\n", "400 - Bad request", 0 );
                 return CLOSE_SOCKET;
