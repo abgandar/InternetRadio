@@ -19,7 +19,7 @@ extern const char _binary_easteregg_png_size;
 #endif
 
 // list of embedded files to serve directly
-typedef struct content_struct { const char *url; const char *headers, const char *body; unsigned int len; } content;
+typedef struct content_struct { const char *url; const char *headers; const char *body; unsigned int len; } content;
 static const content contents[] = {
     { "/", "Content-Type: text/html\r\n", &_binary_ir_html_start, (unsigned int)&_binary_ir_html_size },
     { "/ir.html", "Content-Type: text/html\r\n", &_binary_ir_html_start, (unsigned int)&_binary_ir_html_size },
