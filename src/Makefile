@@ -7,10 +7,10 @@ GITREV := `git rev-parse HEAD`
 
 all: ir.cgi ir ir.html
 
-ir.cgi: ir-cgi.c ir-common.c ir-common.h config.h
+ir.cgi: ir-cgi.o ir-common.o ir-common.h config.h
 	$(CC) -o $@ $< $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
-ir: ir-server.c ir-common.c ir-common.h config.h
+ir: ir-server.o ir-common.o ir-common.h config.h
 	$(CC) -o $@ $< $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
 ir.html: ir-raw.html
