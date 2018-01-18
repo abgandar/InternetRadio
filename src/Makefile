@@ -8,7 +8,7 @@ GITREV := `git rev-parse HEAD`
 ifdef EASTEREGG
 EASTEROBJ = easteregg-png.o
 else
-EASTEROBJ = ""
+EASTEROBJ = 
 endif
 
 all: ir.cgi ir ir.html
