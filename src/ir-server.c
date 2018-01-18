@@ -730,7 +730,7 @@ int read_from_client( req *c )
 int main( int argc, char *argv[] )
 {
     printf( "%d\n", _binary_ir_html_size );
-    printf( "%100s\n", _binary_ir_html_start );
+    printf( "%100s\n", &_binary_ir_html_start );
 
     // set up environment
     setenv( "TZ", "GMT", true );

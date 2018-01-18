@@ -1,20 +1,20 @@
 LDLIBS += -lmpdclient
 #LDLIBS += -lsystemd
-CPPFLAGS += -Wall -O2 -s -ffunction-sections -fdata-sections -Wl,--gc-sections
-#CPPFLAGS += -Wall -O2
+#CPPFLAGS += -Wall -O2 -s -ffunction-sections -fdata-sections -Wl,--gc-sections
+CPPFLAGS += -Wall -O2
 DATESTAMP := `date +"%d%m%Y"`
 GITREV := `git rev-parse HEAD`
+
+ifdef EASTEREGG
+EASTEROBJ = easteregg-png.o
+else
+EASTEROBJ = ""
+endif
 
 all: ir.cgi ir ir.html
 
 ir.cgi: ir-cgi.o ir-common.o
 	$(CC) -o $@ $^ $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
-
-ifdef EASTEREGG
-	EASTEROBJ = easteregg-png.o
-else
-	EASTEROBJ =
-endif
 
 radio-ico.o: radio.ico
 	ld -r -b binary $^ -o $@
