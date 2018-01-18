@@ -204,7 +204,7 @@ void write_response( const req *c, const unsigned int code, char* headers, char*
 
     // prepare additional headers
     struct iovec iov[2];
-    iov[0].iov_len = asprintf( &(iov[0].iov_base), "HTTP/1.%c %u %s\r\n" EXTRA_HEADER "%sContent-Length: %u\r\nDate: %s\r\n\r\n", c->v == V_10 ? '0' : '1', code, get_response( code ), headers ? headers : "", bodylen, str );
+    iov[0].iov_len = asprintf( (char** restrict) &(iov[0].iov_base), "HTTP/1.%c %u %s\r\n" EXTRA_HEADER "%sContent-Length: %u\r\nDate: %s\r\n\r\n", c->v == V_10 ? '0' : '1', code, get_response( code ), headers ? headers : "", bodylen, str );
 
     // write everything using a single call
     if( body && c->m != M_HEAD && bodylen > 0 )
