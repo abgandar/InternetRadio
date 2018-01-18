@@ -40,7 +40,10 @@ radio-5-3x-png.o: radio-5-3x.png
 easteregg-png.o: easteregg.png
 	ld -r -b binary $^ -o $@
 
-ir: radio-ico.o radio-0-75x-png.o radio-1x-png.o radio-2x-png.o radio-2-6x-png.o radio-2x-png.o radio-4x-png.o radio-5-3x-png.o $(EASTEROBJ) ir-server.o ir-common.o
+ir-html.o: ir.html
+	ld -r -b binary $^ -o $@
+
+ir: ir-html.o radio-ico.o radio-0-75x-png.o radio-1x-png.o radio-2x-png.o radio-2-6x-png.o radio-2x-png.o radio-4x-png.o radio-5-3x-png.o $(EASTEROBJ) ir-server.o ir-common.o
 	$(CC) -o $@ $^ $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
 ir.html: ir-raw.html
@@ -52,7 +55,7 @@ install: ir ir.cgi ir.html
 	cp ir.service /etc/systemd/system/
 	cp ir.cgi /usr/lib/cgi-bin/
 	setcap CAP_SYS_BOOT+ep /usr/lib/cgi-bin/ir.cgi
-	cp ir.html radio.ico radio-0-75x.png radio-1x.png radio-2-6x.png radio-2x.png radio-4x.png radio-5-3x.png /var/www/html
+#	cp ir.html radio.ico radio-0-75x.png radio-1x.png radio-2-6x.png radio-2x.png radio-4x.png radio-5-3x.png /var/www/html
 	cp ../*.m3u /var/lib/mpd/playlists/
 
 uninstall:
