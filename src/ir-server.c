@@ -51,26 +51,7 @@
 #include <netdb.h>
 
 #include "ir-common.h"
-
-// various external binary files linked in later
-extern const char _binary_ir_html_start;
-extern const char _binary_ir_html_size;
-extern const char _binary_radio_0_75x_png_start;
-extern const char _binary_radio_0_75x_png_size;
-extern const char _binary_radio_1x_png_start;
-extern const char _binary_radio_1x_png_size;
-extern const char _binary_radio_2_6x_png_start;
-extern const char _binary_radio_2_6x_png_size;
-extern const char _binary_radio_2x_png_start;
-extern const char _binary_radio_2x_png_size;
-extern const char _binary_radio_4x_png_start;
-extern const char _binary_radio_4x_png_size;
-extern const char _binary_radio_5_3x_png_start;
-extern const char _binary_radio_5_3x_png_size;
-#ifdef EASTEREGG
-extern const char _binary_easteregg_png_start;
-extern const char _binary_easteregg_png_size;
-#endif
+#include "ir-server-content.h"
 
 // indicator if the main loop is still running (used for signalling)
 static bool running = true;
@@ -281,7 +262,22 @@ int handle_cgi( const req *c )
     return SUCCESS;
 }
 
-// handle a file query
+// handle a file query for an embedded file
+int handle_embedded_file( const req *c )
+{
+    unsigned int i;
+    for( i = 0; contents[i].url && strcmp( c->url, contents[i].url ), i++ );
+
+    if( contents[i].url )
+    {
+        write_response( c, HTTP_OK, contents[i].headers, contents[i].body, contents[i].len );
+        return SUCCESS;
+    }
+
+    return HTTP_NOT_FOUND;
+}
+
+// handle a disk file query
 int handle_file( const req *c )
 {
     if( strstr( c->url, ".." ) != NULL )
@@ -357,24 +353,8 @@ int handle_request( req *c )
         // check what to do with this requst
         if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
             handle_cgi( c );
-        else if( strcmp( c->url, "/" ) == 0 || strcmp( c->url, "/ir.html" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: text/html\r\n", &_binary_ir_html_start, (unsigned int)&_binary_ir_html_size );
-        else if( strcmp( c->url, "/radio-0-75x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_0_75x_png_start, (unsigned int)&_binary_radio_0_75x_png_size );
-        else if( strcmp( c->url, "/radio-1x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_1x_png_start, (unsigned int)&_binary_radio_1x_png_size );
-        else if( strcmp( c->url, "/radio-2-6x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_2_6x_png_start, (unsigned int)&_binary_radio_2_6x_png_size );
-        else if( strcmp( c->url, "/radio-2x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_2x_png_start, (unsigned int)&_binary_radio_2x_png_size );
-        else if( strcmp( c->url, "/radio-4x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_4x_png_start, (unsigned int)&_binary_radio_4x_png_size );
-        else if( strcmp( c->url, "/radio-5-3x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_5_3x_png_start, (unsigned int)&_binary_radio_5_3x_png_size );
-#ifdef EASTEREGG
-        else if( strcmp( c->url, "/hidden/easteregg" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_easteregg_png_start, (unsigned int)&_binary_easteregg_png_size );
-#endif
+        else if( handle_embedded_file( c ) == SUCCESS )
+            ((void)0);  // do nothing
         else if( handle_file( c ) )
             write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0 );
     }
