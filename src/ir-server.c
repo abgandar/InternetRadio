@@ -191,7 +191,7 @@ const char* get_response( const unsigned int code )
 // automatically adds Date header and respects HEAD requests
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
-void write_response( const req *c, const unsigned int code, char* headers, char* body, unsigned int bodylen )
+void write_response( const req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen )
 {
     // autodetermine length
     if( body != NULL && bodylen == 0 )
@@ -209,7 +209,7 @@ void write_response( const req *c, const unsigned int code, char* headers, char*
     // write everything using a single call
     if( body && c->m != M_HEAD && bodylen > 0 )
     {
-        iov[1].iov_base = body;
+        iov[1].iov_base = (char*)body;
         iov[1].iov_len = bodylen;
         writev( c->fd, iov, 2 );
     }

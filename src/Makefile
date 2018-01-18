@@ -40,7 +40,7 @@ radio-5-3x-png.o: radio-5-3x.png
 easteregg-png.o: easteregg.png
 	ld -r -b binary $^ -o $@
 
-ir: ir-server.o ir-common.o $(EASTEROBJ) radio-ico.o radio-0-75x-png.o radio-1x-png.o radio-2x-png.o radio-2-6x-png.o radio-2x-png.o radio-4x-png.o radio-5-3x-png.o
+ir: radio-ico.o radio-0-75x-png.o radio-1x-png.o radio-2x-png.o radio-2-6x-png.o radio-2x-png.o radio-4x-png.o radio-5-3x-png.o $(EASTEROBJ) ir-server.o ir-common.o
 	$(CC) -o $@ $^ $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
 ir.html: ir-raw.html
