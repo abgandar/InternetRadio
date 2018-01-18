@@ -54,22 +54,22 @@
 
 // various external binary files linked in later
 extern const char _binary_ir_html_start;
-extern const int _binary_ir_html_size;
+extern const char _binary_ir_html_size;
 extern const char _binary_radio_0_75x_png_start;
-extern const int _binary_radio_0_75x_png_size;
+extern const char _binary_radio_0_75x_png_size;
 extern const char _binary_radio_1x_png_start;
-extern const int _binary_radio_1x_png_size;
+extern const char _binary_radio_1x_png_size;
 extern const char _binary_radio_2_6x_png_start;
-extern const int _binary_radio_2_6x_png_size;
+extern const char _binary_radio_2_6x_png_size;
 extern const char _binary_radio_2x_png_start;
-extern const int _binary_radio_2x_png_size;
+extern const char _binary_radio_2x_png_size;
 extern const char _binary_radio_4x_png_start;
-extern const int _binary_radio_4x_png_size;
+extern const char _binary_radio_4x_png_size;
 extern const char _binary_radio_5_3x_png_start;
-extern const int _binary_radio_5_3x_png_size;
+extern const char _binary_radio_5_3x_png_size;
 #ifdef EASTEREGG
 extern const char _binary_easteregg_png_start;
-extern const int _binary_easteregg_png_size;
+extern const char _binary_easteregg_png_size;
 #endif
 
 // indicator if the main loop is still running (used for signalling)
@@ -358,22 +358,22 @@ int handle_request( req *c )
         if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
             handle_cgi( c );
         else if( strcmp( c->url, "/" ) == 0 || strcmp( c->url, "/ir.html" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: text/html\r\n", &_binary_ir_html_start, _binary_ir_html_size );
+            write_response( c, HTTP_OK, "Content-Type: text/html\r\n", &_binary_ir_html_start, (unsigned int)&_binary_ir_html_size );
         else if( strcmp( c->url, "/radio-0-75x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_0_75x_png_start, _binary_radio_0_75x_png_size );
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_0_75x_png_start, (unsigned int)&_binary_radio_0_75x_png_size );
         else if( strcmp( c->url, "/radio-1x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_1x_png_start, _binary_radio_1x_png_size );
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_1x_png_start, (unsigned int)&_binary_radio_1x_png_size );
         else if( strcmp( c->url, "/radio-2-6x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_2_6x_png_start, _binary_radio_2_6x_png_size );
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_2_6x_png_start, (unsigned int)&_binary_radio_2_6x_png_size );
         else if( strcmp( c->url, "/radio-2x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_2x_png_start, _binary_radio_2x_png_size );
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_2x_png_start, (unsigned int)&_binary_radio_2x_png_size );
         else if( strcmp( c->url, "/radio-4x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_4x_png_start, _binary_radio_4x_png_size );
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_4x_png_start, (unsigned int)&_binary_radio_4x_png_size );
         else if( strcmp( c->url, "/radio-5-3x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_5_3x_png_start, _binary_radio_5_3x_png_size );
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_5_3x_png_start, (unsigned int)&_binary_radio_5_3x_png_size );
 #ifdef EASTEREGG
         else if( strcmp( c->url, "/hidden/easteregg" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_easteregg_png_start, _binary_easteregg_png_size );
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_easteregg_png_start, (unsigned int)&_binary_easteregg_png_size );
 #endif
         else if( handle_file( c ) )
             write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0 );
@@ -729,9 +729,6 @@ int read_from_client( req *c )
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
 int main( int argc, char *argv[] )
 {
-    printf( "%d\n", &_binary_ir_html_size );
-    printf( "%100s\n", &_binary_ir_html_start );
-
     // set up environment
     setenv( "TZ", "GMT", true );
     setlocale( LC_ALL, "C" );
