@@ -166,7 +166,7 @@ const char* get_mime( const char* fn )
 {
     const char const* end = fn+strlen( fn )-1;
 
-    for( int i = 0; mimetypes[i].ext; i++ )
+    for( unsigned int i = 0; mimetypes[i].ext; i++ )
     {
         const char *p, *q;
         for( p = end, q = mimetypes[i].ext; *q && p >= fn && *p == *q; p--, q++ );
@@ -180,7 +180,7 @@ const char* get_mime( const char* fn )
 // get human readable response from code
 const char* get_response( const unsigned int code )
 {
-    int i;
+    unsigned int i;
     for( i = 0; responses[i].code && responses[i].code < code; i++ );
     if( responses[i].code == code )
         return responses[i].msg;
@@ -205,7 +205,9 @@ void write_response( const req *c, const unsigned int code, const char* headers,
 
     // prepare additional headers
     struct iovec iov[2];
-    iov[0].iov_len = asprintf( (char** restrict) &(iov[0].iov_base), "HTTP/1.%c %u %s\r\n" EXTRA_HEADER "%sContent-Length: %u\r\nDate: %s\r\n\r\n", c->v == V_10 ? '0' : '1', code, get_response( code ), headers ? headers : "", bodylen, str );
+    iov[0].iov_len = asprintf( (char** restrict) &(iov[0].iov_base),
+                               "HTTP/1.%c %u %s\r\n" EXTRA_HEADER "%sContent-Length: %u\r\nDate: %s\r\n\r\n",
+                               c->v == V_10 ? '0' : '1', code, get_response( code ), headers ? headers : "", bodylen, str );
 
     // write everything using a single call
     if( body && c->m != M_HEAD && bodylen > 0 )
@@ -598,10 +600,10 @@ int read_request( req *c )
         c->m = M_UNKNOWN;
 
     // identify version
-    if( strcmp( c->version, "HTTP/1.0" ) == 0 )
-        c->v = V_10;
-    else if( strcmp( c->version, "HTTP/1.1" ) == 0 )
+    if( strcmp( c->version, "HTTP/1.1" ) == 0 )
         c->v = V_11;
+    else if( strcmp( c->version, "HTTP/1.0" ) == 0 )
+        c->v = V_10;
     else
         c->v = V_UNKNOWN;
 
@@ -691,7 +693,7 @@ int read_from_client( req *c )
     }
 
     // read data
-    int nbytes = read( c->fd, c->data+c->len, len );
+    const int nbytes = read( c->fd, c->data+c->len, len );
     if( nbytes == 0 )
         return CLOSE_SOCKET;  // nothing to read from this socket, must be closed => request finished
     else if( nbytes < 0 )
@@ -821,7 +823,7 @@ int main( int argc, char *argv[] )
                         write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
                         shutdown( new, SHUT_RDWR );
                         close( new );
-                        debug_printf( "Dropped connection\n" );
+                        debug_printf( "===> Dropped connection\n" );
                         continue;
                     }
 
