@@ -327,6 +327,9 @@ int finish_request( req *c )
     return SUCCESS;
 }
 
+extern const char radio_0_75x_png_start;
+extern const int radio_0_75x_png_size;
+
 // handle request after it was completely read
 int handle_request( req *c )
 {
@@ -337,8 +340,14 @@ int handle_request( req *c )
         // check what to do with this requst
         if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
             handle_cgi( c );
+        else if( strcmp( c->url, "/radio-0-75x.png" ) == 0 )
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &radio_0_75x_png_start, radio_0_75x_png_size );
         else if( handle_file( c ) )
             write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0 );
+#ifdef EASTEREGG
+        else if( strcmp( c->url, "/hidden/easteregg" ) == 0 )
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", EASTEREGG, LEN_EASTEREGG );
+#endif
     }
 
     c->s = STATE_FINISH;

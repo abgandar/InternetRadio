@@ -14,3 +14,5 @@
 #define EXTRA_HEADER            "Connection: Keep-Alive\r\nKeep-Alive: timeout=60,max=999999\r\nX-Frame-Options: SAMEORIGIN\r\n"  // extra headers to send with all replies
 #define MAX_CONNECTIONS         32                          // max number of file descriptors (= concurrent connections), max FD_SETSIZE
 //#define MORE_MIME_TYPES                                     // include more MIME types in database than minimum required for IR application
+//#define EASTEREGG                                           // include easteregg
+

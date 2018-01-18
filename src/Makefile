@@ -10,7 +10,37 @@ all: ir.cgi ir ir.html
 ir.cgi: ir-cgi.o ir-common.o
 	$(CC) -o $@ $^ $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
-ir: ir-server.o ir-common.o
+ifdef EASTEREGG
+	EASTEROBJ = easteregg-png.o
+else
+	EASTEROBJ =
+endif
+
+radio-ico.o: radio.ico
+	ld -r -b binary $^ -o $@
+
+radio-0-75x-png.o: radio-0-75x.png
+	ld -r -b binary $^ -o $@
+
+radio-1x-png.o: radio-1x.png
+	ld -r -b binary $^ -o $@
+
+radio-2-6x-png.o: radio-2-6x.png
+	ld -r -b binary $^ -o $@
+
+radio-2x-png.o: radio-2x.png
+	ld -r -b binary $^ -o $@
+
+radio-4x-png.o: radio-4x.png
+	ld -r -b binary $^ -o $@
+
+radio-5-3x-png.o: radio-5-3x.png
+	ld -r -b binary $^ -o $@
+
+easteregg-png.o: easteregg.png
+	ld -r -b binary $^ -o $@
+
+ir: ir-server.o ir-common.o $(EASTEROBJ) radio-ico.o radio-0-75x-png.o radio-2x-png.o radio-2-6x-png.o radio-2x-png.o radio-4x-png.o radio-5-3x-png.o
 	$(CC) -o $@ $^ $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
 ir.html: ir-raw.html
