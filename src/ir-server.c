@@ -26,6 +26,9 @@
  *
  */
 
+#define __USE_POSIX
+#define __GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -178,7 +181,7 @@ const char* get_mime( const char* fn )
 const char* get_response( const unsigned int code )
 {
     int i;
-    for( i = 0; responses[i].code && responses[i].code < code; i++ )
+    for( i = 0; responses[i].code && responses[i].code < code; i++ );
     if( responses[i].code == code )
         return responses[i].msg;
     else
@@ -273,11 +276,11 @@ int handle_cgi( const req *c )
 int handle_file( const req *c )
 {
     if( strstr( c->url, ".." ) != NULL )
-        return NOT_FOUND;
+        return HTTP_NOT_FOUND;
 
     const int len_WWW_DIR = strlen( WWW_DIR ), len_url = strlen( c->url ), len_DIR_INDEX = strlen( DIR_INDEX );
     if( len_WWW_DIR+len_url+len_DIR_INDEX >= PATH_MAX )
-        return NOT_FOUND;
+        return HTTP_NOT_FOUND;
 
     char fn[PATH_MAX];
     memcpy( fn, WWW_DIR, len_WWW_DIR );
@@ -293,7 +296,7 @@ int handle_file( const req *c )
     // open file
     int fd = open( fn, O_RDONLY );
     if( fd < 0 )
-        return NOT_FOUND;
+        return HTTP_NOT_FOUND;
 
     // determine file size
     int len = lseek( fd, 0, SEEK_END );
