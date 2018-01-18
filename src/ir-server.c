@@ -358,7 +358,7 @@ int handle_request( req *c )
         if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
             handle_cgi( c );
         else if( strcmp( c->url, "/" ) == 0 || strcmp( c->url, "/ir.html" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: text/html\r\n", &_binary_ir_html_start, _binary_binary_html_size );
+            write_response( c, HTTP_OK, "Content-Type: text/html\r\n", &_binary_ir_html_start, _binary_ir_html_size );
         else if( strcmp( c->url, "/radio-0-75x.png" ) == 0 )
             write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &_binary_radio_0_75x_png_start, _binary_radio_0_75x_png_size );
         else if( strcmp( c->url, "/radio-1x.png" ) == 0 )
