@@ -266,7 +266,7 @@ int handle_cgi( const req *c )
 int handle_embedded_file( const req *c )
 {
     unsigned int i;
-    for( i = 0; contents[i].url && strcmp( c->url, contents[i].url ), i++ );
+    for( i = 0; contents[i].url && strcmp( c->url, contents[i].url ); i++ );
 
     if( contents[i].url )
     {
