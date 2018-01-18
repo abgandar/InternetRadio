@@ -7,11 +7,11 @@ GITREV := `git rev-parse HEAD`
 
 all: ir.cgi ir ir.html
 
-ir.cgi: ir.c config.h
-	$(CC) -o $@ $< $(CPPFLAGS) -D CGI $(LDFLAGS) $(LDLIBS)
+ir.cgi: ir-cgi.c ir-common.c ir-common.h config.h
+	$(CC) -o $@ $< $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
-ir: ir.c config.h
-	$(CC) -o $@ $< $(CPPFLAGS) -D SERVER $(LDFLAGS) $(LDLIBS)
+ir: ir-server.c ir-common.c ir-common.h config.h
+	$(CC) -o $@ $< $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
 ir.html: ir-raw.html
 	sed -e "s/%DATE%/$(DATESTAMP)/g" -e "s/%GITREV%/$(GITREV)/g" ir-raw.html > ir.html
