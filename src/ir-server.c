@@ -327,8 +327,23 @@ int finish_request( req *c )
     return SUCCESS;
 }
 
+// various external binary files linked in later
 extern const char binary_radio_0_75x_png_start;
 extern const int binary_radio_0_75x_png_size;
+extern const char binary_radio_1x_png_start;
+extern const int binary_radio_1x_png_size;
+extern const char binary_radio_2_6x_png_start;
+extern const int binary_radio_2_6x_png_size;
+extern const char binary_radio_2x_png_start;
+extern const int binary_radio_2x_png_size;
+extern const char binary_radio_4x_png_start;
+extern const int binary_radio_4x_png_size;
+extern const char binary_radio_5_3x_png_start;
+extern const int binary_radio_5_3x_png_size;
+#ifdef EASTEREGG
+extern const char binary_easteregg_png_start;
+extern const int binary_easteregg_png_size;
+#endif
 
 // handle request after it was completely read
 int handle_request( req *c )
