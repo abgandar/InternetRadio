@@ -327,8 +327,8 @@ int finish_request( req *c )
     return SUCCESS;
 }
 
-extern const char radio_0_75x_png_start;
-extern const int radio_0_75x_png_size;
+extern const char binary_radio_0_75x_png_start;
+extern const int binary_radio_0_75x_png_size;
 
 // handle request after it was completely read
 int handle_request( req *c )
@@ -341,13 +341,23 @@ int handle_request( req *c )
         if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
             handle_cgi( c );
         else if( strcmp( c->url, "/radio-0-75x.png" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", &radio_0_75x_png_start, radio_0_75x_png_size );
-        else if( handle_file( c ) )
-            write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0 );
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", (const char*)&radio_0_75x_png_start, radio_0_75x_png_size );
+        else if( strcmp( c->url, "/radio-1x.png" ) == 0 )
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", (const char*)&radio_1x_png_start, radio_1x_png_size );
+        else if( strcmp( c->url, "/radio-2-6x.png" ) == 0 )
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", (const char*)&radio_2_6x_png_start, radio_2_6x_png_size );
+        else if( strcmp( c->url, "/radio-2x.png" ) == 0 )
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", (const char*)&radio_2x_png_start, radio_2x_png_size );
+        else if( strcmp( c->url, "/radio-4x.png" ) == 0 )
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", (const char*)&radio_4x_png_start, radio_4x_png_size );
+        else if( strcmp( c->url, "/radio-5-3x.png" ) == 0 )
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", (const char*)&radio_5_3x_png_start, radio_5_3x_png_size );
 #ifdef EASTEREGG
         else if( strcmp( c->url, "/hidden/easteregg" ) == 0 )
-            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", EASTEREGG, LEN_EASTEREGG );
+            write_response( c, HTTP_OK, "Content-Type: image/png\r\n", (const char*)&easteregg_png_start, easteregg_png_size );
 #endif
+        else if( handle_file( c ) )
+            write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0 );
     }
 
     c->s = STATE_FINISH;
