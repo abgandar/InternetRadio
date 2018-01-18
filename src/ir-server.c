@@ -43,13 +43,12 @@
 #include <signal.h>
 #include <errno.h>
 #include <sys/types.h>
+#include <sys/uio.h>
 #include <sys/socket.h>
 #include <sys/sendfile.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <sys/uio.h>
-#include <sys/reboot.h>
 
 #include "ir-common.h"
 
@@ -204,30 +203,20 @@ void write_response( const req *c, const unsigned int code, char* headers, char*
     strftime( str, 64, "%a, %d %b %Y %T %z", localtime( &t ) );
 
     // prepare additional headers
-    char *tmp;
-    const int tmp_size = asprintf( &tmp, "%s %d %s\r\n" EXTRA_HEADER "Content-Length: %d\r\nDate: %s\r\n\r\n", c->v == V_10 ? "HTTP/1.0" : "HTTP/1.1", code, get_response( code ), bodylen, str );
+    struct iovec iov[2];
+    iov[0].iov_len = asprintf( &(iov[0].iov_base), "HTTP/1.%c %u %s\r\n" EXTRA_HEADER "%sContent-Length: %u\r\nDate: %s\r\n\r\n", c->v == V_10 ? '0' : '1', code, get_response( code ), headers ? headers : "", bodylen, str );
 
     // write everything using a single call
-    struct iovec iov[3];
-    int niov = 0;
-    if( headers )
-    {
-        iov[niov].iov_base = headers;
-        iov[niov].iov_len = strlen( headers );
-        niov++;
-    }
-    iov[niov].iov_base = tmp;
-    iov[niov].iov_len = tmp_size;
-    niov++;
     if( body && c->m != M_HEAD && bodylen > 0 )
     {
-        iov[niov].iov_base = body;
-        iov[niov].iov_len = bodylen;
-        niov++;
+        iov[1].iov_base = body;
+        iov[1].iov_len = bodylen;
+        writev( c->fd, iov, 2 );
     }
-    writev( c->fd, iov, niov );
+    else
+        write( c->fd, iov[0].iov_base, iov[0].iov_len );
 
-    free( tmp );
+    free( iov[0].iov_base );
 }
 
 // handle a CGI query

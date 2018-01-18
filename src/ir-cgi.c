@@ -43,9 +43,6 @@ extern const int FORBIDDEN;
 extern const char* const NOT_FOUND_MSG;
 extern const int NOT_FOUND;
 
-// output buffer file (defined in ir-common.c)
-extern FILE* outbuf;
-
 // Main CGI program entry point
 int main( int argc, char *argv[] )
 {
