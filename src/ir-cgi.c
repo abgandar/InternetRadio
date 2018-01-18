@@ -53,11 +53,8 @@ int main( int argc, char *argv[] )
     char *obuf = NULL;
     size_t obuf_size = 0;
 
-    if( output_start( &obuf, &obuf_size ) )
-    {
-        outbuf = stdout;    // error allocating output buffer, use stdout directly to print error and exit
+    if( output_start( &obuf, &obuf_size ) )         // in case of failure, outbuf is automatically set to stdout
         return error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
-    }
 
     // get query string from CGI environment and duplicate so it is writeable
     int rc = 0;

@@ -298,7 +298,10 @@ int error( const int code, const char* msg, const char* message )
 int output_start( char **obuf, size_t *obuf_size )
 {
     if( !(outbuf = open_memstream( obuf, obuf_size )) )
-       return SERVER_ERROR;
+    {
+        outbuf = stdout;    // set outbuf to stdout so error() can be called
+        return SERVER_ERROR;
+    }
 
     // allocate one memory page right away
     fseek( outbuf, SEEK_SET, 4095 );    // allow for the implicit extra NULL

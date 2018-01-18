@@ -33,4 +33,4 @@ uninstall:
 	@rm "/var/lib/mpd/playlists/Radio Auswahl.m3u" "/var/lib/mpd/playlists/Radio International.m3u" "/var/lib/mpd/playlists/Radio Deutschland.m3u"
 
 clean:
-	rm -f ir.o ir.cgi ir ir.html
+	rm -f *.o ir.cgi ir ir.html

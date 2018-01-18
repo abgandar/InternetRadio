@@ -21,3 +21,4 @@ int output_end( );
 
 // reset buffered output and output an error instead, then close the output buffer
 int error( const int code, const char* msg, const char* message );
+
