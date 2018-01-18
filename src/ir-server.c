@@ -729,7 +729,7 @@ int read_from_client( req *c )
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
 int main( int argc, char *argv[] )
 {
-    printf( "%d\n", _binary_ir_html_size );
+    printf( "%d\n", &_binary_ir_html_size );
     printf( "%100s\n", &_binary_ir_html_start );
 
     // set up environment
