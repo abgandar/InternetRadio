@@ -337,11 +337,11 @@ int handle_file( const req *c )
         close( fd );
         return SUCCESS;
     }
-    debug_printf( "===> File size, modification time: %u, %u\n", sb.st_size, sb.st_mtim.tv_sec );
+    debug_printf( "===> File size, modification time: %u, %ld\n", sb.st_size, sb.st_mtim.tv_sec );
 
     // write headers
     char *str;
-    asprintf( &str, "ETag: \"%u\"\r\nContent-Type: %s\r\n", sb.st_mtim.tv_sec, get_mime( fn ) );
+    asprintf( &str, "ETag: \"%ld\"\r\nContent-Type: %s\r\n", sb.st_mtim.tv_sec, get_mime( fn ) );
 
     // check ETag
     const char *inm = get_header_field( c, "If-None-Match: " );
@@ -358,7 +358,7 @@ int handle_file( const req *c )
     write_response( c, HTTP_OK, str, NULL, sb.st_size );
     free( str );
     if( c->m != M_HEAD )
-        sendfile( c->fd, fd, NULL, len );
+        sendfile( c->fd, fd, NULL, sb.st_size );
     close( fd );
 
     return SUCCESS;
