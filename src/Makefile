@@ -1,6 +1,6 @@
-DATESTAMP := `date +"%d%m%Y"`
-TIMESTAMP := `date +"%d%m%y%H%M%S"`
-GITREV := `git rev-parse HEAD`
+DATESTAMP := $(shell date +"%d%m%Y")
+TIMESTAMP := $(shell date +"%d%m%y%H%M%S")
+GITREV := $(shell git rev-parse HEAD)
 
 LDLIBS += -lmpdclient
 #LDLIBS += -lsystemd
