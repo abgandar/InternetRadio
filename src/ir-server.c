@@ -52,6 +52,7 @@
 
 #include "ir-common.h"
 #include "ir-server-content.h"
+#include "ir-server-mime.h"
 
 // indicator if the main loop is still running (used for signalling)
 static bool running = true;
@@ -60,7 +61,17 @@ static bool running = true;
 typedef enum retcode_enum { CLOSE_SOCKET = -1, SUCCESS = 0, WAIT_FOR_DATA = 1 } retcode;
 
 // some HTTP status codes
-typedef enum statuscode_enum { HTTP_OK = 200, HTTP_BAD_REQUEST = 400, HTTP_NOT_FOUND = 404, HTTP_NOT_ALLOWED = 405, HTTP_TOO_LARGE = 413, HTTP_SERVER_ERROR = 500, HTTP_NOT_IMPLEMENTED = 501, HTTP_SERVICE_UNAVAILABLE = 503 } statuscode;
+typedef enum statuscode_enum {
+    HTTP_OK = 200,
+    HTTP_NOT_MODIFIED = 304,
+    HTTP_BAD_REQUEST = 400,
+    HTTP_NOT_FOUND = 404,
+    HTTP_NOT_ALLOWED = 405,
+    HTTP_TOO_LARGE = 413,
+    HTTP_SERVER_ERROR = 500,
+    HTTP_NOT_IMPLEMENTED = 501,
+    HTTP_SERVICE_UNAVAILABLE = 503
+} statuscode;
 
 // request method
 typedef enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M_DELETE, M_TRACE, M_CONNECT } method;
@@ -74,29 +85,11 @@ typedef enum flags_enum { FL_NONE = 0, FL_CRLF = 1, FL_CHUNKED = 2 } flags;
 // request state
 typedef enum state_enum { STATE_NEW, STATE_HEAD, STATE_BODY, STATE_TAIL, STATE_READY, STATE_FINISH } state;
 
-// some MIME types (note: extensions must be backwards for faster matching later!)
-typedef struct { const char *ext; const char *mime; } mimetype;
-static const mimetype mimetypes[] = {
-    { "gnp.", "image/png" },
-    { "lmth.", "text/html" },
-    { "oci.", "image/x-icon" },
-#ifdef MORE_MIME_TYPES
-    { "ssc.", "text/css" },
-    { "sj.", "text/javascript" },
-    { "gpj.", "image/jpeg" },
-    { "fig.", "image/gif" },
-    { "mth.", "text/html" },
-    { "gepj.", "image/jpeg" },
-    { "txt.", "text/plain" },
-    { "tad.", "application/octet-stream" },
-#endif
-    { NULL, NULL }
-};
-
 // some human readable equivalents to HTTP status codes above (must be sorted by code except for last!)
-typedef struct { const unsigned int code; const char *msg; } response;
+typedef struct response_struct { const unsigned int code; const char *msg; } response;
 static const response responses[] = {
     { HTTP_OK, "OK" },
+    { HTTP_NOT_MODIFIED, "Not modified" },
     { HTTP_BAD_REQUEST, "Bad request" },
     { HTTP_NOT_FOUND, "Not found" },
     { HTTP_NOT_ALLOWED, "Method not allowed" },
@@ -108,7 +101,7 @@ static const response responses[] = {
 };
 
 // an active request
-typedef struct {
+typedef struct request_struct {
     int fd;                 // socket associated with this request
     char *data;             // data buffer pointer
     unsigned int max, len;  // max allocated length, current length
@@ -186,6 +179,28 @@ const char* get_response( const unsigned int code )
         return responses[i].msg;
     else
         return "Unknown";  // response was not found
+}
+
+// get first matching header value from the request (or NULL if not found)
+// name must be of the form "Date: " (including colon and space)
+const char* get_header_field( const req *c, const char* name )
+{
+    char *p = c->head;
+    unsigned int len = strlen( name );
+    
+    // check in headers
+    if( c->head && *c->head )
+        for( p = c->head; *p; p += strlen( p )+1+(c->f & FL_CRLF) )
+            if( strncmp( p, name, len ) == 0 )
+                return p+len;
+    
+    // check in trailers
+    if( c->tail && *c->tail )
+        for( p = c->tail; *p; p += strlen( p )+1+(c->f & FL_CRLF) )
+            if( strncmp( p, name, len ) == 0 )
+                return p+len;
+    
+    return NULL;
 }
 
 // write a response with given body and headers (must include the initial HTTP response header)
@@ -272,6 +287,14 @@ int handle_embedded_file( const req *c )
 
     if( contents[i].url )
     {
+#ifdef TIMESTAMP
+        const char inm = get_header_field( c, "If-None-Match: " );
+        if( inm && strcmp( inm, TIMESTAMP ) == 0 )
+        {
+            write_response( c, HTTP_NOT_MODIFIED, contents[i].headers, NULL, 0 );
+            return SUCCESS;
+        }
+#endif
         write_response( c, HTTP_OK, contents[i].headers, contents[i].body, contents[i].len );
         return SUCCESS;
     }
@@ -305,22 +328,33 @@ int handle_file( const req *c )
     if( fd < 0 )
         return HTTP_NOT_FOUND;
 
-    // determine file size
-    int len = lseek( fd, 0, SEEK_END );
-    if( len < 0 )
+    // file statistics
+    struct stat sb;
+    if( fstat( fd, &sb ) )
     {
         write_response( c, HTTP_SERVER_ERROR, NULL, "500 - Server error", 0 );
         close( fd );
         return SUCCESS;
     }
-    debug_printf( "===> File size: %d\n", len );
+    debug_printf( "===> File size, modification time: %u, %u\n", sb.st_size, sb.mtim.tv_sec );
 
-    // write output
+    // write headers
     char *str;
-    asprintf( &str, "Content-Type: %s\r\n", get_mime( fn ) );
-    write_response( c, HTTP_OK, str, NULL, len );
+    asprintf( &str, "ETag: \"%u\"\r\nContent-Type: %s\r\n", st.mtim.tv_sec, get_mime( fn ) );
+
+    // check ETag
+    const char inm = get_header_field( c, "If-None-Match: " );
+    char *last = NULL;
+    if( inm && strtol( inm+1, &last, 10 ) == st.mtim.tv_sec && last && *last == '"' )
+        write_response( c, HTTP_NOT_MODIFIED, str, NULL, 0 );
+        free( str );
+        close( fd );
+        return SUCCESS;
+    }
+
+    // write response
+    write_response( c, HTTP_OK, str, NULL, sb.st_size );
     free( str );
-    lseek( fd, 0, SEEK_SET );
     if( c->m != M_HEAD )
         sendfile( c->fd, fd, NULL, len );
     close( fd );

@@ -1,9 +1,11 @@
+DATESTAMP := `date +"%d%m%Y"`
+TIMESTAMP := `date +"%d%m%y%H%M%S"`
+GITREV := `git rev-parse HEAD`
+
 LDLIBS += -lmpdclient
 #LDLIBS += -lsystemd
-CPPFLAGS += -Wall -O2 -s -ffunction-sections -fdata-sections -Wl,--gc-sections
-#CPPFLAGS += -Wall -O2
-DATESTAMP := `date +"%d%m%Y"`
-GITREV := `git rev-parse HEAD`
+CPPFLAGS += -Wall -O2 -s -ffunction-sections -fdata-sections -Wl,--gc-sections -DTIMESTAMP='"\"$(TIMESTAMP)\""'
+#CPPFLAGS += -Wall -O2 -DTIMESTAMP='"\"$(TIMESTAMP)\""'
 
 ifdef EASTEREGG
 EASTEROBJ = easteregg-png.o
