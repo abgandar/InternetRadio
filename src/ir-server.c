@@ -42,6 +42,7 @@
 #include <locale.h>
 #include <signal.h>
 #include <errno.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <sys/socket.h>
@@ -288,7 +289,7 @@ int handle_embedded_file( const req *c )
     if( contents[i].url )
     {
 #ifdef TIMESTAMP
-        const char inm = get_header_field( c, "If-None-Match: " );
+        const char *inm = get_header_field( c, "If-None-Match: " );
         if( inm && strcmp( inm, TIMESTAMP ) == 0 )
         {
             write_response( c, HTTP_NOT_MODIFIED, contents[i].headers, NULL, 0 );
@@ -340,12 +341,12 @@ int handle_file( const req *c )
 
     // write headers
     char *str;
-    asprintf( &str, "ETag: \"%u\"\r\nContent-Type: %s\r\n", st.mtim.tv_sec, get_mime( fn ) );
+    asprintf( &str, "ETag: \"%u\"\r\nContent-Type: %s\r\n", sb.mtim.tv_sec, get_mime( fn ) );
 
     // check ETag
-    const char inm = get_header_field( c, "If-None-Match: " );
+    const char *inm = get_header_field( c, "If-None-Match: " );
     char *last = NULL;
-    if( inm && strtol( inm+1, &last, 10 ) == st.mtim.tv_sec && last && *last == '"' )
+    if( inm && strtol( inm+1, &last, 10 ) == sb.mtim.tv_sec && last && *last == '"' )
         write_response( c, HTTP_NOT_MODIFIED, str, NULL, 0 );
         free( str );
         close( fd );
