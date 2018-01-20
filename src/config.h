@@ -12,7 +12,6 @@
 #define WWW_DIR                 "/var/www/html/"            // directory where to look for files (should end in / for safety)
 #define DIR_INDEX               "ir.html"                   // directory index file used when requesting a directory from disk
 #define EXTRA_HEADER            "Connection: Keep-Alive\r\nKeep-Alive: timeout=60,max=999999\r\nX-Frame-Options: SAMEORIGIN\r\n"  // extra headers to send with all replies
-#define MAX_CONNECTIONS         32                          // max number of file descriptors (= concurrent connections), max FD_SETSIZE
+#define MAX_CONNECTIONS         32                          // max number of concurrent connections
 //#define MORE_MIME_TYPES                                     // include more MIME types in database than minimum required for IR application
 //#define EASTEREGG                                           // include easteregg
-

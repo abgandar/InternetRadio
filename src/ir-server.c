@@ -82,7 +82,7 @@ typedef enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M
 typedef enum version_enum { V_UNKNOWN, V_10, V_11 } version;
 
 // request flags (bitfield, assign powers of 2!)
-typedef enum flags_enum { FL_NONE = 0, FL_CRLF = 1, FL_CHUNKED = 2 } flags;
+typedef enum flags_enum { FL_NONE = 0, FL_CRLF = 1, FL_CHUNKED = 2, FL_CLOSE = 4 } flags;
 
 // request state
 typedef enum state_enum { STATE_NEW, STATE_HEAD, STATE_BODY, STATE_TAIL, STATE_READY, STATE_FINISH } state;
@@ -193,13 +193,13 @@ const char* get_header_field( const req *c, const char* name )
     // check in headers
     if( c->head && *c->head )
         for( p = c->head; *p; p += strlen( p )+1+(c->f & FL_CRLF) )
-            if( strncmp( p, name, len ) == 0 )
+            if( strncasecmp( p, name, len ) == 0 )
                 return p+len;
     
     // check in trailers
     if( c->tail && *c->tail )
         for( p = c->tail; *p; p += strlen( p )+1+(c->f & FL_CRLF) )
-            if( strncmp( p, name, len ) == 0 )
+            if( strncasecmp( p, name, len ) == 0 )
                 return p+len;
     
     return NULL;
@@ -365,9 +365,13 @@ int handle_file( const req *c )
     return SUCCESS;
 }
 
-// finish request after had been handled
+// finish request after it has been handled
 int finish_request( req *c )
 {
+    // close connection if no keep-alive
+    if( c->v == V_10 || c->f & FL_CLOSE )
+        return CLOSE_SOCKET;
+
     // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
     int rem = c->len - c->rl;    // should never underflow but just to be sure
     debug_printf( "===> Finish: %d bytes left (%d)\n", rem, c->rl );
@@ -516,7 +520,7 @@ int read_head( req *c )
     debug_printf( "===> Headers:\n" );
 
     // hooray! we have headers, parse them
-    char *p = c->head;
+    char *p = c->head, *host = NULL;
     while( p )
     {
         // find end of current header and zero terminate it => p points to current header line
@@ -530,7 +534,7 @@ int read_head( req *c )
         if( !*p ) break; // found empty header => done reading headers
         debug_printf( "     %s\n", p );
         // check for known headers we care about (currently only Content-Length)
-        if( strncmp( p, "Content-Length: ", 16 ) == 0 )
+        if( strncasecmp( p, "Content-Length: ", 16 ) == 0 )
         {
             char *perr;
             unsigned int cl = strtol( p+16, &perr, 10 );
@@ -548,9 +552,9 @@ int read_head( req *c )
             c->rl += cl;
             debug_printf( "===> Content-Length: %d (%d total)\n", c->cl, c->rl );
         }
-        else if( strncmp( p, "Transfer-Encoding: ", 19 ) == 0 )
+        else if( strncasecmp( p, "Transfer-Encoding: ", 19 ) == 0 )
         {
-            if( strncmp( p+19, "chunked", 7 ) != 0 )
+            if( strcasecmp( p+19, "chunked" ) != 0 )
             {
                 // c.f. http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2
                 write_response( c, HTTP_NOT_IMPLEMENTED, NULL, "501 - requested Transfer-Encoding not implemented", 0 );
@@ -558,8 +562,31 @@ int read_head( req *c )
             }
             c->f |= FL_CHUNKED;
         }
+        else if( strncasecmp( p, "Host: ", 6 ) == 0 )
+        {
+            if( host )
+            {
+                // c.f. https://tools.ietf.org/html/rfc7230
+                write_response( c, HTTP_BAD_REQUEST, NULL, "400 - multiple Host headers", 0 );
+                return CLOSE_SOCKET;
+            }
+            host = p+6;
+        }
+        else if( strncasecmp( p, "Connection: ", 12 ) == 0 )
+        {
+            if( strcasecmp( p+12, "close" ) == 0 )
+                c->f |= FL_CLOSE;
+        }
         // point p to next header
         p = tmp + 1 + (c->f & FL_CRLF);
+    }
+
+    // check if host header has been received
+    if( c->v == V_11 && !host )
+    {
+        // c.f. https://tools.ietf.org/html/rfc7230
+        write_response( c, HTTP_BAD_REQUEST, NULL, "400 - missing Host headers", 0 );
+        return CLOSE_SOCKET;
     }
 
     c->s = STATE_BODY;
@@ -617,21 +644,21 @@ int read_request( req *c )
     c->version = tmp;
 
     // identify method
-    if( strcmp( c->method, "GET" ) == 0 )
+    if( strcasecmp( c->method, "GET" ) == 0 )
         c->m = M_GET;
-    else if( strcmp( c->method, "POST" ) == 0 )
+    else if( strcasecmp( c->method, "POST" ) == 0 )
         c->m = M_POST;
-    else if( strcmp( c->method, "HEAD" ) == 0 )
+    else if( strcasecmp( c->method, "HEAD" ) == 0 )
         c->m = M_HEAD;
-    else if( strcmp( c->method, "OPTIONS" ) == 0 )
+    else if( strcasecmp( c->method, "OPTIONS" ) == 0 )
         c->m = M_OPTIONS;
-    else if( strcmp( c->method, "PUT" ) == 0 )
+    else if( strcasecmp( c->method, "PUT" ) == 0 )
         c->m = M_PUT;
-    else if( strcmp( c->method, "DELETE" ) == 0 )
+    else if( strcasecmp( c->method, "DELETE" ) == 0 )
         c->m = M_DELETE;
-    else if( strcmp( c->method, "TRACE" ) == 0 )
+    else if( strcasecmp( c->method, "TRACE" ) == 0 )
         c->m = M_TRACE;
-    else if( strcmp( c->method, "CONNECT" ) == 0 )
+    else if( strcasecmp( c->method, "CONNECT" ) == 0 )
         c->m = M_CONNECT;
     else
         c->m = M_UNKNOWN;
