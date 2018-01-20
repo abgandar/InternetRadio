@@ -577,7 +577,7 @@ int read_head( req *c )
         }
         else if( strncasecmp( p, "Transfer-Encoding:", 18 ) == 0 )
         {
-            char *val = p+18+strspn( p+18, " \t" );
+            const char *val = p+18+strspn( p+18, " \t" );
             if( strcasecmp( val, "chunked" ) != 0 )
             {
                 // c.f. http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2
@@ -598,7 +598,7 @@ int read_head( req *c )
         }
         else if( strncasecmp( p, "Connection:", 11 ) == 0 )
         {
-            char *val = p+11+strspn( p+11, " \t" )
+            const char *val = p+11+strspn( p+11, " \t" );
             if( strcasecmp( val, "close" ) == 0 )
                 c->f |= FL_CLOSE;
         }
