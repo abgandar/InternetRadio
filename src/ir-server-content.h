@@ -5,7 +5,7 @@ int handle_ir_cgi( const req *c );
 static const struct handler_struct handlers[] = {
     { "/cgi-bin/ir",        &handle_ir_cgi },
     { "/ir",                &handle_ir_cgi },
-    { NULL, NULL, NULL }
+    { NULL, NULL }
 };
 
 

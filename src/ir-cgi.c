@@ -31,6 +31,7 @@
 #include <string.h>
 #include <sys/types.h>
 
+#include "config.h"
 #include "ir-common.h"
 
 // HTTP error numbers and messages (defined in ir-common.c)

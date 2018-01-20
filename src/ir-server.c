@@ -49,6 +49,7 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
+#include "config.h"
 #include "ir-server.h"
 #include "ir-server-mime.h"
 #include "ir-server-content.h"

@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <sys/types.h>
 
+#include "config.h"
 #include "ir-common.h"
 #include "ir-server.h"
 

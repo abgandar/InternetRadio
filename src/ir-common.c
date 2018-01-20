@@ -40,6 +40,7 @@
 #endif
 #include <mpd/client.h>
 
+#include "config.h"
 #include "ir-common.h"
 
 // global variables for output and MPD connection

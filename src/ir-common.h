@@ -1,11 +1,4 @@
-#include "config.h"
 #include <sys/types.h>
-
-#ifdef DEBUG
-#define debug_printf(...) printf(__VA_ARGS__)
-#else
-#define debug_printf(...)
-#endif
 
 // Handle each request in a CGI query string
 int handleQuery( char *arg );

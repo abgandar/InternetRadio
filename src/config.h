@@ -15,3 +15,10 @@
 #define MAX_CONNECTIONS         32                          // max number of concurrent connections
 //#define MORE_MIME_TYPES                                     // include more MIME types in database than minimum required for IR application
 //#define EASTEREGG                                           // include easteregg
+
+
+#ifdef DEBUG
+#define debug_printf(...) printf(__VA_ARGS__)
+#else
+#define debug_printf(...)
+#endif
