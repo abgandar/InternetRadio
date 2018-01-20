@@ -823,12 +823,13 @@ int main( int argc, char *argv[] )
     // initialize poll structures
     req reqs[MAX_CONNECTIONS] = { 0 };
     struct pollfd fds[MAX_CONNECTIONS+1];
-    for( unsigned int i = 0; i < MAX_CONNECTIONS+1; i++ )
+    for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
     {
         fds[i].fd = -1;
         fds[i].events = POLLIN;
     }
     fds[MAX_CONNECTIONS].fd = serverSocket;
+    fds[MAX_CONNECTIONS].events = POLLIN;
 
     // main loop (exited only via signal handler)
     while( running )
@@ -841,70 +842,62 @@ int main( int argc, char *argv[] )
             exit( EXIT_FAILURE );
         }
 
-        // process input for active sockets
+        // check server socket for new connections
+        if( fds[MAX_CONNECTIONS].revents & POLLIN )
+        {
+            const int new = accept( serverSocket, NULL, NULL );
+            if( new < 0 )
+            {
+                perror( "accept" );
+                exit( EXIT_FAILURE );
+            }
+            
+            // find free connection slot
+            unsigned int j;
+            for( j = 0; j < MAX_CONNECTIONS && fds[j].fd >= 0; j++ );
+            if( j == MAX_CONNECTIONS )
+            {
+                // can't handle any more clients. Client will have to retry later.
+                write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
+                shutdown( new, SHUT_RDWR );
+                close( new );
+                debug_printf( "===> Dropped connection\n" );
+            }
+            else
+            {
+                // initialize request and add to watchlist
+                fds[j].fd = new;
+                INIT_REQ( &reqs[j], new );
+                debug_printf( "===> New connection\n" );
+            }
+        }
+        else if( fds[MAX_CONNECTIONS].revents )
+        {
+            // something went wrong with the server socket, shut the whole thing down
+            for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )
+            {
+                if( fds[j].fd < 0 ) continue;
+                shutdown( fds[j].fd, SHUT_RDWR );
+                close( fds[j].fd );
+            }
+
+            running = false;
+            continue;
+        }
+
+        // process all other client sockets
         for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
-            if( fds[i].revents & POLLIN )
-            {
-                if( fds[i].fd == serverSocket )
-                {
-                    // Connection request on original socket
-                    const int new = accept( serverSocket, NULL, NULL );
-                    if( new < 0 )
-                    {
-                        perror( "accept" );
-                        exit( EXIT_FAILURE );
-                    }
-
-                    // find free spot
-                    unsigned int j;
-                    for( j = 0; j < MAX_CONNECTIONS && fds[j].fd >= 0; j++ );
-
-                    // are there any free connection slots?
-                    if( j == MAX_CONNECTIONS )
-                    {
-                        // can't handle any more clients. Client will have to retry later.
-                        write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
-                        shutdown( new, SHUT_RDWR );
-                        close( new );
-                        debug_printf( "===> Dropped connection\n" );
-                        continue;
-                    }
-
-                    // initialize request and add to watchlist
-                    fds[j].fd = new;
-                    INIT_REQ( &reqs[j], new );
-
-                    debug_printf( "===> New connection\n" );
-                }
-                else
-                {
-                    // data arriving from active socket
-                    if( read_from_client( &reqs[i] ) < 0 )
-                    {
-                        // close socket
-                        shutdown( fds[i].fd, SHUT_RDWR );
-                        close( fds[i].fd );
-                        fds[i].fd = -1;
-
-                        // free request data
-                        FREE_REQ( &reqs[i] );
-                        debug_printf( "===> Closed connection\n" );
-                    }
-                }
-            }
-            else if( fds[i].revents & (POLLERR | POLLHUP | POLLNVAL) )
-            {
-                // something went wrong with this socket, close it
-                shutdown( fds[i].fd, SHUT_RDWR );
-                close( fds[i].fd );
-                if( fds[i].fd == serverSocket )
-                    running = false;
-                fds[i].fd = -1;
-
-                // free request data
-                FREE_REQ( &reqs[i] );
-                debug_printf( "===> Closed connection\n" );
-            }
+        {
+            if( !fds[i].revents ) continue;     // nothing here to see
+            if( (fds[i].revents & POLLIN) && (read_from_client( &reqs[i] ) >= 0) ) continue;    // ready to read and read was successful
+            // something went wrong, close socket
+            shutdown( fds[i].fd, SHUT_RDWR );
+            close( fds[i].fd );
+            fds[i].fd = -1;
+            // free request data
+            FREE_REQ( &reqs[i] );
+            debug_printf( "===> Closed connection\n" );
+        }
     }
 
     debug_printf( "===> Exiting\n" );
