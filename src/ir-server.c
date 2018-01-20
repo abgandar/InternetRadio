@@ -246,7 +246,7 @@ int handle_embedded_file( const req *c )
 }
 
 // handle a disk file query
-int handle_file( const req *c )
+int handle_disk_file( const req *c )
 {
     if( strstr( c->url, ".." ) != NULL )
         return HTTP_NOT_FOUND;
