@@ -209,6 +209,18 @@ void write_response( const req *c, const unsigned int code, const char* headers,
     free( iov[0].iov_base );
 }
 
+// handle a query for a special dynamically generated file
+int handle_dynamic_file( const req *c )
+{
+    unsigned int i;
+    for( i = 0; handlers[i].url && strcmp( c->url, handlers[i].url ); i++ );
+    
+    if( handlers[i].handler )
+        return handlers[i].handler( c );
+    
+    return HTTP_NOT_FOUND;
+}
+
 // handle a file query for an embedded file
 int handle_embedded_file( const req *c )
 {
@@ -322,11 +334,14 @@ int handle_request( req *c )
     else
     {
         // check what to do with this requst
-        if( strncmp( c->url, "/cgi-bin/ir.cgi", 15 ) == 0 )
-            handle_cgi( c );
+        const int rc = handle_dynamic_file( c );
+        if( rc == CLOSE_SOCKET )
+            return CLOSE_SOCKET;
+        else if( rc == SUCCESS )
+            ((void)0);  // do nothing
         else if( handle_embedded_file( c ) == SUCCESS )
             ((void)0);  // do nothing
-        else if( handle_file( c ) )
+        else if( handle_disk_file( c ) )
             write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0 );
     }
 
