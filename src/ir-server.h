@@ -1,9 +1,3 @@
-// special URI handler list entry
-struct handler_struct { const char *url; int(*handler)(const req*); };
-
-// embedded file list entry
-struct content_struct { const char *url; const char *headers; const char *body; unsigned int len; };
-
 // some return codes
 enum retcode_enum { CLOSE_SOCKET = -1, SUCCESS = 0, WAIT_FOR_DATA = 1 };
 
@@ -44,6 +38,12 @@ typedef struct req_struct {
     enum version_enum v;    // HTTP version of request
     enum method_enum m;     // enumerated method
 } req;
+
+// special URI handler list entry
+struct handler_struct { const char *url; int(*handler)(const req*); };
+
+// embedded file list entry
+struct content_struct { const char *url; const char *headers; const char *body; unsigned int len; };
 
 
 // server main loop
