@@ -153,6 +153,12 @@ void handle_signal( const int sig )
         running = false;
         debug_printf( "===> Received signal\n" );
     }
+    else if( sig == SIGPIPE )
+    {
+        // pipe broke, remove connection
+        disconnectMPD( );
+        debug_printf( "===> Broken pipe\n" );
+    }
 }
 
 // guess a mime type for a filename
@@ -758,8 +764,7 @@ int main( int argc, char *argv[] )
     sa_new.sa_flags = 0;
     sigaction( SIGINT, &sa_new, NULL );
     sigaction( SIGTERM, &sa_new, NULL );
-    sa_new.sa_handler = SIG_IGN;
-    sigaction( SIGPIPE, &sa_new, NULL );    // ignore pipe errors so we can reopen pipe to MPD instead of dying
+    sigaction( SIGPIPE, &sa_new, NULL );
 
     // block signals temporarily (re-enabled only in pselect)
     sigset_t sset_disabled, sset_enabled;
