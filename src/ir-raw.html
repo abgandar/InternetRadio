@@ -345,15 +345,13 @@
       // send XHR request zum Server
       function XHR( action )
       {
-        const url = 'http://'+location.host+'/cgi-bin/ir.cgi?'+PASSWORD+action;
+        const url = 'http://'+location.host+'/cgi-bin/ir.cgi';
         const xhr = new XMLHttpRequest( );
         xhr.addEventListener( 'load', function( ) { if( this.status == 200 ) updateState( this.response ); else showError( this.response ); } );
         xhr.addEventListener( 'error', showError );
         xhr.responseType = 'json';
-        xhr.open( 'GET', url, true );
-//        xhr.setRequestHeader( 'Connection', 'Keep-Alive' );     // tell server we make many similar requests
-//        xhr.setRequestHeader( 'Keep-Alive', 'timeout='+Math.trunc(AUTOREFRESH/1000.0+1)+', max=9999' );
-        xhr.send( );
+        xhr.open( 'POST', url, true );
+        xhr.send( PASSWORD+action );
       }
 
       function loadPlaylist( name )
