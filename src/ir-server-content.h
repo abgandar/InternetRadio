@@ -3,8 +3,7 @@ int handle_ir_cgi( const req *c );
 
 // list of special request handlers
 static const struct handler_struct handlers[] = {
-    { "/cgi-bin/ir",        &handle_ir_cgi },
-    { "/ir",                &handle_ir_cgi },
+    { "/cgi-bin/ir.cgi",    &handle_ir_cgi },
     { NULL, NULL }
 };
 
