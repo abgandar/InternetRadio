@@ -19,10 +19,7 @@
 /**
  * ir-server.c
  *
- * Standalone HTTP server to connect to the mpd daemon and communicate various XML HTTP
- * requests from the client.
- *
- * Simply execute the ir-server binary.
+ * Standalone HTTP/1.1 server for serving content from disk, embedded or special cgi handlers.
  *
  */
 
@@ -52,44 +49,16 @@
 #include <arpa/inet.h>
 #include <netdb.h>
 
-#include "ir-common.h"
-#include "ir-server-content.h"
+#include "ir-server.h"
 #include "ir-server-mime.h"
+#include "ir-server-content.h"
 
 // indicator if the main loop is still running (used for signalling)
 static bool running = true;
 
-// some return codes
-typedef enum retcode_enum { CLOSE_SOCKET = -1, SUCCESS = 0, WAIT_FOR_DATA = 1 } retcode;
-
-// some HTTP status codes
-typedef enum statuscode_enum {
-    HTTP_OK = 200,
-    HTTP_NOT_MODIFIED = 304,
-    HTTP_BAD_REQUEST = 400,
-    HTTP_NOT_FOUND = 404,
-    HTTP_NOT_ALLOWED = 405,
-    HTTP_TOO_LARGE = 413,
-    HTTP_SERVER_ERROR = 500,
-    HTTP_NOT_IMPLEMENTED = 501,
-    HTTP_SERVICE_UNAVAILABLE = 503
-} statuscode;
-
-// request method
-typedef enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M_DELETE, M_TRACE, M_CONNECT } method;
-
-// request version
-typedef enum version_enum { V_UNKNOWN, V_10, V_11 } version;
-
-// request flags (bitfield, assign powers of 2!)
-typedef enum flags_enum { FL_NONE = 0, FL_CRLF = 1, FL_CHUNKED = 2, FL_CLOSE = 4 } flags;
-
-// request state
-typedef enum state_enum { STATE_NEW, STATE_HEAD, STATE_BODY, STATE_TAIL, STATE_READY, STATE_FINISH } state;
-
 // some human readable equivalents to HTTP status codes above (must be sorted by code except for last!)
-typedef struct response_struct { const unsigned int code; const char *msg; } response;
-static const response responses[] = {
+struct response_struct { const unsigned int code; const char *msg; };
+static const struct response_struct responses[] = {
     { HTTP_OK, "OK" },
     { HTTP_NOT_MODIFIED, "Not modified" },
     { HTTP_BAD_REQUEST, "Bad request" },
@@ -101,19 +70,6 @@ static const response responses[] = {
     { HTTP_SERVICE_UNAVAILABLE, "Service unavailable" },
     { 0, NULL }
 };
-
-// an active request
-typedef struct request_struct {
-    int fd;                 // socket associated with this request
-    char *data;             // data buffer pointer
-    unsigned int max, len;  // max allocated length, current length
-    unsigned int rl, cl;    // total request length parsed, total body content length
-    char *version, *method, *url, *head, *body, *tail;      // request pointers into data buffer
-    state s;                // state of this request
-    flags f;                // flags for this request
-    version v;              // HTTP version of request
-    method m;               // enumerated method
-} req;
 
 // allocate memory and set everything to zero
 inline void INIT_REQ( req *c, const int fd )
@@ -251,52 +207,6 @@ void write_response( const req *c, const unsigned int code, const char* headers,
         write( c->fd, iov[0].iov_base, iov[0].iov_len );
 
     free( iov[0].iov_base );
-}
-
-// handle a CGI query
-int handle_cgi( const req *c )
-{
-    // open output buffer
-    char *obuf = NULL;
-    size_t obuf_size = 0;
-    if( output_start( &obuf, &obuf_size ) )
-    {
-        perror( "output_start" );
-        exit( EXIT_FAILURE );
-    }
-
-    // find correct query string and run actual query
-    char *query;
-    if( c->m == M_POST )
-        query = c->body;    // rely on body being null terminated
-    else
-    {
-        query = c->url+15;
-        query += (*query == '?');  // extract query string
-    }
-    debug_printf( "===> CGI query string: %s\n", query );
-    int rc = 0;
-    if( !rc ) rc = handleQuery( query );
-    if( !rc ) rc = output_end( );   // obuf will be set even even if there was an error
-
-    // split CGI output into headers (if applicable) and body
-    char *head = NULL, *body = strstr( obuf, "\r\n\r\n" );
-    if( body )
-    {
-        head = obuf;
-        body[2] = '\0';     // keep one \r\n pair
-        body += 4;
-        obuf_size -= (body-obuf);
-    }
-    else
-        body = obuf;
-
-    write_response( c, rc ? HTTP_SERVER_ERROR : HTTP_OK, head, body, obuf_size );
-    debug_printf( "===> CGI response:\n%s\n", body );
-
-    // clean up
-    free( obuf );
-    return SUCCESS;
 }
 
 // handle a file query for an embedded file
@@ -795,7 +705,7 @@ int read_from_client( req *c )
 }
 
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
-int main( int argc, char *argv[] )
+int http_server_main( int argc, char *argv[] )
 {
     // set up environment
     setenv( "TZ", "GMT", true );
@@ -956,7 +866,6 @@ int main( int argc, char *argv[] )
     }
 
     debug_printf( "===> Exiting\n" );
-    disconnectMPD( );
     // shut all connections down hard
     close( serverSocket );
     for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )

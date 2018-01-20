@@ -1,3 +1,15 @@
+// forward declaration of special handlers
+int handle_ir_cgi( const req *c );
+
+// list of special request handlers
+static const struct content_struct contents[] = {
+    { "/cgi-bin/ir",        &handle_ir_cgi },
+    { "/ir",                &handle_ir_cgi },
+    { NULL, NULL, NULL }
+};
+
+
+
 // various external binary files linked in later
 extern const char _binary_ir_html_start;
 extern const char _binary_ir_html_size;
@@ -27,8 +39,7 @@ extern const char _binary_easteregg_png_size;
 #endif
 
 // list of embedded files to serve directly
-typedef struct content_struct { const char *url; const char *headers; const char *body; unsigned int len; } content;
-static const content contents[] = {
+static const struct content_struct contents[] = {
     { "/",                  "Content-Type: text/html\r\n" LM_HEADER, &_binary_ir_html_start,          (unsigned int)&_binary_ir_html_size },
     { "/ir.html",           "Content-Type: text/html\r\n" LM_HEADER, &_binary_ir_html_start,          (unsigned int)&_binary_ir_html_size },
     { "/radio.ico",         "Content-Type: image/png\r\n" LM_HEADER, &_binary_radio_ico_start,        (unsigned int)&_binary_radio_ico_size },
@@ -43,3 +54,5 @@ static const content contents[] = {
 #endif
     { NULL, NULL, NULL, 0 }
 };
+
+
