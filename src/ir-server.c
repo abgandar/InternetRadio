@@ -342,7 +342,7 @@ int handle_file( const req *c )
         close( fd );
         return SUCCESS;
     }
-    debug_printf( "===> File size, modification time: %u, %ld\n", sb.st_size, sb.st_mtim.tv_sec );
+    debug_printf( "===> File size, modification time: %ld, %ld\n", sb.st_size, sb.st_mtim.tv_sec );
 
     // write headers
     char *str;
@@ -909,7 +909,17 @@ int main( int argc, char *argv[] )
         // process all other client sockets
         for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
         {
-            if( fds[i].revents & POLLIN )
+            if( fds[i].revents & (POLLRDHUP|POLLHUP|POLLERR|POLLNVAL) )
+            {
+                // other side hung up or somethign went wrong, completely close socket
+                shutdown( fds[i].fd, SHUT_RDWR );
+                close( fds[i].fd );
+                fds[i].fd = -1;
+                // free request data
+                FREE_REQ( &reqs[i] );
+                debug_printf( "===> Closed connection\n" );
+            }
+            else if( fds[i].revents & POLLIN )
             {
                 // ready to read
                 const int res = read_from_client( &reqs[i] );
@@ -920,16 +930,6 @@ int main( int argc, char *argv[] )
                     shutdown( fds[i].fd, SHUT_WR );     // initiate shutdown
                     debug_printf( "===> Closing connection\n" );
                 }
-            }
-            else if( fds[i].revents )
-            {
-                // other side hung up or somethign went wrong, completely close socket
-                shutdown( fds[i].fd, SHUT_RDWR );
-                close( fds[i].fd );
-                fds[i].fd = -1;
-                // free request data
-                FREE_REQ( &reqs[i] );
-                debug_printf( "===> Closed connection\n" );
             }
         }
     }
