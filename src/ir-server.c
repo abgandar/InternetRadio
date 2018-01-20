@@ -40,6 +40,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <locale.h>
+#include <poll.h>
 #include <signal.h>
 #include <errno.h>
 #include <sys/stat.h>
@@ -819,43 +820,49 @@ int main( int argc, char *argv[] )
     }
 #endif
 
-    // initialize active sockets set
+    // initialize poll structures
     req reqs[MAX_CONNECTIONS] = { 0 };
-    fd_set active_fd_set, read_fd_set;
-    FD_ZERO( &active_fd_set );
-    FD_SET( serverSocket, &active_fd_set );
+    struct pollfd fds[MAX_CONNECTIONS+1];
+    for( unsigned int i = 0; i < MAX_CONNECTIONS+1; i++ )
+    {
+        fds[i].fd = -1;
+        fds[i].events = POLLIN;
+    }
+    fds[MAX_CONNECTIONS].fd = serverSocket;
 
     // main loop (exited only via signal handler)
     while( running )
     {
         // wait for input
-        read_fd_set = active_fd_set;
-        if( pselect( MAX_CONNECTIONS, &read_fd_set, NULL, NULL, NULL, &sset_enabled ) < 0 )
+        if( ppoll( fds, MAX_CONNECTIONS, NULL, &sset_enabled ) < 0 )
         {
             if( errno == EINTR ) continue;  // ignore interrupted system calls
-            perror( "select" );
+            perror( "ppoll" );
             exit( EXIT_FAILURE );
         }
 
         // process input for active sockets
-        for( int i = 0; i < MAX_CONNECTIONS; i++ )
-            if( FD_ISSET( i, &read_fd_set ) )
+        for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
+            if( fds[i].revents & POLLIN )
             {
-                if( i == serverSocket )
+                if( fds[i].fd == serverSocket )
                 {
                     // Connection request on original socket
-                    struct sockaddr_in clientAddr = { 0 };
-                    socklen_t addr_size = sizeof(clientAddr);
-                    const int new = accept( serverSocket, (struct sockaddr *) &clientAddr, &addr_size );
-
+                    const int new = accept( serverSocket, NULL, NULL );
                     if( new < 0 )
                     {
                         perror( "accept" );
                         exit( EXIT_FAILURE );
                     }
-                    else if( new >= MAX_CONNECTIONS )
+
+                    // find free spot
+                    unsigned int j;
+                    for( j = 0; j < MAX_CONNECTIONS && fds[j].fd >= 0; j++ );
+
+                    // are there any free connection slots?
+                    if( j == MAX_CONNECTIONS )
                     {
-                        // can't handle FDs this high. Client will have to retry later.
+                        // can't handle any more clients. Client will have to retry later.
                         write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
                         shutdown( new, SHUT_RDWR );
                         close( new );
@@ -864,8 +871,8 @@ int main( int argc, char *argv[] )
                     }
 
                     // initialize request and add to watchlist
-                    INIT_REQ( &reqs[new], new );
-                    FD_SET( new, &active_fd_set );
+                    fds[j].fd = new;
+                    INIT_REQ( &reqs[j], new );
 
                     debug_printf( "===> New connection\n" );
                 }
@@ -875,15 +882,28 @@ int main( int argc, char *argv[] )
                     if( read_from_client( &reqs[i] ) < 0 )
                     {
                         // close socket
-                        shutdown( i, SHUT_RDWR );
-                        close( i );
-                        FD_CLR( i, &active_fd_set );
+                        shutdown( fds[i].fd, SHUT_RDWR );
+                        close( fds[i].fd );
+                        fds[i].fd = -1;
 
                         // free request data
                         FREE_REQ( &reqs[i] );
                         debug_printf( "===> Closed connection\n" );
                     }
                 }
+            }
+            else if( fds[i].revents & (POLLERR | POLLHUP | POLLNVAL) )
+            {
+                // something went wrong with this socket, close it
+                shutdown( fds[i].fd, SHUT_RDWR );
+                close( fds[i].fd );
+                if( fds[i].fd == serverSocket )
+                    running = false;
+                fds[i].fd = -1;
+
+                // free request data
+                FREE_REQ( &reqs[i] );
+                debug_printf( "===> Closed connection\n" );
             }
     }
 
