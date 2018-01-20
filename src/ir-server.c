@@ -941,7 +941,6 @@ int main( int argc, char *argv[] )
     for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )
     {
         if( fds[j].fd < 0 ) continue;
-        shutdown( fds[j].fd, SHUT_RDWR );
         close( fds[j].fd );
         FREE_REQ( &reqs[j] );
     }
