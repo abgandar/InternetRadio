@@ -757,9 +757,12 @@ int http_server_main( int argc, char *argv[] )
     setsockopt( serverSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int) );
 
     // bind and listen on correct port and IP address
+    short port = SERVER_PORT;
+    if( argc > 1 )
+        port = (short)strtol( argv[1], NULL, 10 );
     struct sockaddr_in serverAddr = { 0 };
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons( SERVER_PORT );
+    serverAddr.sin_port = htons( port );
     inet_pton( AF_INET, SERVER_IP, &serverAddr.sin_addr.s_addr );
     if( bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) ) )
     {
