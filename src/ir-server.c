@@ -252,10 +252,11 @@ int handle_cgi( const req *c )
     }
 
     // find correct query string and run actual query
-    char *query = c->url+15;
-    if( *query == '?' ) query++;
+    char *query;
     if( c->m == M_POST )
         query = c->body;    // rely on body being null terminated
+    else
+        query = c->url + 15 + (*query == '?');  // extract query string
     debug_printf( "===> CGI query string: %s\n", query );
     int rc = 0;
     if( !rc ) rc = handleQuery( query );
@@ -598,12 +599,9 @@ int read_request( req *c )
 {
     char* data = c->data;
 
-    // Optionally ignore an empty line at beginning of request (rfc7230, 3.5)
-    if( data[0] == '\r' && data[1] == '\n' )
-        data+=2;
-    else if( data[0] == '\n' )
-        data++;
-    
+    // Optionally ignore an empty line(s) at beginning of request (rfc7230, 3.5)
+    data += strspn( data, "\r\n" );
+
     // Try to read the request line
     c->f |= FL_CRLF;
     char *tmp = strstr( data, "\r\n" );
@@ -644,21 +642,21 @@ int read_request( req *c )
     c->version = tmp;
 
     // identify method
-    if( strcasecmp( c->method, "GET" ) == 0 )
+    if( strcmp( c->method, "GET" ) == 0 )
         c->m = M_GET;
-    else if( strcasecmp( c->method, "POST" ) == 0 )
+    else if( strcmp( c->method, "POST" ) == 0 )
         c->m = M_POST;
-    else if( strcasecmp( c->method, "HEAD" ) == 0 )
+    else if( strcmp( c->method, "HEAD" ) == 0 )
         c->m = M_HEAD;
-    else if( strcasecmp( c->method, "OPTIONS" ) == 0 )
+    else if( strcmp( c->method, "OPTIONS" ) == 0 )
         c->m = M_OPTIONS;
-    else if( strcasecmp( c->method, "PUT" ) == 0 )
+    else if( strcmp( c->method, "PUT" ) == 0 )
         c->m = M_PUT;
-    else if( strcasecmp( c->method, "DELETE" ) == 0 )
+    else if( strcmp( c->method, "DELETE" ) == 0 )
         c->m = M_DELETE;
-    else if( strcasecmp( c->method, "TRACE" ) == 0 )
+    else if( strcmp( c->method, "TRACE" ) == 0 )
         c->m = M_TRACE;
-    else if( strcasecmp( c->method, "CONNECT" ) == 0 )
+    else if( strcmp( c->method, "CONNECT" ) == 0 )
         c->m = M_CONNECT;
     else
         c->m = M_UNKNOWN;
@@ -853,7 +851,7 @@ int main( int argc, char *argv[] )
     for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
     {
         fds[i].fd = -1;
-        fds[i].events = POLLIN;
+        fds[i].events = POLLIN | POLLRDHUP;
     }
     fds[MAX_CONNECTIONS].fd = serverSocket;
     fds[MAX_CONNECTIONS].events = POLLIN;
@@ -908,21 +906,34 @@ int main( int argc, char *argv[] )
         // process all other client sockets
         for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
         {
-            if( !fds[i].revents ) continue;     // nothing here to see
-            if( (fds[i].revents & POLLIN) && (read_from_client( &reqs[i] ) >= 0) ) continue;    // ready to read and read was successful
-            // something went wrong, close socket
-            shutdown( fds[i].fd, SHUT_RDWR );
-            close( fds[i].fd );
-            fds[i].fd = -1;
-            // free request data
-            FREE_REQ( &reqs[i] );
-            debug_printf( "===> Closed connection\n" );
+            if( fds[i].revents & POLLIN )
+            {
+                // ready to read
+                const int res = read_from_client( &reqs[i] );
+                if( res == SUCCESS )
+                    continue;                           // read successful
+                else if( res == CLOSE_SOCKET )
+                {
+                    shutdown( fds[i].fd, SHUT_WR );     // initiate shutdown
+                    debug_printf( "===> Closing connection\n" );
+                }
+            }
+            else if( fds[i].revents )
+            {
+                // other side hung up or somethign went wrong, completely close socket
+                shutdown( fds[i].fd, SHUT_RDWR );
+                close( fds[i].fd );
+                fds[i].fd = -1;
+                // free request data
+                FREE_REQ( &reqs[i] );
+                debug_printf( "===> Closed connection\n" );
+            }
         }
     }
 
     debug_printf( "===> Exiting\n" );
     disconnectMPD( );
-    // shut all connections down
+    // shut all connections down hard
     close( serverSocket );
     for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )
     {
