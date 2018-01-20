@@ -256,7 +256,10 @@ int handle_cgi( const req *c )
     if( c->m == M_POST )
         query = c->body;    // rely on body being null terminated
     else
-        query = c->url + 15 + (*query == '?');  // extract query string
+    {
+        query = c->url+15;
+        query += (*query == '?');  // extract query string
+    }
     debug_printf( "===> CGI query string: %s\n", query );
     int rc = 0;
     if( !rc ) rc = handleQuery( query );
