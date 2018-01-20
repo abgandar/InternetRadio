@@ -874,13 +874,6 @@ int main( int argc, char *argv[] )
         else if( fds[MAX_CONNECTIONS].revents )
         {
             // something went wrong with the server socket, shut the whole thing down
-            for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )
-            {
-                if( fds[j].fd < 0 ) continue;
-                shutdown( fds[j].fd, SHUT_RDWR );
-                close( fds[j].fd );
-            }
-
             running = false;
             continue;
         }
@@ -902,7 +895,16 @@ int main( int argc, char *argv[] )
 
     debug_printf( "===> Exiting\n" );
     disconnectMPD( );
+    // shut all connections down
     close( serverSocket );
+    for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )
+    {
+        if( fds[j].fd < 0 ) continue;
+        shutdown( fds[j].fd, SHUT_RDWR );
+        close( fds[j].fd );
+        FREE_REQ( &reqs[j] );
+    }
+
     return SUCCESS;
 }
 
