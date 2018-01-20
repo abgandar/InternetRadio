@@ -183,25 +183,39 @@ const char* get_response( const unsigned int code )
         return "Unknown";  // response was not found
 }
 
-// get first matching header value from the request (or NULL if not found)
-// name must be of the form "Date: " (including colon and space)
+// get first matching header value from the request without leading whitespace (or NULL if not found)
+// name must be of the form "Date:" (including colon)
 const char* get_header_field( const req *c, const char* name )
 {
-    char *p = c->head;
+    char *p, *end;
     unsigned int len = strlen( name );
     
-    // check in headers
-    if( c->head && *c->head )
-        for( p = c->head; *p; p += strlen( p )+1+(c->f & FL_CRLF) )
+    // check in headers (if already available)
+    if( c->head && c->body )
+    {
+        p = c->head;
+        end = c->body;
+        while( p < end )
+        {
             if( strncasecmp( p, name, len ) == 0 )
-                return p+len;
-    
+                return p+len+strspn( p+len, " \t");
+            for( p += strlen( p )+1; p < end && !*p; p++ );     // skip NULs up to next header
+        }
+    }
+
     // check in trailers
-    if( c->tail && *c->tail )
-        for( p = c->tail; *p; p += strlen( p )+1+(c->f & FL_CRLF) )
+    if( c->tail )
+    {
+        p = c->tail;
+        end = c->data+c->rl;    // trailers end at the end of the message length
+        while( p < end )
+        {
             if( strncasecmp( p, name, len ) == 0 )
-                return p+len;
-    
+                return p+len+strspn( p+len, " \t");
+            for( p += strlen( p )+1; p < end && !*p; p++ );     // skip NULs up to next header
+        }
+    }
+
     return NULL;
 }
 
@@ -294,7 +308,7 @@ int handle_embedded_file( const req *c )
     if( contents[i].url )
     {
 #ifdef TIMESTAMP
-        const char *inm = get_header_field( c, "If-None-Match: " );
+        const char *inm = get_header_field( c, "If-None-Match:" );
         if( inm && strcmp( inm, TIMESTAMP ) == 0 )
         {
             write_response( c, HTTP_NOT_MODIFIED, contents[i].headers, NULL, 0 );
@@ -349,7 +363,7 @@ int handle_file( const req *c )
     asprintf( &str, "ETag: \"%ld\"\r\nContent-Type: %s\r\n", sb.st_mtim.tv_sec, get_mime( fn ) );
 
     // check ETag
-    const char *inm = get_header_field( c, "If-None-Match: " );
+    const char *inm = get_header_field( c, "If-None-Match:" );
     char *last = NULL;
     if( inm && (strtol( inm+1, &last, 10 ) == sb.st_mtim.tv_sec) && last && (*last == '"') )
     {
@@ -431,24 +445,26 @@ int read_tail( req *c )
 
     debug_printf( "===> Trailers:\n" );
 
-    // hooray! we have trailers, parse them
+    // hooray! we have headers, parse them
     char *p = c->tail;
     while( p )
     {
-        // find end of current header and zero terminate it => p points to current header line
-        tmp = strstr( p, (c->f & FL_CRLF) ? "\r\n" : "\n" );
-        if( tmp )
+        // find end of current trailer and zero terminate it => p points to current trailer line
+        tmp = strstr( p, (c->f & FL_CRLF) ? "\r\n" : "\n" );    // always finds something as we checked for existing empty line above
+        tmp[0] = tmp[c->f & FL_CRLF] = '\0';
+        if( !*p ) break;    // found empty trailer => done reading trailers
+        if( *p == ' ' || *p == '\t' )
         {
-            tmp[0] = '\0';
-            if( c->f & FL_CRLF )
-                tmp[1] = '\0';
+            write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request, obsolete trailer line folding", 0 );
+            return CLOSE_SOCKET;
         }
-        if( !*p ) break; // found empty header => done reading headers
+        for( char *end = tmp-1; end >= p && (*end == ' ' || *end == '\t'); end-- )
+            *end = '\0';       // trim white space at end and replace by NUL
         debug_printf( "     %s\n", p );
-        // point p to next header
+        // point p to next trailer
         p = tmp + 1 + (c->f & FL_CRLF);
     }
-    
+
     c->s = STATE_READY;
     return SUCCESS;
 }
@@ -528,20 +544,23 @@ int read_head( req *c )
     while( p )
     {
         // find end of current header and zero terminate it => p points to current header line
-        tmp = strstr( p, (c->f & FL_CRLF) ? "\r\n" : "\n" );
-        if( tmp )
+        tmp = strstr( p, (c->f & FL_CRLF) ? "\r\n" : "\n" );    // always finds something as we checked for existing empty line above
+        tmp[0] = tmp[c->f & FL_CRLF] = '\0';
+        if( !*p ) break;    // found empty header => done reading headers
+        if( *p == ' ' || *p == '\t' )
         {
-            tmp[0] = '\0';
-            if( c->f & FL_CRLF )
-                tmp[1] = '\0';
+            write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request, obsolete header line folding", 0 );
+            return CLOSE_SOCKET;
         }
-        if( !*p ) break; // found empty header => done reading headers
+        // trim white space at end and replace by NUL
+        for( char *end = tmp-1; end >= p && (*end == ' ' || *end == '\t'); end-- )
+            *end = '\0';
         debug_printf( "     %s\n", p );
-        // check for known headers we care about (currently only Content-Length)
-        if( strncasecmp( p, "Content-Length: ", 16 ) == 0 )
+        // check for known headers we care about
+        if( strncasecmp( p, "Content-Length:", 15 ) == 0 )
         {
             char *perr;
-            unsigned int cl = strtol( p+16, &perr, 10 );
+            unsigned int cl = strtol( p+15, &perr, 10 );
             if( *perr != '\0' || cl < 0 || (c->cl > 0 && cl != c->cl) )
             {
                 write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request", 0 );
@@ -556,9 +575,10 @@ int read_head( req *c )
             c->rl += cl;
             debug_printf( "===> Content-Length: %d (%d total)\n", c->cl, c->rl );
         }
-        else if( strncasecmp( p, "Transfer-Encoding: ", 19 ) == 0 )
+        else if( strncasecmp( p, "Transfer-Encoding:", 18 ) == 0 )
         {
-            if( strcasecmp( p+19, "chunked" ) != 0 )
+            char *val = p+18+strspn( p+18, " \t" );
+            if( strcasecmp( val, "chunked" ) != 0 )
             {
                 // c.f. http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2
                 write_response( c, HTTP_NOT_IMPLEMENTED, NULL, "501 - requested Transfer-Encoding not implemented", 0 );
@@ -566,7 +586,7 @@ int read_head( req *c )
             }
             c->f |= FL_CHUNKED;
         }
-        else if( strncasecmp( p, "Host: ", 6 ) == 0 )
+        else if( strncasecmp( p, "Host:", 5 ) == 0 )
         {
             if( host )
             {
@@ -574,11 +594,12 @@ int read_head( req *c )
                 write_response( c, HTTP_BAD_REQUEST, NULL, "400 - multiple Host headers", 0 );
                 return CLOSE_SOCKET;
             }
-            host = p+6;
+            host = p+5+strspn( p+5, " \t" );
         }
-        else if( strncasecmp( p, "Connection: ", 12 ) == 0 )
+        else if( strncasecmp( p, "Connection:", 11 ) == 0 )
         {
-            if( strcasecmp( p+12, "close" ) == 0 )
+            char *val = p+11+strspn( p+11, " \t" )
+            if( strcasecmp( val, "close" ) == 0 )
                 c->f |= FL_CLOSE;
         }
         // point p to next header
@@ -871,7 +892,13 @@ int main( int argc, char *argv[] )
         }
 
         // check server socket for new connections
-        if( fds[MAX_CONNECTIONS].revents & POLLIN )
+        if( fds[MAX_CONNECTIONS].revents & (POLLRDHUP|POLLHUP|POLLERR|POLLNVAL) )
+        {
+            // something went wrong with the server socket, shut the whole thing down
+            running = false;
+            continue;
+        }
+        else if( fds[MAX_CONNECTIONS].revents & POLLIN )
         {
             const int new = accept( serverSocket, NULL, NULL );
             if( new < 0 )
@@ -898,12 +925,6 @@ int main( int argc, char *argv[] )
                 INIT_REQ( &reqs[j], new );
                 debug_printf( "===> New connection\n" );
             }
-        }
-        else if( fds[MAX_CONNECTIONS].revents )
-        {
-            // something went wrong with the server socket, shut the whole thing down
-            running = false;
-            continue;
         }
 
         // process all other client sockets
