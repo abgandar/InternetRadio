@@ -835,7 +835,7 @@ int main( int argc, char *argv[] )
     while( running )
     {
         // wait for input
-        if( ppoll( fds, MAX_CONNECTIONS, NULL, &sset_enabled ) < 0 )
+        if( ppoll( fds, MAX_CONNECTIONS+1, NULL, &sset_enabled ) < 0 )
         {
             if( errno == EINTR ) continue;  // ignore interrupted system calls
             perror( "ppoll" );
