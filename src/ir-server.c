@@ -195,7 +195,11 @@ void bwrite( req *c, const struct iovec *iov, int niov )
     {
         rc = writev( c->fd, iov, niov );
         if( rc < 0 ) rc = 0;        // this could be due to blocking or unrecoverable system errors. Pretend nothing was written, write buffer code will handle it later.
-        if( rc == len ) return;     // everything fine (system errors for a length zero write are ignored)
+        if( rc == len )
+        {
+            debug_printf( "===> Wrote %d bytes directy\n", rc );
+            return;     // everything fine (system errors for a length zero write are ignored)
+        }
     }
 
     // find end of write buffer list
@@ -231,6 +235,7 @@ void bwrite( req *c, const struct iovec *iov, int niov )
             c->wb = wbc;
         last = wbc;
         rc = 0;
+        debug_printf( "===> Buffered %d bytes (of %d)\n", last->len, iov[i].iov_len );
     }
 }
 
@@ -246,6 +251,7 @@ void bsendfile( req *c, int fd, off_t offset, int size )
         if( rc < 0 ) rc = 0;        // this could be due to blocking or unrecoverable system errors. Pretend nothing was written, write buffer code will handle it later.
         if( rc == size )
         {
+            debug_printf( "===> Sent %d bytes from file without buffering\n", rc );
             close( fd );
             return;     // everything fine (system errors for a length zero write are ignored)
         }
@@ -274,6 +280,7 @@ void bsendfile( req *c, int fd, off_t offset, int size )
         c->wb = wbc;
     last = wbc;
     rc = 0;
+    debug_printf( "===> Buffered %d bytes (of %d) from file\n", wbc->len, size );
 }
 
 // write a response with given body and headers (must include the initial HTTP response header)
@@ -849,6 +856,7 @@ int write_to_client( req *c )
         {
             // try to write data
             rc = write( c->fd, c->wb->payload.data + c->wb->offset, c->wb->len );
+            debug_printf( "===> Written %d buffered bytes of %d\n", rc, c->wb->len );
             if( rc < 0 )
             {
                 // these are retryable errors, all others are system errors where we just abandon the connection
@@ -866,6 +874,7 @@ int write_to_client( req *c )
         {
             // try to send file
             rc = sendfile( c->fd, c->wb->payload.fd, &(c->wb->offset), -c->wb->len );
+            debug_printf( "===> Sent %d buffered bytes of %d from file\n", rc, -c->wb->len );
             if( rc < 0 )
             {
                 // these are retryable errors, all others are system errors where we just abandon the connection
