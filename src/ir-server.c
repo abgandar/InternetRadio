@@ -86,7 +86,6 @@ inline void INIT_REQ( req *c, const int fd )
     c->data[0] = '\0';
     c->max = 4096;
     c->fd = fd;
-    c->wfd = -1;
 }
 
 // free request memory
@@ -94,10 +93,12 @@ inline void FREE_REQ( req *c )
 {
     if( c->data ) free( c->data );
     c->data = NULL; c->max = 0;
-    if( c->wfd >= 0 ) close( c->wfd );
-    c->wfd = -1;
-    if( c->wb ) free( c->wb );
-    c->wb = NULL;
+    while( c->wb )
+    {
+        struct wbchain_struct *p = c->wb->next;
+        free( c->wb );
+        c->wb = p;
+    }
 }
 
 // reset a request keeping its data and buffer untouched
