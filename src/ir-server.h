@@ -1,5 +1,5 @@
 // some return codes
-enum retcode_enum { WAIT_FOR_DATA = -2, CLOSE_SOCKET = -1, SUCCESS = 0 };
+enum retcode_enum { WRITE_DATA = -3, WAIT_FOR_DATA = -2, CLOSE_SOCKET = -1, SUCCESS = 0 };
 
 // some HTTP status codes
 enum statuscode_enum {
@@ -31,7 +31,7 @@ struct wbchain_struct {
     struct wbchain_struct *next;
     int len;
     int offset;
-    union { const char data[1]; int fd } payload;
+    union { const char data[1]; int fd; } payload;
 };
 
 // an active request
