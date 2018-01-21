@@ -1,5 +1,5 @@
 // forward declaration of special handlers
-int handle_ir_cgi( const req *c );
+int handle_ir_cgi( req *c );
 
 // list of special request handlers
 static const struct handler_struct handlers[] = {

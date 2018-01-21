@@ -53,7 +53,7 @@ typedef struct req_struct {
 // special URI handler list entry
 struct handler_struct {
     const char *url;
-    int(*handler)(const req*);
+    int(*handler)(req*);
 };
 
 // embedded file list entry

@@ -36,7 +36,7 @@
 #include "ir-server.h"
 
 // handle CGI queries
-int handle_ir_cgi( const req *c )
+int handle_ir_cgi( req *c )
 {
     // open output buffer
     char *obuf = NULL;
