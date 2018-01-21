@@ -148,7 +148,7 @@ const char* get_response( const unsigned int code )
 
 // get first matching header value from the request without leading whitespace (or NULL if not found)
 // name must be of the form "Date:" (including colon)
-const char* get_header_field( const req *c, const char* name )
+const char* get_header_field( req *c, const char* name )
 {
     char *p, *end;
     unsigned int len = strlen( name );
@@ -213,7 +213,7 @@ void bwrite( req *c, const struct iovec *iov, int niov )
         }
         // allocate new buffer
         const int l = iov[i].iov_len - rc;
-        struct wbchain_struct *wbc = malloc( sizeof(wbchain_struct) + l );
+        struct wbchain_struct *wbc = malloc( sizeof(struct wbchain_struct) + l );
         if( !wbc )
         {
             perror( "malloc" );
@@ -235,7 +235,7 @@ void bwrite( req *c, const struct iovec *iov, int niov )
 }
 
 // try to send a file directly, and if that does not succeed append it to the internal write buffer
-int bsendfile( req *c, int fd, int offset, int size )
+void bsendfile( req *c, int fd, int offset, int size )
 {
     int rc = 0;
 
@@ -244,7 +244,11 @@ int bsendfile( req *c, int fd, int offset, int size )
     {
         rc = sendfile( c->fd, fd, &offset, size );
         if( rc < 0 ) rc = 0;        // this could be due to blocking or unrecoverable system errors. Pretend nothing was written, write buffer code will handle it later.
-        if( rc == size ) return SUCCESS;     // everything fine (system errors for a length zero write are ignored)
+        if( rc == size )
+        {
+            close( fd );
+            return;     // everything fine (system errors for a length zero write are ignored)
+        }
     }
 
     // find end of write buffer list
@@ -252,7 +256,7 @@ int bsendfile( req *c, int fd, int offset, int size )
     for( last = c->wb; last && last->next; last = last->next );
     
     // allocate new buffer
-    struct wbchain_struct *wbc = malloc( sizeof(wbchain_struct) );
+    struct wbchain_struct *wbc = malloc( sizeof(struct wbchain_struct) );
     if( !wbc )
     {
         perror( "malloc" );
@@ -276,7 +280,7 @@ int bsendfile( req *c, int fd, int offset, int size )
 // automatically adds Date header and respects HEAD requests
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
-void write_response( const req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen )
+void write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen )
 {
     // autodetermine length
     if( body != NULL && bodylen == 0 )
@@ -302,7 +306,7 @@ void write_response( const req *c, const unsigned int code, const char* headers,
 }
 
 // handle a query for a special dynamically generated file
-int handle_dynamic_file( const req *c )
+int handle_dynamic_file( req *c )
 {
     unsigned int i;
     for( i = 0; handlers[i].url && strcmp( c->url, handlers[i].url ); i++ );
@@ -314,7 +318,7 @@ int handle_dynamic_file( const req *c )
 }
 
 // handle a file query for an embedded file
-int handle_embedded_file( const req *c )
+int handle_embedded_file( req *c )
 {
     unsigned int i;
     for( i = 0; contents[i].url && strcmp( c->url, contents[i].url ); i++ );
@@ -337,7 +341,7 @@ int handle_embedded_file( const req *c )
 }
 
 // handle a disk file query
-int handle_disk_file( const req *c )
+int handle_disk_file( req *c )
 {
     if( strstr( c->url, ".." ) != NULL )
         return HTTP_NOT_FOUND;
@@ -391,8 +395,9 @@ int handle_disk_file( const req *c )
     write_response( c, HTTP_OK, str, NULL, sb.st_size );
     free( str );
     if( c->m != M_HEAD )
-        bsendfile( c, fd, sb.st_size );
-    close( fd );
+        bsendfile( c, fd, sb.st_size );     // this closes fd automatically when it's done with it
+    else
+        close( fd );
 
     return SUCCESS;
 }

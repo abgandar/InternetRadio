@@ -31,7 +31,7 @@ struct wbchain_struct {
     struct wbchain_struct *next;
     int len;
     int offset;
-    union { const char data[1]; int fd; } payload;
+    union { char data[1]; int fd; } payload;
 };
 
 // an active request
