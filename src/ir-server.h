@@ -1,5 +1,5 @@
 // some return codes
-enum retcode_enum { CLOSE_SOCKET = -1, SUCCESS = 0, WAIT_FOR_DATA = 1 };
+enum retcode_enum { WAIT_FOR_DATA = -2, CLOSE_SOCKET = -1, SUCCESS = 0 };
 
 // some HTTP status codes
 enum statuscode_enum {
@@ -18,7 +18,7 @@ enum statuscode_enum {
 enum state_enum { STATE_NEW, STATE_HEAD, STATE_BODY, STATE_TAIL, STATE_READY, STATE_FINISH };
 
 // request flags (bitfield, assign powers of 2!)
-enum flags_enum { FL_NONE = 0, FL_CRLF = 1, FL_CHUNKED = 2, FL_CLOSE = 4 };
+enum flags_enum { FL_NONE = 0, FL_CRLF = 1, FL_CHUNKED = 2, FL_CLOSE = 4, FL_SHUTDOWN = 8 };
 
 // request version
 enum version_enum { V_UNKNOWN, V_10, V_11 };
@@ -26,11 +26,20 @@ enum version_enum { V_UNKNOWN, V_10, V_11 };
 // request method
 enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M_DELETE, M_TRACE, M_CONNECT };
 
+// write buffer chain entry
+struct wbchain_struct {
+    struct wbchain_struct *next;
+    int len;
+    int offset;
+    union { const char data[1]; int fd } payload;
+};
+
 // an active request
 typedef struct req_struct {
     int fd;                 // socket associated with this request
     char *data;             // data buffer pointer
     unsigned int max, len;  // max allocated length, current length
+    struct wbchain_struct *wb;     // pointer to the head of the write buffer
     unsigned int rl, cl;    // total request length parsed, total body content length
     char *version, *method, *url, *head, *body, *tail;      // request pointers into data buffer
     enum state_enum s;      // state of this request
@@ -40,10 +49,18 @@ typedef struct req_struct {
 } req;
 
 // special URI handler list entry
-struct handler_struct { const char *url; int(*handler)(const req*); };
+struct handler_struct {
+    const char *url;
+    int(*handler)(const req*);
+};
 
 // embedded file list entry
-struct content_struct { const char *url; const char *headers; const char *body; unsigned int len; };
+struct content_struct {
+    const char *url;
+    const char *headers;
+    const char *body;
+    unsigned int len;
+};
 
 
 // server main loop

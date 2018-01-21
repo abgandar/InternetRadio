@@ -86,6 +86,7 @@ inline void INIT_REQ( req *c, const int fd )
     c->data[0] = '\0';
     c->max = 4096;
     c->fd = fd;
+    c->wfd = -1;
 }
 
 // free request memory
@@ -93,6 +94,10 @@ inline void FREE_REQ( req *c )
 {
     if( c->data ) free( c->data );
     c->data = NULL; c->max = 0;
+    if( c->wfd >= 0 ) close( c->wfd );
+    c->wfd = -1;
+    if( c->wb ) free( c->wb );
+    c->wb = NULL;
 }
 
 // reset a request keeping its data and buffer untouched
@@ -176,6 +181,96 @@ const char* get_header_field( const req *c, const char* name )
     return NULL;
 }
 
+// try to write the vector I/O directly, and if that does not succeed append it to the internal write buffer
+void bwrite( req *c, const struct iovec *iov, int niov )
+{
+    // total length of data to write
+    int len = 0, rc = 0;
+    for( unsigned int i = 0; i < niov; i++ )
+        len += iov[i].iov_len;
+
+    // If there's no buffer yet, try to write
+    if( !c->wb )
+    {
+        rc = writev( c->fd, iov, niov );
+        if( rc < 0 ) rc = 0;        // this could be due to blocking or unrecoverable system errors. Pretend nothing was written, write buffer code will handle it later.
+        if( rc == len ) return;     // everything fine (system errors for a length zero write are ignored)
+    }
+
+    // find end of write buffer list
+    struct wbchain_struct *last;
+    for( last = c->wb; last && last->next; last = last->next );
+
+    // find partially written or unwritten buffers and add them to the write buffer chain
+    for( unsigned int i = 0; i < niov; i++ )
+    {
+        if( rc >= iov[i].iov_len )
+        {
+            // the full buffer has been written
+            rc -= iov[i].iov_len;
+            continue;
+        }
+        // allocate new buffer
+        const int l = iov[i].iov_len - rc;
+        struct wbchain_struct *wbc = malloc( sizeof(wbchain_struct) + l );
+        if( !wbc )
+        {
+            perror( "malloc" );
+            exit( EXIT_FAILURE );
+        }
+        // copy into buffer
+        memcpy( &(wbc->payload.data), iov[i].iov_base + rc, l );
+        wbc->len = l;
+        wbc->offset = 0;
+        wbc->next = NULL;
+        // append buffer to write buffer list
+        if( last )
+            last->next = wbc;
+        else
+            c->wb = wbc;
+        last = wbc;
+        rc = 0;
+    }
+}
+
+// try to send a file directly, and if that does not succeed append it to the internal write buffer
+int bsendfile( req *c, int fd, int offset, int size )
+{
+    int rc = 0;
+
+    // If there's no buffer yet, try to write
+    if( !c->wb )
+    {
+        rc = sendfile( c->fd, fd, &offset, size );
+        if( rc < 0 ) rc = 0;        // this could be due to blocking or unrecoverable system errors. Pretend nothing was written, write buffer code will handle it later.
+        if( rc == size ) return SUCCESS;     // everything fine (system errors for a length zero write are ignored)
+    }
+
+    // find end of write buffer list
+    struct wbchain_struct *last;
+    for( last = c->wb; last && last->next; last = last->next );
+    
+    // allocate new buffer
+    struct wbchain_struct *wbc = malloc( sizeof(wbchain_struct) );
+    if( !wbc )
+    {
+        perror( "malloc" );
+        exit( EXIT_FAILURE );
+    }
+    // fill buffer
+    wbc->payload.fd = fd;
+    wbc->len = -(size-rc);
+    wbc->offset = offset;
+    wbc->next = NULL;
+    // append buffer to write buffer list
+    if( last )
+        last->next = wbc;
+    else
+        c->wb = wbc;
+    last = wbc;
+    rc = 0;
+}
+
 // write a response with given body and headers (must include the initial HTTP response header)
 // automatically adds Date header and respects HEAD requests
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
@@ -197,15 +292,10 @@ void write_response( const req *c, const unsigned int code, const char* headers,
                                "HTTP/1.%c %u %s\r\n" EXTRA_HEADER "%sContent-Length: %u\r\nDate: %s\r\n\r\n",
                                c->v == V_10 ? '0' : '1', code, get_response( code ), headers ? headers : "", bodylen, str );
 
-    // write everything using a single call
-    if( body && c->m != M_HEAD && bodylen > 0 )
-    {
-        iov[1].iov_base = (char*)body;
-        iov[1].iov_len = bodylen;
-        writev( c->fd, iov, 2 );
-    }
-    else
-        write( c->fd, iov[0].iov_base, iov[0].iov_len );
+    // first try to write everything right away using a single call. Most often this should succeed and write buffer is not used.
+    iov[1].iov_base = (char*)body;
+    iov[1].iov_len = bodylen;
+    bwrite( c, iov, (body && (c->m != M_HEAD) && (bodylen > 0)) ? 2 : 1 );
 
     free( iov[0].iov_base );
 }
@@ -219,7 +309,7 @@ int handle_dynamic_file( const req *c )
     if( handlers[i].handler )
         return handlers[i].handler( c );
     
-    return HTTP_NOT_FOUND;
+    return -HTTP_NOT_FOUND;
 }
 
 // handle a file query for an embedded file
@@ -242,7 +332,7 @@ int handle_embedded_file( const req *c )
         return SUCCESS;
     }
 
-    return HTTP_NOT_FOUND;
+    return -HTTP_NOT_FOUND;
 }
 
 // handle a disk file query
@@ -269,7 +359,7 @@ int handle_disk_file( const req *c )
     // open file
     int fd = open( fn, O_RDONLY );
     if( fd < 0 )
-        return HTTP_NOT_FOUND;
+        return -HTTP_NOT_FOUND;
 
     // file statistics
     struct stat sb;
@@ -300,7 +390,7 @@ int handle_disk_file( const req *c )
     write_response( c, HTTP_OK, str, NULL, sb.st_size );
     free( str );
     if( c->m != M_HEAD )
-        sendfile( c->fd, fd, NULL, sb.st_size );
+        bsendfile( c, fd, sb.st_size );
     close( fd );
 
     return SUCCESS;
@@ -705,19 +795,82 @@ int read_from_client( req *c )
     }
 
     // read data
-    const int nbytes = read( c->fd, c->data+c->len, len );
+    const int rc = WAIT_FOR_DATA, nbytes = read( c->fd, c->data+c->len, len );
     if( nbytes == 0 )
-        return CLOSE_SOCKET;  // nothing to read from this socket, must be closed => request finished
+        rc = CLOSE_SOCKET;  // nothing to read from this socket, must be closed => request finished
     else if( nbytes < 0 )
     {
-        perror( "read" );
-        exit( EXIT_FAILURE );
+        // these are retryable errors, all others are system errors where we just abandon the connection
+        if( errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR )
+            rc = CLOSE_SOCKET;
     }
-    c->len += nbytes;
-    c->data[c->len] = '\0';
+    else
+    {
+        c->len += nbytes;
+        c->data[c->len] = '\0';
+        rc = parse_data( c );
+    }
 
-    // try to parse the new data
-    return parse_data( c );
+    if( rc == CLOSE_SOCKET )
+    {
+        c->flags |= FL_SHUTDOWN;
+        return WRITE_DATA;      // flush write buffer then shutdown connection
+    }
+    else if( c->wb )
+        return WRITE_DATA;      // flush write buffer, then continuing reading
+    else
+        return WAIT_FOR_DATA;   // continue reading
+}
+
+// write internally buffered data to a socket.
+int write_to_client( req *c )
+{
+    int rc;
+    while( c->wb )
+    {
+        if( len > 0 )
+        {
+            // try to write data
+            rc = write( c->fd, c->wb->payload.data + c->wb->offset, c->wb->len );
+            if( rc < 0 )
+            {
+                // these are retryable errors, all others are system errors where we just abandon the connection
+                if( (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != EINTR) )
+                    return CLOSE_SOCKET;
+                else
+                    return WRITE_DATA;
+            }
+            c->wb->offset += rc;
+            c->wb->len -= rc;
+            if( c->wb->len > 0 )
+                return  WRITE_DATA;     // more data left to write, return
+        }
+        else
+        {
+            // try to send file
+            rc = sendfile( c->fd, c->wb->payload.fd, &(c->wb->offset), -c->wb->len );
+            if( rc < 0 )
+            {
+                // these are retryable errors, all others are system errors where we just abandon the connection
+                if( (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != EINTR) )
+                    return CLOSE_SOCKET;
+                else
+                    return WRITE_DATA;
+            }
+            c->wb->len += rc;           // len is negative for sendfile
+            if( c->wb->len < 0 )
+                return  WRITE_DATA;     // more data left to write, return
+            close( c->wb->payload.fd ); // close file
+        }
+
+        // finished this one. Free buffer and move on
+        struct wbchain_struct *q = c->wb->next;
+        free( c->wb );
+        c->wb = q;
+    }
+
+    // everything written successfully
+    return c->flags & FL_SHUTDOWN ? CLOSE_SOCKET : SUCCESS;
 }
 
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
@@ -802,10 +955,7 @@ int http_server_main( int argc, char *argv[] )
     req reqs[MAX_CONNECTIONS] = { 0 };
     struct pollfd fds[MAX_CONNECTIONS+1];
     for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
-    {
         fds[i].fd = -1;
-        fds[i].events = POLLIN | POLLRDHUP;
-    }
     fds[MAX_CONNECTIONS].fd = serverSocket;
     fds[MAX_CONNECTIONS].events = POLLIN;
 
@@ -849,8 +999,14 @@ int http_server_main( int argc, char *argv[] )
             }
             else
             {
+                // try to switch socket to non-blocking I/O
+                const int flags = fcntl( new, F_GETFL, 0 );
+                if( flags != -1 )
+                    fcntl( new, F_SETFL, flags | O_NONBLOCK );
+
                 // initialize request and add to watchlist
                 fds[j].fd = new;
+                fds[j].events = POLLIN | POLLRDHUP;
                 INIT_REQ( &reqs[j], new );
                 debug_printf( "===> New connection\n" );
             }
@@ -859,7 +1015,7 @@ int http_server_main( int argc, char *argv[] )
         // process all other client sockets
         for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
         {
-            if( fds[i].revents & (POLLRDHUP|POLLHUP|POLLERR|POLLNVAL) )
+            if( fds[i].revents & (POLLRDHUP | POLLHUP | POLLERR | POLLNVAL) )
             {
                 // other side hung up or somethign went wrong, completely close socket
                 shutdown( fds[i].fd, SHUT_RDWR );
@@ -869,17 +1025,26 @@ int http_server_main( int argc, char *argv[] )
                 FREE_REQ( &reqs[i] );
                 debug_printf( "===> Closed connection\n" );
             }
-            else if( fds[i].revents & POLLIN )
+            else if( fds[i].revents & POLLOUT )
             {
-                // ready to read
-                const int res = read_from_client( &reqs[i] );
-                if( res == SUCCESS )
-                    continue;                           // read successful
-                else if( res == CLOSE_SOCKET )
+                // ready to write out queued data
+                const int res = write_to_client( &reqs[i] );
+                if( res == CLOSE_SOCKET )
                 {
-                    shutdown( fds[i].fd, SHUT_WR );     // initiate shutdown
+                    // initiate shutdown sequence
+                    shutdown( fds[i].fd, SHUT_WR );
+                    fds[i].events = fds[i].events & ~(POLLOUT | POLLIN);    // just wait for other side to hang up
                     debug_printf( "===> Closing connection\n" );
                 }
+                else if( res == SUCCESS )
+                    fds[i].events = (fds[i].events & ~POLLOUT) | POLLIN;    // switch back to reading if everything was written
+            }
+            else if( fds[i].revents & POLLIN )
+            {
+                // ready to (continue to) read next request
+                const int res = read_from_client( &reqs[i] );
+                if( res == WRITE_DATA )
+                    fds[i].events = (fds[i].events & ~POLLIN) | POLLOUT;    // switch to writing
             }
         }
     }
@@ -889,9 +1054,9 @@ int http_server_main( int argc, char *argv[] )
     close( serverSocket );
     for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )
     {
+        FREE_REQ( &reqs[j] );
         if( fds[j].fd < 0 ) continue;
         close( fds[j].fd );
-        FREE_REQ( &reqs[j] );
     }
 
     return SUCCESS;
