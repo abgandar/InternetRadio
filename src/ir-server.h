@@ -1,26 +1,40 @@
 #include <sys/types.h>
 
 // some return codes
-enum retcode_enum { WRITE_DATA = -3, WAIT_FOR_DATA = -2, CLOSE_SOCKET = -1, SUCCESS = 0 };
+enum retcode_enum {
+    FILE_NOT_FOUND =    -6,
+    BUFFERED =          -5,
+    BUFFER_OVERFLOW =   -4,
+    WRITE_DATA =        -3,
+    WAIT_FOR_DATA =     -2,
+    CLOSE_SOCKET =      -1,
+    SUCCESS =            0
+};
 
 // some HTTP status codes
 enum statuscode_enum {
-    HTTP_OK = 200,
-    HTTP_NOT_MODIFIED = 304,
-    HTTP_BAD_REQUEST = 400,
-    HTTP_NOT_FOUND = 404,
-    HTTP_NOT_ALLOWED = 405,
-    HTTP_TOO_LARGE = 413,
-    HTTP_SERVER_ERROR = 500,
-    HTTP_NOT_IMPLEMENTED = 501,
-    HTTP_SERVICE_UNAVAILABLE = 503
+    HTTP_OK =                   200,
+    HTTP_NOT_MODIFIED =         304,
+    HTTP_BAD_REQUEST =          400,
+    HTTP_NOT_FOUND =            404,
+    HTTP_NOT_ALLOWED =          405,
+    HTTP_TOO_LARGE =            413,
+    HTTP_SERVER_ERROR =         500,
+    HTTP_NOT_IMPLEMENTED =      501,
+    HTTP_SERVICE_UNAVAILABLE =  503
 };
 
 // request state
 enum state_enum { STATE_NEW, STATE_HEAD, STATE_BODY, STATE_TAIL, STATE_READY, STATE_FINISH };
 
 // request flags (bitfield, assign powers of 2!)
-enum flags_enum { FL_NONE = 0, FL_CRLF = 1, FL_CHUNKED = 2, FL_CLOSE = 4, FL_SHUTDOWN = 8 };
+enum flags_enum {
+    FL_NONE =       0,
+    FL_CRLF =       1,
+    FL_CHUNKED =    2,
+    FL_CLOSE =      4,
+    FL_SHUTDOWN =   8
+};
 
 // request version
 enum version_enum { V_UNKNOWN, V_10, V_11 };
@@ -38,22 +52,24 @@ struct wbchain_struct {
 
 // an active request
 typedef struct req_struct {
-    int fd;                 // socket associated with this request
-    char *data;             // data buffer pointer
-    unsigned int max, len;  // max allocated length, current length
-    struct wbchain_struct *wb;     // pointer to the head of the write buffer
-    unsigned int rl, cl;    // total request length parsed, total body content length
-    char *version, *method, *url, *query, *head, *body, *tail;      // request pointers into data buffer
-    enum state_enum s;      // state of this request
-    enum flags_enum f;      // flags for this request
-    enum version_enum v;    // HTTP version of request
-    enum method_enum m;     // enumerated method
+    int fd;                     // socket associated with this request
+    char *data;                 // data buffer pointer
+    unsigned int max, len;      // max allocated length, current length
+    struct wbchain_struct *wb;  // pointer to the head of the write buffer
+    unsigned int rl, cl;        // total request length parsed, total body content length
+    char *version, *method,
+         *url, *query, *head,
+         *body, *tail;          // request pointers into data buffer
+    enum state_enum s;          // state of this request
+    enum flags_enum f;          // flags for this request
+    enum version_enum v;        // HTTP version of request
+    enum method_enum m;         // enumerated method
 } req;
 
 // special URI handler list entry
 struct handler_struct {
     const char *url;
-    int(*handler)(req*);
+    int (*handler)( req* );
 };
 
 // embedded file list entry

@@ -183,7 +183,7 @@ const char* get_header_field( const req *c, const char* name )
 }
 
 // try to write the vector I/O directly, and if that does not succeed append it to the internal write buffer
-void bwrite( req *c, const struct iovec *iov, int niov )
+int bwrite( req *c, const struct iovec *iov, int niov )
 {
     // total length of data to write
     int len = 0, rc = 0;
@@ -198,13 +198,22 @@ void bwrite( req *c, const struct iovec *iov, int niov )
         if( rc == len )
         {
             debug_printf( "===> Wrote %d bytes directy\n", rc );
-            return;     // everything fine (system errors for a length zero write are ignored)
+            return SUCCESS;     // everything fine (system errors for a length zero write are ignored)
         }
     }
 
-    // find end of write buffer list
+    // find end of write buffer list and calculate total current size
     struct wbchain_struct *last;
-    for( last = c->wb; last && last->next; last = last->next );
+    int buflen = 0;
+    for( last = c->wb; last && last->next; last = last->next )
+        if( last->len > 0 )
+            buflen += last->len;
+    buflen += last->len;
+    if( buflen + len - rc > MAX_REP_LEN )
+    {
+        debug_printf( "===> Output buffer overflow\n", rc );
+        return BUFFER_OVERFLOW;
+    }
 
     // find partially written or unwritten buffers and add them to the write buffer chain
     for( unsigned int i = 0; i < niov; i++ )
@@ -237,10 +246,12 @@ void bwrite( req *c, const struct iovec *iov, int niov )
         rc = 0;
         debug_printf( "===> Buffered %d bytes (of %d)\n", last->len, iov[i].iov_len );
     }
+
+    return BUFFERED;
 }
 
 // try to send a file directly, and if that does not succeed append it to the internal write buffer
-void bsendfile( req *c, int fd, off_t offset, int size )
+int bsendfile( req *c, int fd, off_t offset, int size )
 {
     int rc = 0;
 
@@ -253,7 +264,7 @@ void bsendfile( req *c, int fd, off_t offset, int size )
         {
             debug_printf( "===> Sent %d bytes from file without buffering\n", rc );
             close( fd );
-            return;     // everything fine (system errors for a length zero write are ignored)
+            return SUCCESS;     // everything fine (system errors for a length zero write are ignored)
         }
     }
 
@@ -281,13 +292,15 @@ void bsendfile( req *c, int fd, off_t offset, int size )
     last = wbc;
     rc = 0;
     debug_printf( "===> Buffered %d bytes (of %d) from file\n", wbc->len, size );
+    
+    return BUFFERED;
 }
 
 // write a response with given body and headers (must include the initial HTTP response header)
 // automatically adds Date header and respects HEAD requests
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
-void write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen )
+int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen )
 {
     // autodetermine length
     if( body != NULL && bodylen == 0 )
@@ -307,9 +320,10 @@ void write_response( req *c, const unsigned int code, const char* headers, const
     // first try to write everything right away using a single call. Most often this should succeed and write buffer is not used.
     iov[1].iov_base = (char*)body;
     iov[1].iov_len = bodylen;
-    bwrite( c, iov, (body && (c->m != M_HEAD) && (bodylen > 0)) ? 2 : 1 );
-
+    int rc = bwrite( c, iov, (body && (c->m != M_HEAD) && (bodylen > 0)) ? 2 : 1 );
     free( iov[0].iov_base );
+
+    return rc;
 }
 
 // handle a query for a special dynamically generated file
@@ -322,7 +336,7 @@ int handle_dynamic_file( req *c )
     if( handlers[i].handler )
         return handlers[i].handler( c );
     
-    return -HTTP_NOT_FOUND;
+    return FILE_NOT_FOUND;
 }
 
 // handle a file query for an embedded file
@@ -337,42 +351,44 @@ int handle_embedded_file( req *c )
         const char *inm = get_header_field( c, "If-None-Match:" );
         if( inm && strcmp( inm, TIMESTAMP ) == 0 )
         {
-            write_response( c, HTTP_NOT_MODIFIED, contents[i].headers, NULL, 0 );
-            return SUCCESS;
+            const int rc = write_response( c, HTTP_NOT_MODIFIED, contents[i].headers, NULL, 0 );
+            return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
         }
 #endif
-        write_response( c, HTTP_OK, contents[i].headers, contents[i].body, contents[i].len );
-        return SUCCESS;
+        const int rc = write_response( c, HTTP_OK, contents[i].headers, contents[i].body, contents[i].len );
+        return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
     }
 
-    return -HTTP_NOT_FOUND;
+    return FILE_NOT_FOUND;
 }
 
 // handle a disk file query
 int handle_disk_file( req *c )
 {
    if( strstr( c->url, ".." ) != NULL )
-        return HTTP_NOT_FOUND;
+        return FILE_NOT_FOUND;
 
-    const int len_WWW_DIR = strlen( WWW_DIR ), len_url = strlen( c->url ), len_DIR_INDEX = strlen( DIR_INDEX );
-    if( len_WWW_DIR+len_url+len_DIR_INDEX >= PATH_MAX )
-        return HTTP_NOT_FOUND;
+    const int len_WWW_DIR = strlen( WWW_DIR ),
+              len_url = strlen( c->url ),
+              len_DIR_INDEX = strlen( DIR_INDEX );
+    if( len_WWW_DIR + len_url + len_DIR_INDEX >= PATH_MAX )
+        return FILE_NOT_FOUND;
 
     char fn[PATH_MAX];
     memcpy( fn, WWW_DIR, len_WWW_DIR );
-    memcpy( fn+len_WWW_DIR, c->url, len_url );
-    fn[len_WWW_DIR+len_url] = '\0';
-    if( len_url == 0 || c->url[len_url-1] == '/' )
+    memcpy( fn + len_WWW_DIR, c->url, len_url );
+    fn[len_WWW_DIR + len_url] = '\0';
+    if( (len_url == 0) || (c->url[len_url-1] == '/') )
     {
-        memcpy( fn+len_WWW_DIR+len_url, DIR_INDEX, len_DIR_INDEX );
-        fn[len_WWW_DIR+len_url+len_DIR_INDEX] = '\0';
+        memcpy( fn + len_WWW_DIR + len_url, DIR_INDEX, len_DIR_INDEX );
+        fn[len_WWW_DIR + len_url + len_DIR_INDEX] = '\0';
     }
     debug_printf( "===> Trying to open file: %s\n", fn );
 
     // open file
     int fd = open( fn, O_RDONLY );
     if( fd < 0 )
-        return -HTTP_NOT_FOUND;
+        return FILE_NOT_FOUND;
 
     // file statistics
     struct stat sb;
@@ -380,7 +396,7 @@ int handle_disk_file( req *c )
     {
         write_response( c, HTTP_SERVER_ERROR, NULL, "500 - Server error", 0 );
         close( fd );
-        return SUCCESS;
+        return CLOSE_SOCKET;
     }
     debug_printf( "===> File size, modification time: %ld, %ld\n", sb.st_size, sb.st_mtim.tv_sec );
 
@@ -393,21 +409,27 @@ int handle_disk_file( req *c )
     char *last = NULL;
     if( inm && (strtol( inm+1, &last, 10 ) == sb.st_mtim.tv_sec) && last && (*last == '"') )
     {
-        write_response( c, HTTP_NOT_MODIFIED, str, NULL, 0 );
+        const int rc = write_response( c, HTTP_NOT_MODIFIED, str, NULL, 0 );
         free( str );
         close( fd );
-        return SUCCESS;
+        return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
     }
 
     // write response
-    write_response( c, HTTP_OK, str, NULL, sb.st_size );
+    const int rc = write_response( c, HTTP_OK, str, NULL, sb.st_size ), rc2;
     free( str );
+    if( rc == BUFFER_OVERFLOW )
+    {
+        close( fd );
+        return CLOSE_SOCKET;
+    }
+
     if( c->m != M_HEAD )
         bsendfile( c, fd, 0, sb.st_size );     // this closes fd automatically when it's done with it
     else
         close( fd );
 
-    return SUCCESS;
+    return SUCCESS;     // bsendfile always succeeds (can't buffer-overflow)
 }
 
 // finish request after it has been handled
@@ -434,20 +456,33 @@ int finish_request( req *c )
 // handle request after it was completely read
 int handle_request( req *c )
 {
+    int rc;
+
     if( c->m != M_GET && c->m != M_POST && c->m != M_HEAD )
-        write_response( c, HTTP_NOT_ALLOWED, NULL, "405 - Not allowed", 0 );
+    {
+        if( write_response( c, HTTP_NOT_ALLOWED, NULL, "405 - Not allowed", 0 ) == BUFFER_OVERFLOW )
+            return CLOSE_SOCKET;
+    }
     else
     {
-        // check what to do with this requst
-        const int rc = handle_dynamic_file( c );
-        if( rc == CLOSE_SOCKET )
+        // try different mechanisms in order
+        if( (rc = handle_dynamic_file( c ) ) == CLOSE_SOCKET )
             return CLOSE_SOCKET;
-        else if( rc == SUCCESS )
-            ((void)0);  // do nothing
-        else if( handle_embedded_file( c ) == SUCCESS )
-            ((void)0);  // do nothing
-        else if( handle_disk_file( c ) )
-            write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0 );
+        else if( rc == FILE_NOT_FOUND )
+        {
+            if( (rc = handle_embedded_file( c )) == CLOSE_SOCKET )
+                return CLOSE_SOCKET;
+            else if( rc == FILE_NOT_FOUND )
+            {
+                if( (rc = handle_disk_file( c )) == CLOSE_SOCKET )
+                    return CLOSE_SOCKET;
+                else if( rc == FILE_NOT_FOUND )
+                {
+                    if( write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0 ) == BUFFER_OVERFLOW )
+                        return CLOSE_SOCKET;
+                }
+            }
+        }
     }
 
     c->s = STATE_FINISH;
@@ -468,7 +503,7 @@ int read_tail( req *c )
             c->rl = tmp - c->data + 1 + (c->f & FL_CRLF);
         }
         else
-            return WAIT_FOR_DATA;           // need more data
+            return READ_DATA;           // need more data
     }
     else
         c->rl = tmp - c->data + 2 + 2*(c->f & FL_CRLF);
@@ -508,7 +543,7 @@ int read_body( req *c )
         while( true )
         {
             char *tmp = strstr( c->data + c->rl, (c->f & FL_CRLF) ? "\r\n" : "\n" );
-            if( !tmp ) return WAIT_FOR_DATA;
+            if( !tmp ) return READ_DATA;
             // get next chunk length
             tmp += 1 + (c->f & FL_CRLF);
             char *perr;
@@ -526,7 +561,7 @@ int read_body( req *c )
             }
             // wait till the entire chunk is here
             if( c->len < (tmp - c->data + chunklen + 1 + (c->f & FL_CRLF)) )
-                return WAIT_FOR_DATA;
+                return READ_DATA;
             debug_printf( "===> Reading chunk size %d\n", chunklen );
             // copy the chunk back to the end of the body
             memmove( c->body + c->cl, tmp, chunklen );
@@ -539,7 +574,7 @@ int read_body( req *c )
     else
     {
         // Normal read of given content length
-        if( c->len < c->rl ) return WAIT_FOR_DATA;
+        if( c->len < c->rl ) return READ_DATA;
         c->s = STATE_READY;
     }
     debug_printf( "===> Body (%d bytes):\n%.*s\n", c->cl, c->cl, c->body );
@@ -561,7 +596,7 @@ int read_head( req *c )
             c->body = tmp + 1 + (c->f & FL_CRLF);    // this is where the body starts (1 or 2 forward)
         }
         else
-            return WAIT_FOR_DATA;           // need more data
+            return READ_DATA;           // need more data
     }
     else
         c->body = tmp + 2*(1 + (c->f & FL_CRLF));      // this is where the body starts (2 or 4 forward)
@@ -662,7 +697,7 @@ int read_request( req *c )
     if( tmp == NULL )
     {
         tmp = strstr( data, "\n" );
-        if( tmp == NULL ) return WAIT_FOR_DATA;     // we need more data
+        if( tmp == NULL ) return READ_DATA;     // we need more data
         c->f &= ~FL_CRLF;
     }
 
@@ -818,7 +853,7 @@ int read_from_client( req *c )
     }
 
     // read data
-    int rc = WAIT_FOR_DATA;
+    int rc = READ_DATA;
     const int nbytes = read( c->fd, c->data+c->len, len );
     if( nbytes == 0 )
         rc = CLOSE_SOCKET;  // nothing to read from this socket, must be closed => request finished
@@ -835,6 +870,7 @@ int read_from_client( req *c )
         rc = parse_data( c );
     }
 
+    // figure out what action to take next
     if( rc == CLOSE_SOCKET )
     {
         c->f |= FL_SHUTDOWN;
@@ -843,7 +879,7 @@ int read_from_client( req *c )
     else if( c->wb )
         return WRITE_DATA;      // flush write buffer, then continuing reading
     else
-        return WAIT_FOR_DATA;   // continue reading
+        return READ_DATA;       // continue reading
 }
 
 // write internally buffered data to a socket.
@@ -868,7 +904,7 @@ int write_to_client( req *c )
             c->wb->offset += rc;
             c->wb->len -= rc;
             if( c->wb->len > 0 )
-                return  WRITE_DATA;     // more data left to write, return
+                return  WRITE_DATA;     // more data left to write, return till socket is ready for more
         }
         else
         {
@@ -885,7 +921,7 @@ int write_to_client( req *c )
             }
             c->wb->len += rc;           // len is negative for sendfile
             if( c->wb->len < 0 )
-                return  WRITE_DATA;     // more data left to write, return
+                return  WRITE_DATA;     // more data left to write, return till socket is ready for more
             close( c->wb->payload.fd ); // close file
         }
 
@@ -896,7 +932,7 @@ int write_to_client( req *c )
     }
 
     // everything written successfully
-    return (c->f & FL_SHUTDOWN) ? CLOSE_SOCKET : SUCCESS;
+    return (c->f & FL_SHUTDOWN) ? CLOSE_SOCKET : READ_DATA;
 }
 
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
@@ -1059,18 +1095,18 @@ int http_server_main( int argc, char *argv[] )
                 {
                     // initiate shutdown sequence
                     shutdown( fds[i].fd, SHUT_WR );
-                    fds[i].events = fds[i].events & ~(POLLOUT | POLLIN);    // just wait for other side to hang up
+                    fds[i].events = POLLRDHUP;                      // just wait for other side to hang up
                     debug_printf( "===> Closing connection\n" );
                 }
-                else if( res == SUCCESS )
-                    fds[i].events = (fds[i].events & ~POLLOUT) | POLLIN;    // switch back to reading if everything was written
+                else if( res == READ_DATA )
+                    fds[i].events = POLLRDHUP | POLLIN;             // all writing is done, switch to reading
             }
             else if( fds[i].revents & POLLIN )
             {
                 // ready to (continue to) read next request
                 const int res = read_from_client( &reqs[i] );
                 if( res == WRITE_DATA )
-                    fds[i].events = (fds[i].events & ~POLLIN) | POLLOUT;    // switch to writing
+                    fds[i].events = POLLRDHUP | POLLOUT;            // switch to writing
             }
         }
     }
