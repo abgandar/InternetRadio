@@ -1,3 +1,5 @@
+#include <sys/types.h>
+
 // some return codes
 enum retcode_enum { WRITE_DATA = -3, WAIT_FOR_DATA = -2, CLOSE_SOCKET = -1, SUCCESS = 0 };
 
@@ -30,7 +32,7 @@ enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M_DELETE,
 struct wbchain_struct {
     struct wbchain_struct *next;
     int len;
-    int offset;
+    off_t offset;
     union { char data[1]; int fd; } payload;
 };
 
@@ -70,7 +72,7 @@ int http_server_main( int argc, char *argv[] );
 // automatically adds Date header and respects HEAD requests
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
-void write_response( const req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen );
+void write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen );
 
 // get first matching header value from the request without leading whitespace (or NULL if not found)
 // name must be of the form "Date:" (including colon)

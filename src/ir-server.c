@@ -148,7 +148,7 @@ const char* get_response( const unsigned int code )
 
 // get first matching header value from the request without leading whitespace (or NULL if not found)
 // name must be of the form "Date:" (including colon)
-const char* get_header_field( req *c, const char* name )
+const char* get_header_field( const req *c, const char* name )
 {
     char *p, *end;
     unsigned int len = strlen( name );
@@ -235,7 +235,7 @@ void bwrite( req *c, const struct iovec *iov, int niov )
 }
 
 // try to send a file directly, and if that does not succeed append it to the internal write buffer
-void bsendfile( req *c, int fd, int offset, int size )
+void bsendfile( req *c, int fd, off_t offset, int size )
 {
     int rc = 0;
 
@@ -395,7 +395,7 @@ int handle_disk_file( req *c )
     write_response( c, HTTP_OK, str, NULL, sb.st_size );
     free( str );
     if( c->m != M_HEAD )
-        bsendfile( c, fd, sb.st_size );     // this closes fd automatically when it's done with it
+        bsendfile( c, fd, 0, sb.st_size );     // this closes fd automatically when it's done with it
     else
         close( fd );
 
@@ -801,7 +801,8 @@ int read_from_client( req *c )
     }
 
     // read data
-    const int rc = WAIT_FOR_DATA, nbytes = read( c->fd, c->data+c->len, len );
+    int rc = WAIT_FOR_DATA;
+    const int nbytes = read( c->fd, c->data+c->len, len );
     if( nbytes == 0 )
         rc = CLOSE_SOCKET;  // nothing to read from this socket, must be closed => request finished
     else if( nbytes < 0 )
@@ -819,7 +820,7 @@ int read_from_client( req *c )
 
     if( rc == CLOSE_SOCKET )
     {
-        c->flags |= FL_SHUTDOWN;
+        c->f |= FL_SHUTDOWN;
         return WRITE_DATA;      // flush write buffer then shutdown connection
     }
     else if( c->wb )
@@ -834,7 +835,7 @@ int write_to_client( req *c )
     int rc;
     while( c->wb )
     {
-        if( len > 0 )
+        if( c->wb->len > 0 )
         {
             // try to write data
             rc = write( c->fd, c->wb->payload.data + c->wb->offset, c->wb->len );
@@ -876,7 +877,7 @@ int write_to_client( req *c )
     }
 
     // everything written successfully
-    return c->flags & FL_SHUTDOWN ? CLOSE_SOCKET : SUCCESS;
+    return (c->f & FL_SHUTDOWN) ? CLOSE_SOCKET : SUCCESS;
 }
 
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
