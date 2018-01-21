@@ -43,7 +43,7 @@ typedef struct req_struct {
     unsigned int max, len;  // max allocated length, current length
     struct wbchain_struct *wb;     // pointer to the head of the write buffer
     unsigned int rl, cl;    // total request length parsed, total body content length
-    char *version, *method, *url, *head, *body, *tail;      // request pointers into data buffer
+    char *version, *method, *url, *query, *head, *body, *tail;      // request pointers into data buffer
     enum state_enum s;      // state of this request
     enum flags_enum f;      // flags for this request
     enum version_enum v;    // HTTP version of request

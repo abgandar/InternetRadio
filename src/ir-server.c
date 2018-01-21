@@ -105,7 +105,7 @@ inline void FREE_REQ( req *c )
 inline void RESET_REQ( req *c )
 {
     c->rl = c->cl = 0;
-    c->version = c->method = c->url = c->head = c->body = c->tail = NULL;
+    c->version = c->method = c->url = c->query = c->head = c->body = c->tail = NULL;
     c->s = c->f = c->v = c->m = 0;
 }
 
@@ -308,9 +308,10 @@ void write_response( req *c, const unsigned int code, const char* headers, const
 // handle a query for a special dynamically generated file
 int handle_dynamic_file( req *c )
 {
+    // find matching url
     unsigned int i;
     for( i = 0; handlers[i].url && strcmp( c->url, handlers[i].url ); i++ );
-    
+
     if( handlers[i].handler )
         return handlers[i].handler( c );
     
@@ -343,7 +344,7 @@ int handle_embedded_file( req *c )
 // handle a disk file query
 int handle_disk_file( req *c )
 {
-    if( strstr( c->url, ".." ) != NULL )
+   if( strstr( c->url, ".." ) != NULL )
         return HTTP_NOT_FOUND;
 
     const int len_WWW_DIR = strlen( WWW_DIR ), len_url = strlen( c->url ), len_DIR_INDEX = strlen( DIR_INDEX );
@@ -681,12 +682,21 @@ int read_request( req *c )
     if( *tmp )
     {
         *tmp = '\0';
+        c->query = tmp;     // point query string at last NUL of uri
         tmp++;
     }
     // version
     tmp += strspn( tmp, " \t" );
     c->version = tmp;
 
+    // split uri into url and query sting
+    tmp = strrchr( c->url, '?' );
+    if( tmp )
+    {
+        *tmp = '\0';
+        c->query = tmp;
+    }
+    
     // identify method
     if( strcmp( c->method, "GET" ) == 0 )
         c->m = M_GET;
@@ -715,7 +725,7 @@ int read_request( req *c )
     else
         c->v = V_UNKNOWN;
 
-    debug_printf( "===> Version: %s\tMethod: %s\tURL: %s\n", c->version, c->method, c->url );
+    debug_printf( "===> Version: %s\tMethod: %s\tURL: %s\tQuery: %s\n", c->version, c->method, c->url, c->query );
 
     // does it look like a valid request?
     if( c->v == V_UNKNOWN || c->m == M_UNKNOWN )
