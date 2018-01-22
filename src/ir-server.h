@@ -107,9 +107,9 @@ struct server_config_struct {
     const char* ip;                             // IP address of interface to bind to
     short port;                                 // port to bind to
     unsigned int max_req_len, max_rep_len;      // Maximum allowed size of a request (1 MB), Maximum allowed size of the write buffer (10 MB)
-    struct content_struct *content;             // static embedded file content
-    struct handler_struct *handlers;            // dynamic content handlers
-    struct mimetype_struct *mimetypes;          // mapping extensions to mime types
+    const struct content_struct *contents;      // static embedded file content
+    const struct handler_struct *handlers;      // dynamic content handlers
+    const struct mimetype_struct *mimetypes;    // mapping extensions to mime types
 };
 
 // set server config to defaults

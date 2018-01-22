@@ -1004,9 +1004,9 @@ void http_server_config_defaults( struct server_config_struct *config )
     config->max_req_len = MAX_REQ_LEN;
     config->max_rep_len = MAX_REP_LEN;
 #ifdef DEFAULT_CONTENT
-    config->content = contents;
+    config->contents = contents;
 #else
-    config->content = NULL;
+    config->contents = NULL;
 #endif
     config->handlers = NULL;
     config->mimetypes = mimetypes;
@@ -1057,8 +1057,8 @@ int http_server_main( struct server_config_struct *config )
     // bind and listen on correct port and IP address
     struct sockaddr_in serverAddr = { 0 };
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons( config.port );
-    inet_pton( AF_INET, config.ip, &serverAddr.sin_addr.s_addr );
+    serverAddr.sin_port = htons( conf.port );
+    inet_pton( AF_INET, conf.ip, &serverAddr.sin_addr.s_addr );
     if( bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) ) )
     {
         perror( "bind" );
