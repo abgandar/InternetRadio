@@ -7,7 +7,7 @@ enum retcode_enum {
     BUFFER_OVERFLOW =   -5,
     WRITE_DATA =        -4,
     READ_DATA =         -3,
-    READ_WRITE_DATA =   -2
+    READ_WRITE_DATA =   -2,
     CLOSE_SOCKET =      -1,
     SUCCESS =            0
 };
