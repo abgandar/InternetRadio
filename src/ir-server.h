@@ -2,11 +2,12 @@
 
 // some return codes
 enum retcode_enum {
-    FILE_NOT_FOUND =    -6,
-    BUFFERED =          -5,
-    BUFFER_OVERFLOW =   -4,
-    WRITE_DATA =        -3,
-    READ_DATA =         -2,
+    FILE_NOT_FOUND =    -7,
+    BUFFERED =          -6,
+    BUFFER_OVERFLOW =   -5,
+    WRITE_DATA =        -4,
+    READ_DATA =         -3,
+    READ_WRITE_DATA =   -2
     CLOSE_SOCKET =      -1,
     SUCCESS =            0
 };

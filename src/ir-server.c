@@ -111,6 +111,20 @@ inline void RESET_REQ( req *c )
     c->s = c->f = c->v = c->m = 0;
 }
 
+// calculate total memory size of write buffers
+inline unsigned int WB_SIZE( const req *c )
+{
+    if( !c->wb ) return 0;
+
+    unsigned int buflen = 0;
+    struct wbchain_struct *last;
+    for( last = c->wb; last; last = last->next )
+        if( last->f & MEM_PTR )
+            buflen += last->len;
+    
+    return buflen;
+}
+
 // signal handler
 void handle_signal( const int sig )
 {
@@ -119,6 +133,17 @@ void handle_signal( const int sig )
         running = false;
         debug_printf( "===> Received signal\n" );
     }
+}
+
+// get human readable response from code
+const char* get_response( const unsigned int code )
+{
+    unsigned int i;
+    for( i = 0; responses[i].code && responses[i].code < code; i++ );
+    if( responses[i].code == code )
+        return responses[i].msg;
+    else
+        return "Unknown";  // response was not found
 }
 
 // guess a mime type for a filename
@@ -138,17 +163,6 @@ const char* get_mime( const char* fn )
     }
 
     return "application/octet-stream";  // don't know, fall back to this
-}
-
-// get human readable response from code
-const char* get_response( const unsigned int code )
-{
-    unsigned int i;
-    for( i = 0; responses[i].code && responses[i].code < code; i++ );
-    if( responses[i].code == code )
-        return responses[i].msg;
-    else
-        return "Unknown";  // response was not found
 }
 
 // get matching header value from the request without leading whitespace, skipping skip entries (or NULL if not found)
@@ -227,9 +241,9 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
     struct wbchain_struct *last;
     int buflen = 0;
     for( last = c->wb; last && last->next; last = last->next )
-        if( last->len > 0 )
+        if( last->f & MEM_PTR )
             buflen += last->len;
-    if( last ) buflen += last->len;
+    if( last && (last->f & MEM_PTR) ) buflen += last->len;
     if( buflen + len - rc > MAX_REP_LEN )
     {
         debug_printf( "===> Output buffer overflow\n" );
@@ -742,9 +756,8 @@ int read_head( req *c )
 // parse the request line if it is available
 int read_request( req *c )
 {
-    char* data = c->data;
-
     // Optionally ignore an empty line(s) at beginning of request (rfc7230, 3.5)
+    char* data = c->data;
     data += strspn( data, "\r\n" );
 
     // Try to read the request line
@@ -890,6 +903,10 @@ int parse_data( req *c )
 // read from a socket and store data in request
 int read_from_client( req *c )
 {
+    // suspend reading temporarily if the write buffer is too full
+    if( WB_SIZE( c->wb ) > conf.max_rep_len )
+        return WRITE_DATA;
+
     // speculatively increase buffer if needed to avoid short reads
     int len = c->max - c->len - 1;
     if( len < 128 )
@@ -930,12 +947,12 @@ int read_from_client( req *c )
     if( rc == CLOSE_SOCKET )
     {
         c->f |= FL_SHUTDOWN;
-        return WRITE_DATA;      // flush write buffer then shutdown connection
+        return WRITE_DATA;          // flush write buffer then shutdown connection
     }
     else if( c->wb )
-        return WRITE_DATA;      // flush write buffer, then continuing reading
+        return READ_WRITE_DATA;     // read and write simultaneously
 
-    return READ_DATA;       // continue reading
+    return READ_DATA;               // continue reading
 }
 
 // write internally buffered data to a socket.
@@ -955,12 +972,12 @@ int write_to_client( req *c )
                 if( (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != EINTR) )
                     return CLOSE_SOCKET;
                 else
-                    return WRITE_DATA;
+                    return WB_SIZE( c->wb ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;
             }
             c->wb->offset += rc;
             c->wb->len -= rc;
             if( c->wb->len > 0 )
-                return  WRITE_DATA;     // more data left to write, return till socket is ready for more
+                return WB_SIZE( c->wb ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
             if( c->wb->f & (MEM_FREE | MEM_COPY) ) free( c->wb->payload.data );
         }
         else if( c->wb->f & MEM_FD )
@@ -974,11 +991,11 @@ int write_to_client( req *c )
                 if( (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != EINTR) )
                     return CLOSE_SOCKET;
                 else
-                    return WRITE_DATA;
+                    return WB_SIZE( c->wb ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;
             }
             c->wb->len -= rc;
             if( c->wb->len > 0 )
-                return  WRITE_DATA;     // more data left to write, return till socket is ready for more
+                return WB_SIZE( c->wb ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
             if( c->wb->f & FD_CLOSE ) close( c->wb->payload.fd );
         }
 
@@ -1165,26 +1182,40 @@ int http_server_main( struct server_config_struct *config )
                 FREE_REQ( &reqs[i] );
                 debug_printf( "===> Closed connection\n" );
             }
-            else if( fds[i].revents & POLLOUT )
+            else
             {
+                int res;
+
                 // ready to write out queued data
-                const int res = write_to_client( &reqs[i] );
-                if( res == CLOSE_SOCKET )
-                {
-                    // initiate shutdown sequence
-                    shutdown( fds[i].fd, SHUT_WR );
-                    fds[i].events = POLLRDHUP;                      // just wait for other side to hang up
-                    debug_printf( "===> Closing connection\n" );
-                }
-                else if( res == READ_DATA )
-                    fds[i].events = POLLRDHUP | POLLIN;             // all writing is done, switch to reading
-            }
-            else if( fds[i].revents & POLLIN )
-            {
+                if( fds[i].revents & POLLOUT )
+                    res = write_to_client( &reqs[i] );
+
                 // ready to (continue to) read next request
-                const int res = read_from_client( &reqs[i] );
-                if( res == WRITE_DATA )
-                    fds[i].events = POLLRDHUP | POLLOUT;            // switch to writing
+                if( (res != CLOSE_SOCKET) && (fds[i].revents & POLLIN) )
+                    res = read_from_client( &reqs[i] );
+
+                // fix next action on this socket
+                switch( res )
+                {
+                    case WRITE_DATA:
+                        fds[i].events = POLLRDHUP | POLLOUT;            // write only
+                        break;
+                        
+                    case READ_WRITE_DATA:
+                        fds[i].events = POLLRDHUP | POLLOUT | POLLIN;   // read and write in parallel
+                        break;
+                        
+                    case READ_DATA:
+                        fds[i].events = POLLRDHUP | POLLIN;             // read only
+                        break;
+                        
+                    case CLOSE_SOCKET:
+                        // initiate shutdown sequence
+                        shutdown( fds[i].fd, SHUT_WR );
+                        fds[i].events = POLLRDHUP;                      // just wait for other side to hang up
+                        debug_printf( "===> Closing connection\n" );
+                        break;
+                }
             }
         }
     }
