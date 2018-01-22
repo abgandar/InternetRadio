@@ -212,7 +212,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
         {
             debug_printf( "===> Wrote %d bytes directy\n", rc );
             if( flags )
-                for( unsigend int i = 0; i < niov; i++ )
+                for( unsigned int i = 0; i < niov; i++ )
                     if( flags[i] & MEM_FREE ) free( iov[i].iov_base );
             return SUCCESS;     // everything fine (system errors for a length zero write are ignored)
         }
@@ -253,7 +253,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
                 exit( EXIT_FAILURE );
             }
             wbc->f = MEM_COPY;
-            wbc->payload.data = wbc + sizeof(struct wbchain_struct);
+            wbc->payload.data = (char*)wbc + sizeof(struct wbchain_struct);
             memcpy( wbc->payload.data, iov[i].iov_base + rc, l );
             debug_printf( "===> buffered %d bytes (of %d) by copying\n", last->len, iov[i].iov_len );
         }
@@ -270,7 +270,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
             wbc->payload.data = iov[i].iov_base + rc;
             debug_printf( "===> Buffered %d bytes (of %d)\n", last->len, iov[i].iov_len );
         }
-        wbc->flags |= MEM_PTR;
+        wbc->f |= MEM_PTR;
         wbc->len = l;
         wbc->offset = 0;
         wbc->next = NULL;
@@ -387,7 +387,7 @@ int handle_embedded_file( req *c )
     if( contents[i].url )
     {
 #ifdef TIMESTAMP
-        const char *inm = get_header_field( c, "If-None-Match:" );
+        const char *inm = get_header_field( c, "If-None-Match:", 0 );
         if( inm && strcmp( inm, TIMESTAMP ) == 0 )
         {
             const int rc = write_response( c, HTTP_NOT_MODIFIED, contents[i].headers, NULL, 0, MEM_KEEP );
@@ -446,7 +446,7 @@ int handle_disk_file( req *c )
     asprintf( &str, "ETag: \"%ld\"\r\nContent-Type: %s\r\n", sb.st_mtim.tv_sec, get_mime( fn ) );
 
     // check ETag
-    const char *inm = get_header_field( c, "If-None-Match:" );
+    const char *inm = get_header_field( c, "If-None-Match:", 0 );
     char *last = NULL;
     if( inm && (strtol( inm+1, &last, 10 ) == sb.st_mtim.tv_sec) && last && (*last == '"') )
     {
