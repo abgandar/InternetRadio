@@ -255,7 +255,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
             wbc->f = MEM_COPY;
             wbc->payload.data = (char*)wbc + sizeof(struct wbchain_struct);
             memcpy( wbc->payload.data, iov[i].iov_base + rc, l );
-            debug_printf( "===> buffered %d bytes (of %d) by copying\n", last->len, iov[i].iov_len );
+            debug_printf( "===> buffered %d bytes (of %d) by copying\n", l, iov[i].iov_len );
         }
         else
         {
@@ -268,7 +268,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
             }
             wbc->f = flags[i] & (MEM_KEEP | MEM_FREE);      // sanitize user supplied flags
             wbc->payload.data = iov[i].iov_base + rc;
-            debug_printf( "===> Buffered %d bytes (of %d)\n", last->len, iov[i].iov_len );
+            debug_printf( "===> Buffered %d bytes (of %d)\n", l, iov[i].iov_len );
         }
         wbc->f |= MEM_PTR;
         wbc->len = l;
