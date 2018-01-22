@@ -114,10 +114,10 @@ struct server_config_struct {
 };
 
 // set server config to defaults
-void http_server_config_defaults( const struct server_config_struct *config );
+void http_server_config_defaults( struct server_config_struct *config );
 
 // server main loop
-int http_server_main( struct server_config_struct *config );
+int http_server_main( const struct server_config_struct *config );
 
 // write a response with given body and headers (must include the initial HTTP response header)
 // automatically adds Date header and respects HEAD requests
