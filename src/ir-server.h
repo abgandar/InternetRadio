@@ -42,12 +42,24 @@ enum version_enum { V_UNKNOWN, V_10, V_11 };
 // request method
 enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M_DELETE, M_TRACE, M_CONNECT };
 
+// memory flags
+enum memflags_enum {
+    MEM_FD   =      1,      // type is an FD
+    MEM_PTR  =      2,      // type is a data pointer
+    MEM_KEEP =      4,      // keep open/untouched when done
+    FD_KEEP  =      4,
+    MEM_FREE =      8,      // close/free when done
+    FD_CLOSE =      8,
+    MEM_COPY =      16      // copy buffer when passed in
+};
+
 // write buffer chain entry
 struct wbchain_struct {
     struct wbchain_struct *next;
+    enum memflags_enum f;
     int len;
     off_t offset;
-    union { char data[1]; int fd; } payload;
+    union { char *data; int fd; } payload;
 };
 
 // an active request
@@ -88,8 +100,10 @@ int http_server_main( int argc, char *argv[] );
 // automatically adds Date header and respects HEAD requests
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
-int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen );
+// flag is a memory flag for the body, see bwrite.
+int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen, enum memflags_enum flag )
 
-// get first matching header value from the request without leading whitespace (or NULL if not found)
+// get matching header value from the request without leading whitespace, skipping skip entries (or NULL if not found)
 // name must be of the form "Date:" (including colon)
-const char* get_header_field( const req *c, const char* name );
+const char* get_header_field( const req *c, const char* name, unsigned int skip );
+

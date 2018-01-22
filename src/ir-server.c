@@ -146,9 +146,9 @@ const char* get_response( const unsigned int code )
         return "Unknown";  // response was not found
 }
 
-// get first matching header value from the request without leading whitespace (or NULL if not found)
+// get matching header value from the request without leading whitespace, skipping skip entries (or NULL if not found)
 // name must be of the form "Date:" (including colon)
-const char* get_header_field( const req *c, const char* name )
+const char* get_header_field( const req *c, const char* name, unsigned int skip )
 {
     char *p, *end;
     unsigned int len = strlen( name );
@@ -161,7 +161,12 @@ const char* get_header_field( const req *c, const char* name )
         while( p < end )
         {
             if( strncasecmp( p, name, len ) == 0 )
-                return p+len+strspn( p+len, " \t");
+            {
+                if( skip == 0 )
+                    return p+len+strspn( p+len, " \t");
+                else
+                    skip--;
+            }
             for( p += strlen( p )+1; p < end && !*p; p++ );     // skip NULs up to next header
         }
     }
@@ -174,7 +179,12 @@ const char* get_header_field( const req *c, const char* name )
         while( p < end )
         {
             if( strncasecmp( p, name, len ) == 0 )
-                return p+len+strspn( p+len, " \t");
+            {
+                if( skip == 0 )
+                    return p+len+strspn( p+len, " \t");
+                else
+                    skip--;
+            }
             for( p += strlen( p )+1; p < end && !*p; p++ );     // skip NULs up to next header
         }
     }
@@ -183,7 +193,10 @@ const char* get_header_field( const req *c, const char* name )
 }
 
 // try to write the vector I/O directly, and if that does not succeed append it to the internal write buffer
-int bwrite( req *c, const struct iovec *iov, int niov )
+// flags is an array of the same length as iov containing memory specifiers for each buffer
+// MEM_KEEP means the buffer is always valid, MEM_FREE means the buffer will be free()ed after use, and
+// MEM_COPY means the buffer will be copied internally. If NULL, the safe option of MEM_COPY is assumed for all buffers.
+int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum *flags )
 {
     // total length of data to write
     int len = 0, rc = 0;
@@ -198,6 +211,9 @@ int bwrite( req *c, const struct iovec *iov, int niov )
         if( rc == len )
         {
             debug_printf( "===> Wrote %d bytes directy\n", rc );
+            if( flags )
+                for( unsigend int i = 0; i < niov; i++ )
+                    if( flags[i] & MEM_FREE ) free( iov[i].iov_base );
             return SUCCESS;     // everything fine (system errors for a length zero write are ignored)
         }
     }
@@ -225,15 +241,36 @@ int bwrite( req *c, const struct iovec *iov, int niov )
             continue;
         }
         // allocate new buffer
+        struct wbchain_struct *wbc;
         const int l = iov[i].iov_len - rc;
-        struct wbchain_struct *wbc = malloc( sizeof(struct wbchain_struct) + l );
-        if( !wbc )
+        if( !flags || (flags[i] & MEM_COPY) )
         {
-            perror( "malloc" );
-            exit( EXIT_FAILURE );
+            // copy provided buffer
+            wbc = malloc( sizeof(struct wbchain_struct) + l );
+            if( !wbc )
+            {
+                perror( "malloc" );
+                exit( EXIT_FAILURE );
+            }
+            wbc->f = MEM_COPY;
+            wbc->payload.data = wbc + sizeof(struct wbchain_struct);
+            memcpy( wbc->payload.data, iov[i].iov_base + rc, l );
+            debug_printf( "===> buffered %d bytes (of %d) by copying\n", last->len, iov[i].iov_len );
         }
-        // copy into buffer
-        memcpy( &(wbc->payload.data), iov[i].iov_base + rc, l );
+        else
+        {
+            // retain provided buffer
+            wbc = malloc( sizeof(struct wbchain_struct) );
+            if( !wbc )
+            {
+                perror( "malloc" );
+                exit( EXIT_FAILURE );
+            }
+            wbc->f = flags[i] & (MEM_KEEP | MEM_FREE);      // sanitize user supplied flags
+            wbc->payload.data = iov[i].iov_base + rc;
+            debug_printf( "===> Buffered %d bytes (of %d)\n", last->len, iov[i].iov_len );
+        }
+        wbc->flags |= MEM_PTR;
         wbc->len = l;
         wbc->offset = 0;
         wbc->next = NULL;
@@ -244,14 +281,14 @@ int bwrite( req *c, const struct iovec *iov, int niov )
             c->wb = wbc;
         last = wbc;
         rc = 0;
-        debug_printf( "===> Buffered %d bytes (of %d)\n", last->len, iov[i].iov_len );
     }
 
     return BUFFERED;
 }
 
 // try to send a file directly, and if that does not succeed append it to the internal write buffer
-int bsendfile( req *c, int fd, off_t offset, int size )
+// flag indicates wether to close fd after it has been sent (FD_CLOSE) or to keep it open (FD_KEEP).
+int bsendfile( req *c, int fd, off_t offset, int size, const enum memflags_enum flag )
 {
     int rc = 0;
 
@@ -263,7 +300,7 @@ int bsendfile( req *c, int fd, off_t offset, int size )
         if( rc == size )
         {
             debug_printf( "===> Sent %d bytes from file without buffering\n", rc );
-            close( fd );
+            if( flag & FD_CLOSE ) close( fd );
             return SUCCESS;     // everything fine (system errors for a length zero write are ignored)
         }
     }
@@ -280,6 +317,7 @@ int bsendfile( req *c, int fd, off_t offset, int size )
         exit( EXIT_FAILURE );
     }
     // fill buffer
+    wbc->f = (flag & (FD_CLOSE | FD_KEEP)) | MEM_FD;    // sanitize user supplied flags
     wbc->payload.fd = fd;
     wbc->len = -(size-rc);
     wbc->offset = offset;
@@ -300,7 +338,8 @@ int bsendfile( req *c, int fd, off_t offset, int size )
 // automatically adds Date header and respects HEAD requests
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
-int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen )
+// flag is a memory flag for the body, see bwrite.
+int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen, enum memflags_enum flag )
 {
     // autodetermine length
     if( body != NULL && bodylen == 0 )
@@ -313,17 +352,17 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
 
     // prepare additional headers
     struct iovec iov[2];
+    enum memflags_enum flags[2];
+    flags[0] = MEM_FREE;
     iov[0].iov_len = asprintf( (char** restrict) &(iov[0].iov_base),
                                "HTTP/1.%c %u %s\r\n" EXTRA_HEADER "%sContent-Length: %u\r\nDate: %s\r\n\r\n",
                                c->v == V_10 ? '0' : '1', code, get_response( code ), headers ? headers : "", bodylen, str );
 
     // first try to write everything right away using a single call. Most often this should succeed and write buffer is not used.
+    flags[1] = flag;
     iov[1].iov_base = (char*)body;
     iov[1].iov_len = bodylen;
-    int rc = bwrite( c, iov, (body && (c->m != M_HEAD) && (bodylen > 0)) ? 2 : 1 );
-    free( iov[0].iov_base );
-
-    return rc;
+    return bwrite( c, iov, (body && (c->m != M_HEAD) && (bodylen > 0)) ? 2 : 1, flags );
 }
 
 // handle a query for a special dynamically generated file
@@ -351,12 +390,12 @@ int handle_embedded_file( req *c )
         const char *inm = get_header_field( c, "If-None-Match:" );
         if( inm && strcmp( inm, TIMESTAMP ) == 0 )
         {
-            const int rc = write_response( c, HTTP_NOT_MODIFIED, contents[i].headers, NULL, 0 );
+            const int rc = write_response( c, HTTP_NOT_MODIFIED, contents[i].headers, NULL, 0, MEM_KEEP );
             debug_printf( "===> ETag %s matches on %s\n", TIMESTAMP, c->url );
             return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
         }
 #endif
-        const int rc = write_response( c, HTTP_OK, contents[i].headers, contents[i].body, contents[i].len );
+        const int rc = write_response( c, HTTP_OK, contents[i].headers, contents[i].body, contents[i].len, MEM_KEEP );
         debug_printf( "===> Send embedded file %s (ETag %s)\n", c->url, TIMESTAMP );
         return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
     }
@@ -396,7 +435,7 @@ int handle_disk_file( req *c )
     struct stat sb;
     if( fstat( fd, &sb ) )
     {
-        write_response( c, HTTP_SERVER_ERROR, NULL, "500 - Server error", 0 );
+        write_response( c, HTTP_SERVER_ERROR, NULL, "500 - Server error", 0, MEM_KEEP );
         close( fd );
         return CLOSE_SOCKET;
     }
@@ -411,7 +450,7 @@ int handle_disk_file( req *c )
     char *last = NULL;
     if( inm && (strtol( inm+1, &last, 10 ) == sb.st_mtim.tv_sec) && last && (*last == '"') )
     {
-        const int rc = write_response( c, HTTP_NOT_MODIFIED, str, NULL, 0 );
+        const int rc = write_response( c, HTTP_NOT_MODIFIED, str, NULL, 0, MEM_KEEP );
         free( str );
         close( fd );
         debug_printf( "===> ETag %s matches on %s\n", inm, c->url );
@@ -419,7 +458,7 @@ int handle_disk_file( req *c )
     }
 
     // write response
-    const int rc = write_response( c, HTTP_OK, str, NULL, sb.st_size );
+    const int rc = write_response( c, HTTP_OK, str, NULL, sb.st_size, MEM_KEEP );
     free( str );
     if( rc == BUFFER_OVERFLOW )
     {
@@ -428,7 +467,7 @@ int handle_disk_file( req *c )
     }
 
     if( c->m != M_HEAD )
-        bsendfile( c, fd, 0, sb.st_size );     // this closes fd automatically when it's done with it
+        bsendfile( c, fd, 0, sb.st_size, FD_CLOSE );
     else
         close( fd );
 
@@ -464,7 +503,7 @@ int handle_request( req *c )
 
     if( c->m != M_GET && c->m != M_POST && c->m != M_HEAD )
     {
-        if( write_response( c, HTTP_NOT_ALLOWED, NULL, "405 - Not allowed", 0 ) == BUFFER_OVERFLOW )
+        if( write_response( c, HTTP_NOT_ALLOWED, NULL, "405 - Not allowed", 0, MEM_KEEP ) == BUFFER_OVERFLOW )
             return CLOSE_SOCKET;
     }
     else
@@ -482,7 +521,7 @@ int handle_request( req *c )
                     return CLOSE_SOCKET;
                 else if( rc == FILE_NOT_FOUND )
                 {
-                    if( write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0 ) == BUFFER_OVERFLOW )
+                    if( write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0, MEM_KEEP ) == BUFFER_OVERFLOW )
                         return CLOSE_SOCKET;
                 }
             }
@@ -524,7 +563,7 @@ int read_tail( req *c )
         if( !*p ) break;    // found empty trailer => done reading trailers
         if( *p == ' ' || *p == '\t' )
         {
-            write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request, obsolete trailer line folding", 0 );
+            write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request, obsolete trailer line folding", 0, MEM_KEEP );
             return CLOSE_SOCKET;
         }
         for( char *end = tmp-1; end >= p && (*end == ' ' || *end == '\t'); end-- )
@@ -554,7 +593,7 @@ int read_body( req *c )
             unsigned int chunklen = strtol( c->data + c->rl, &perr, 16 );
             if( *perr != '\n' && *perr != '\r' && *perr != ';' )
             {
-                write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request", 0 );
+                write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request", 0, MEM_KEEP );
                 return CLOSE_SOCKET;
             }
             // if this is the last chunk, eat the line and finish request
@@ -618,7 +657,7 @@ int read_head( req *c )
         if( !*p ) break;    // found empty header => done reading headers
         if( *p == ' ' || *p == '\t' )
         {
-            write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request, obsolete header line folding", 0 );
+            write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request, obsolete header line folding", 0, MEM_KEEP );
             return CLOSE_SOCKET;
         }
         // trim white space at end and replace by NUL
@@ -632,12 +671,12 @@ int read_head( req *c )
             unsigned int cl = strtol( p+15, &perr, 10 );
             if( *perr != '\0' || cl < 0 || (c->cl > 0 && cl != c->cl) )
             {
-                write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request", 0 );
+                write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request", 0, MEM_KEEP );
                 return CLOSE_SOCKET;
             }
             if( cl > MAX_REQ_LEN )
             {
-                write_response( c, HTTP_TOO_LARGE, NULL, "413 - Payload too large", 0 );
+                write_response( c, HTTP_TOO_LARGE, NULL, "413 - Payload too large", 0, MEM_KEEP );
                 return CLOSE_SOCKET;
             }
             c->cl = cl;
@@ -650,7 +689,7 @@ int read_head( req *c )
             if( strcasecmp( val, "chunked" ) != 0 )
             {
                 // c.f. http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.5.2
-                write_response( c, HTTP_NOT_IMPLEMENTED, NULL, "501 - requested Transfer-Encoding not implemented", 0 );
+                write_response( c, HTTP_NOT_IMPLEMENTED, NULL, "501 - requested Transfer-Encoding not implemented", 0, MEM_KEEP );
                 return CLOSE_SOCKET;
             }
             c->f |= FL_CHUNKED;
@@ -660,7 +699,7 @@ int read_head( req *c )
             if( host )
             {
                 // c.f. https://tools.ietf.org/html/rfc7230
-                write_response( c, HTTP_BAD_REQUEST, NULL, "400 - multiple Host headers", 0 );
+                write_response( c, HTTP_BAD_REQUEST, NULL, "400 - multiple Host headers", 0, MEM_KEEP );
                 return CLOSE_SOCKET;
             }
             host = p+5+strspn( p+5, " \t" );
@@ -679,7 +718,7 @@ int read_head( req *c )
     if( c->v == V_11 && !host )
     {
         // c.f. https://tools.ietf.org/html/rfc7230
-        write_response( c, HTTP_BAD_REQUEST, NULL, "400 - missing Host headers", 0 );
+        write_response( c, HTTP_BAD_REQUEST, NULL, "400 - missing Host headers", 0, MEM_KEEP );
         return CLOSE_SOCKET;
     }
 
@@ -776,7 +815,7 @@ int read_request( req *c )
     // does it look like a valid request?
     if( c->v == V_UNKNOWN || c->m == M_UNKNOWN )
     {
-        write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request", 0 );
+        write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request", 0, MEM_KEEP );
         return CLOSE_SOCKET;  // garbage request received, drop this connection
     }
 
@@ -844,7 +883,7 @@ int read_from_client( req *c )
     {
         if( c->max > MAX_REQ_LEN )
         {
-            write_response( c, HTTP_TOO_LARGE, NULL, "413 - Payload too large", 0 );
+            write_response( c, HTTP_TOO_LARGE, NULL, "413 - Payload too large", 0, MEM_KEEP );
             return CLOSE_SOCKET;  // request is finished
         }
         if( !(c->data = realloc( c->data, c->max+4096 )) )
@@ -892,7 +931,7 @@ int write_to_client( req *c )
     int rc;
     while( c->wb )
     {
-        if( c->wb->len > 0 )
+        if( c->wb->f & MEM_PTR )
         {
             // try to write data
             rc = write( c->fd, c->wb->payload.data + c->wb->offset, c->wb->len );
@@ -909,8 +948,9 @@ int write_to_client( req *c )
             c->wb->len -= rc;
             if( c->wb->len > 0 )
                 return  WRITE_DATA;     // more data left to write, return till socket is ready for more
+            if( c->wb->f & (MEM_FREE | MEM_COPY) ) free( c->wb->payload.data );
         }
-        else
+        else if( c->wb->f & MEM_FD )
         {
             // try to send file
             rc = sendfile( c->fd, c->wb->payload.fd, &(c->wb->offset), -c->wb->len );
@@ -926,7 +966,7 @@ int write_to_client( req *c )
             c->wb->len += rc;           // len is negative for sendfile
             if( c->wb->len < 0 )
                 return  WRITE_DATA;     // more data left to write, return till socket is ready for more
-            close( c->wb->payload.fd ); // close file
+            if( c->wb->f & FD_CLOSE ) close( c->wb->payload.fd );
         }
 
         // finished this one. Free buffer and move on
