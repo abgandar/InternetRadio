@@ -375,7 +375,7 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
 // handle a query for a special dynamically generated file
 int handle_dynamic_file( req *c )
 {
-    if( conf.handlers )
+    if( !conf.handlers )
         return FILE_NOT_FOUND;
 
     // find matching url
@@ -408,7 +408,7 @@ int handle_embedded_file( req *c )
             return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
         }
 #endif
-        const int rc = write_response( c, HTTP_OK, conf.contents[i].headers, conf.contents[i].body, contents[i].len, MEM_KEEP );
+        const int rc = write_response( c, HTTP_OK, conf.contents[i].headers, conf.contents[i].body, conf.contents[i].len, MEM_KEEP );
         debug_printf( "===> Send embedded file %s (ETag %s)\n", c->url, TIMESTAMP );
         return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
     }
