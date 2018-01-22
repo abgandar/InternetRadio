@@ -904,7 +904,7 @@ int parse_data( req *c )
 int read_from_client( req *c )
 {
     // suspend reading temporarily if the write buffer is too full
-    if( WB_SIZE( c->wb ) > conf.max_rep_len )
+    if( WB_SIZE( c ) > conf.max_rep_len )
         return WRITE_DATA;
 
     // speculatively increase buffer if needed to avoid short reads
@@ -972,12 +972,12 @@ int write_to_client( req *c )
                 if( (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != EINTR) )
                     return CLOSE_SOCKET;
                 else
-                    return WB_SIZE( c->wb ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;
+                    return WB_SIZE( c ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;
             }
             c->wb->offset += rc;
             c->wb->len -= rc;
             if( c->wb->len > 0 )
-                return WB_SIZE( c->wb ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
+                return WB_SIZE( c ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
             if( c->wb->f & (MEM_FREE | MEM_COPY) ) free( c->wb->payload.data );
         }
         else if( c->wb->f & MEM_FD )
@@ -991,11 +991,11 @@ int write_to_client( req *c )
                 if( (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != EINTR) )
                     return CLOSE_SOCKET;
                 else
-                    return WB_SIZE( c->wb ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;
+                    return WB_SIZE( c ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;
             }
             c->wb->len -= rc;
             if( c->wb->len > 0 )
-                return WB_SIZE( c->wb ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
+                return WB_SIZE( c ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
             if( c->wb->f & FD_CLOSE ) close( c->wb->payload.fd );
         }
 
@@ -1184,7 +1184,7 @@ int http_server_main( struct server_config_struct *config )
             }
             else
             {
-                int res;
+                int res = SUCCESS;
 
                 // ready to write out queued data
                 if( fds[i].revents & POLLOUT )
