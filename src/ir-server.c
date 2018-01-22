@@ -54,7 +54,7 @@
 #include "ir-server-data.h"
 
 // global server configuration
-static struct server_config_struct config;
+static struct server_config_struct conf;
 
 // indicator if the main loop is still running (used for signalling)
 static bool running = true;

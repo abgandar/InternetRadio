@@ -1,5 +1,5 @@
 // some common MIME types (note: extensions must be backwards for faster matching later!)
-static const struct mimetype mimetypes[] = {
+static const struct mimetype_struct mimetypes[] = {
 #ifdef MORE_MIME_TYPES
     // based on https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Complete_list_of_MIME_types
     { "caa.", "audio/aac"},
