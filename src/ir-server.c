@@ -878,8 +878,8 @@ int read_from_client( req *c )
     }
     else if( c->wb )
         return WRITE_DATA;      // flush write buffer, then continuing reading
-    else
-        return READ_DATA;       // continue reading
+
+    return READ_DATA;       // continue reading
 }
 
 // write internally buffered data to a socket.

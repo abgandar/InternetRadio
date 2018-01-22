@@ -6,7 +6,7 @@ enum retcode_enum {
     BUFFERED =          -5,
     BUFFER_OVERFLOW =   -4,
     WRITE_DATA =        -3,
-    WAIT_FOR_DATA =     -2,
+    READ_DATA =         -2,
     CLOSE_SOCKET =      -1,
     SUCCESS =            0
 };
@@ -88,7 +88,7 @@ int http_server_main( int argc, char *argv[] );
 // automatically adds Date header and respects HEAD requests
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
-void write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen );
+int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen );
 
 // get first matching header value from the request without leading whitespace (or NULL if not found)
 // name must be of the form "Date:" (including colon)
