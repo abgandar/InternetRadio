@@ -211,7 +211,7 @@ int bwrite( req *c, const struct iovec *iov, int niov )
     buflen += last->len;
     if( buflen + len - rc > MAX_REP_LEN )
     {
-        debug_printf( "===> Output buffer overflow\n", rc );
+        debug_printf( "===> Output buffer overflow\n" );
         return BUFFER_OVERFLOW;
     }
 
@@ -352,10 +352,12 @@ int handle_embedded_file( req *c )
         if( inm && strcmp( inm, TIMESTAMP ) == 0 )
         {
             const int rc = write_response( c, HTTP_NOT_MODIFIED, contents[i].headers, NULL, 0 );
+            debug_printf( "===> ETag %s matches on %s\n", TIMESTAMP, c->url );
             return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
         }
 #endif
         const int rc = write_response( c, HTTP_OK, contents[i].headers, contents[i].body, contents[i].len );
+        debug_printf( "===> Send embedded file %s (ETag %s)\n", c->url, TIMESTAMP );
         return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
     }
 
@@ -398,7 +400,7 @@ int handle_disk_file( req *c )
         close( fd );
         return CLOSE_SOCKET;
     }
-    debug_printf( "===> File size, modification time: %ld, %ld\n", sb.st_size, sb.st_mtim.tv_sec );
+    debug_printf( "===> File size, modification time (ETag): %ld, %ld\n", sb.st_size, sb.st_mtim.tv_sec );
 
     // write headers
     char *str;
@@ -412,11 +414,12 @@ int handle_disk_file( req *c )
         const int rc = write_response( c, HTTP_NOT_MODIFIED, str, NULL, 0 );
         free( str );
         close( fd );
+        debug_printf( "===> ETag %s matches on %s\n", inm, c->url );
         return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
     }
 
     // write response
-    const int rc = write_response( c, HTTP_OK, str, NULL, sb.st_size ), rc2;
+    const int rc = write_response( c, HTTP_OK, str, NULL, sb.st_size );
     free( str );
     if( rc == BUFFER_OVERFLOW )
     {
@@ -429,6 +432,7 @@ int handle_disk_file( req *c )
     else
         close( fd );
 
+    debug_printf( "===> Sent disk file %s\n", fn );
     return SUCCESS;     // bsendfile always succeeds (can't buffer-overflow)
 }
 
@@ -441,7 +445,7 @@ int finish_request( req *c )
 
     // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
     int rem = c->len - c->rl;    // should never underflow but just to be sure
-    debug_printf( "===> Finish: %d bytes left (%d)\n", rem, c->rl );
+    debug_printf( "===> Request (%d bytes) finished: %d bytes left to parse\n", c->rl, rem );
     if( rem > 0 )
         memmove( c->data, c->data+c->rl, rem );
     else if( rem < 0 )
