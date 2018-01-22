@@ -5,7 +5,7 @@ GITREV := $(shell git rev-parse HEAD)
 LDLIBS += -lmpdclient
 #LDLIBS += -lsystemd
 CPPFLAGS += -Wall -O2 -s -ffunction-sections -fdata-sections -Wl,--gc-sections -DTIMESTAMP='"\"$(TIMESTAMP)\""'
-#CPPFLAGS += -Wall -O2 -DTIMESTAMP='"\"$(TIMESTAMP)\""'
+#CPPFLAGS += -Wall -O2 -DTIMESTAMP='"\"$(TIMESTAMP)\""' -g
 
 ifdef EASTEREGG
 EASTEROBJ = easteregg-png.o

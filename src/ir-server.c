@@ -319,7 +319,7 @@ int bsendfile( req *c, int fd, off_t offset, int size, const enum memflags_enum 
     // fill buffer
     wbc->f = (flag & (FD_CLOSE | FD_KEEP)) | MEM_FD;    // sanitize user supplied flags
     wbc->payload.fd = fd;
-    wbc->len = -(size-rc);
+    wbc->len = size-rc;
     wbc->offset = offset;
     wbc->next = NULL;
     // append buffer to write buffer list
@@ -953,8 +953,8 @@ int write_to_client( req *c )
         else if( c->wb->f & MEM_FD )
         {
             // try to send file
-            rc = sendfile( c->fd, c->wb->payload.fd, &(c->wb->offset), -c->wb->len );
-            debug_printf( "===> Sent %d buffered bytes of %d from file\n", rc, -c->wb->len );
+            rc = sendfile( c->fd, c->wb->payload.fd, &(c->wb->offset), c->wb->len );
+            debug_printf( "===> Sent %d buffered bytes of %d from file\n", rc, c->wb->len );
             if( rc < 0 )
             {
                 // these are retryable errors, all others are system errors where we just abandon the connection
@@ -963,8 +963,8 @@ int write_to_client( req *c )
                 else
                     return WRITE_DATA;
             }
-            c->wb->len += rc;           // len is negative for sendfile
-            if( c->wb->len < 0 )
+            c->wb->len -= rc;
+            if( c->wb->len > 0 )
                 return  WRITE_DATA;     // more data left to write, return till socket is ready for more
             if( c->wb->f & FD_CLOSE ) close( c->wb->payload.fd );
         }
