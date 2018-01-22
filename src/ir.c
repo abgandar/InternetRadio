@@ -139,7 +139,7 @@ int main( int argc, char *argv[] )
 
     // set up server configuration
     http_server_config_defaults( &config );
-    config.content = contents;
+    config.contents = contents;
     config.handlers = handlers;
     config.unpriv_user = "mpd";
     config.dir_index = "ir.html";
