@@ -70,7 +70,7 @@ int handle_ir_cgi( req *c )
     else
         body = obuf;
     
-    write_response( c, rc ? HTTP_SERVER_ERROR : HTTP_OK, head, body, obuf_size );
+    write_response( c, rc ? HTTP_SERVER_ERROR : HTTP_OK, head, body, obuf_size, MEM_COPY ); // unfortunately can't auto-free body as it may point inside obuf
     debug_printf( "===> CGI response:\n%s\n", body );
     
     // clean up
