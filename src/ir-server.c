@@ -51,8 +51,10 @@
 
 #include "config.h"
 #include "ir-server.h"
-#include "ir-server-mime.h"
-#include "ir-server-content.h"
+#include "ir-server-data.h"
+
+// global server configuration
+static struct server_config_struct config;
 
 // indicator if the main loop is still running (used for signalling)
 static bool running = true;
@@ -122,14 +124,17 @@ void handle_signal( const int sig )
 // guess a mime type for a filename
 const char* get_mime( const char* fn )
 {
+    if( !conf.mimetypes )
+        return "application/octet-stream";
+
     const char const* end = fn+strlen( fn )-1;
 
-    for( unsigned int i = 0; mimetypes[i].ext; i++ )
+    for( unsigned int i = 0; conf.mimetypes[i].ext; i++ )
     {
         const char *p, *q;
-        for( p = end, q = mimetypes[i].ext; *q && p >= fn && *p == *q; p--, q++ );
+        for( p = end, q = conf.mimetypes[i].ext; *q && p >= fn && *p == *q; p--, q++ );
         if( *q == '\0' )
-            return mimetypes[i].mime;
+            return conf.mimetypes[i].mime;
     }
 
     return "application/octet-stream";  // don't know, fall back to this
@@ -355,8 +360,10 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
     enum memflags_enum flags[2];
     flags[0] = MEM_FREE;
     iov[0].iov_len = asprintf( (char** restrict) &(iov[0].iov_base),
-                               "HTTP/1.%c %u %s\r\n" EXTRA_HEADER "%sContent-Length: %u\r\nDate: %s\r\n\r\n",
-                               c->v == V_10 ? '0' : '1', code, get_response( code ), headers ? headers : "", bodylen, str );
+                               "HTTP/1.%c %u %s\r\n%s%sContent-Length: %u\r\nDate: %s\r\n\r\n",
+                              c->v == V_10 ? '0' : '1', code, get_response( code ),
+                              conf.extra_headers ? conf.extra_headers : "",
+                              headers ? headers : "", bodylen, str );
 
     // first try to write everything right away using a single call. Most often this should succeed and write buffer is not used.
     flags[1] = flag;
@@ -368,12 +375,15 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
 // handle a query for a special dynamically generated file
 int handle_dynamic_file( req *c )
 {
+    if( conf.handlers )
+        return FILE_NOT_FOUND;
+
     // find matching url
     unsigned int i;
-    for( i = 0; handlers[i].url && strcmp( c->url, handlers[i].url ); i++ );
+    for( i = 0; conf.handlers[i].url && strcmp( c->url, conf.handlers[i].url ); i++ );
 
-    if( handlers[i].handler )
-        return handlers[i].handler( c );
+    if( conf.handlers[i].handler )
+        return conf.handlers[i].handler( c );
     
     return FILE_NOT_FOUND;
 }
@@ -381,21 +391,24 @@ int handle_dynamic_file( req *c )
 // handle a file query for an embedded file
 int handle_embedded_file( req *c )
 {
-    unsigned int i;
-    for( i = 0; contents[i].url && strcmp( c->url, contents[i].url ); i++ );
+    if( !conf.contents )
+        return FILE_NOT_FOUND;
 
-    if( contents[i].url )
+    unsigned int i;
+    for( i = 0; conf.contents[i].url && strcmp( c->url, conf.contents[i].url ); i++ );
+
+    if( conf.contents[i].url )
     {
 #ifdef TIMESTAMP
         const char *inm = get_header_field( c, "If-None-Match:", 0 );
         if( inm && strcmp( inm, TIMESTAMP ) == 0 )
         {
-            const int rc = write_response( c, HTTP_NOT_MODIFIED, contents[i].headers, NULL, 0, MEM_KEEP );
+            const int rc = write_response( c, HTTP_NOT_MODIFIED, conf.contents[i].headers, NULL, 0, MEM_KEEP );
             debug_printf( "===> ETag %s matches on %s\n", TIMESTAMP, c->url );
             return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
         }
 #endif
-        const int rc = write_response( c, HTTP_OK, contents[i].headers, contents[i].body, contents[i].len, MEM_KEEP );
+        const int rc = write_response( c, HTTP_OK, conf.contents[i].headers, conf.contents[i].body, contents[i].len, MEM_KEEP );
         debug_printf( "===> Send embedded file %s (ETag %s)\n", c->url, TIMESTAMP );
         return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
     }
@@ -409,20 +422,20 @@ int handle_disk_file( req *c )
    if( strstr( c->url, ".." ) != NULL )
         return FILE_NOT_FOUND;
 
-    const int len_WWW_DIR = strlen( WWW_DIR ),
+    const int len_www_dir = strlen( conf.www_dir ),
               len_url = strlen( c->url ),
-              len_DIR_INDEX = strlen( DIR_INDEX );
-    if( len_WWW_DIR + len_url + len_DIR_INDEX >= PATH_MAX )
+              len_dir_index = strlen( conf.dir_index );
+    if( len_www_dir + len_url + len_dir_index >= PATH_MAX )
         return FILE_NOT_FOUND;
 
     char fn[PATH_MAX];
-    memcpy( fn, WWW_DIR, len_WWW_DIR );
-    memcpy( fn + len_WWW_DIR, c->url, len_url );
-    fn[len_WWW_DIR + len_url] = '\0';
+    memcpy( fn, conf.www_dir, len_www_dir );
+    memcpy( fn + len_www_dir, c->url, len_url );
+    fn[len_www_dir + len_url] = '\0';
     if( (len_url == 0) || (c->url[len_url-1] == '/') )
     {
-        memcpy( fn + len_WWW_DIR + len_url, DIR_INDEX, len_DIR_INDEX );
-        fn[len_WWW_DIR + len_url + len_DIR_INDEX] = '\0';
+        memcpy( fn + len_www_dir + len_url, conf.dir_index, len_dir_index );
+        fn[len_www_dir + len_url + len_dir_index] = '\0';
     }
     debug_printf( "===> Trying to open file: %s\n", fn );
 
@@ -979,9 +992,35 @@ int write_to_client( req *c )
     return (c->f & FL_SHUTDOWN) ? CLOSE_SOCKET : READ_DATA;
 }
 
-// Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
-int http_server_main( int argc, char *argv[] )
+// set server config to defaults
+void http_server_config_defaults( struct server_config_struct *config )
 {
+    config->unpriv_user = UNPRIV_USER;
+    config->www_dir = WWW_DIR;
+    config->dir_index = DIR_INDEX;
+    config->extra_headers = EXTRA_HEADERS;
+    config->ip = SERVER_IP;
+    config->port = SERVER_PORT;
+    config->max_req_len = MAX_REQ_LEN;
+    config->max_rep_len = MAX_REP_LEN;
+#ifdef DEFAULT_CONTENT
+    config->content = contents;
+#else
+    config->content = NULL;
+#endif
+    config->handlers = NULL;
+    config->mimetypes = mimetypes;
+}
+
+// Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
+int http_server_main( struct server_config_struct *config )
+{
+    // set up configuration
+    if( config )
+        conf = *config;
+    else
+        http_server_config_defaults( &conf );
+
     // set up environment
     setenv( "TZ", "GMT", true );
     setlocale( LC_ALL, "C" );
@@ -1016,13 +1055,10 @@ int http_server_main( int argc, char *argv[] )
     setsockopt( serverSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int) );
 
     // bind and listen on correct port and IP address
-    short port = SERVER_PORT;
-    if( argc > 1 )
-        port = (short)strtol( argv[1], NULL, 10 );
     struct sockaddr_in serverAddr = { 0 };
     serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons( port );
-    inet_pton( AF_INET, SERVER_IP, &serverAddr.sin_addr.s_addr );
+    serverAddr.sin_port = htons( config.port );
+    inet_pton( AF_INET, config.ip, &serverAddr.sin_addr.s_addr );
     if( bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) ) )
     {
         perror( "bind" );
@@ -1034,11 +1070,10 @@ int http_server_main( int argc, char *argv[] )
         exit( EXIT_FAILURE );
     }
 
-#ifdef UNPRIV_USER
     // drop privileges now that init is done
-    if( getuid( ) == 0 )
+    if( conf.unpriv_user && (getuid( ) == 0) )
     {
-        const struct passwd *pwd = getpwnam( UNPRIV_USER );
+        const struct passwd *pwd = getpwnam( conf.unpriv_user );
         if( pwd == NULL )
         {
             perror( "getpwnam" );
@@ -1055,7 +1090,6 @@ int http_server_main( int argc, char *argv[] )
             exit( EXIT_FAILURE );
         }
     }
-#endif
 
     // initialize poll structures
     req reqs[MAX_CONNECTIONS] = { 0 };

@@ -92,9 +92,31 @@ struct content_struct {
     unsigned int len;
 };
 
+// some common MIME types (note: extensions must be backwards for faster matching later!)
+struct mimetype_struct {
+    const char *ext;
+    const char *mime;
+};
+
+// server configuration
+struct server_config_struct {
+    const char* unpriv_user;                    // unpriviliged user to drop to after binding if started as root
+    const char* www_dir;                        // directory where to look for files (should end in / for safety)
+    const char* dir_index;                      // directory index file used when requesting a directory from disk
+    const char* extra_headers;                  // extra headers to send with all replies
+    const char* ip;                             // IP address of interface to bind to
+    short port;                                 // port to bind to
+    unsigned int max_req_len, max_rep_len;      // Maximum allowed size of a request (1 MB), Maximum allowed size of the write buffer (10 MB)
+    struct content_struct *content;             // static embedded file content
+    struct handler_struct *handlers;            // dynamic content handlers
+    struct mimetype_struct *mimetypes;          // mapping extensions to mime types
+};
+
+// set server config to defaults
+void http_server_config_defaults( struct server_config_struct *config );
 
 // server main loop
-int http_server_main( int argc, char *argv[] );
+int http_server_main( struct server_config_struct *config );
 
 // write a response with given body and headers (must include the initial HTTP response header)
 // automatically adds Date header and respects HEAD requests

@@ -1,6 +1,5 @@
 // some common MIME types (note: extensions must be backwards for faster matching later!)
-typedef struct mimetype_struct { const char *ext; const char *mime; } mimetype;
-static const mimetype mimetypes[] = {
+static const struct mimetype mimetypes[] = {
 #ifdef MORE_MIME_TYPES
     // based on https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Complete_list_of_MIME_types
     { "caa.", "audio/aac"},
@@ -67,3 +66,20 @@ static const mimetype mimetypes[] = {
 #endif
     { NULL, NULL }
 };
+
+
+// some simple default content
+#ifdef DEFAULT_CONTENT
+
+#ifdef TIMESTAMP
+#define LM_HEADER "ETag: " TIMESTAMP "\r\n"
+#else
+#define LM_HEADER ""
+#endif
+
+static const struct content_struct contents[] = {
+    { "/", "Content-Type: text/html\r\n" LM_HEADER,
+        "<!doctype html><html><head><title>New website</title></html><body><h1>Welcome</h1><p>This is your new webserver which seems to be set up correctly.</p><body></html>", 156 },
+    { NULL, NULL, NULL, 0 }
+}
+#endif
