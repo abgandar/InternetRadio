@@ -56,26 +56,31 @@
 // global server configuration
 static struct server_config_struct conf;
 
-// indicator if the main loop is still running (used for signalling)
+// indicator if the main loop is still running (used for signaling)
 static bool running = true;
 
+// mapping between response code and human readable message
+struct response_struct {
+    const unsigned int code;
+    const char *msg;
+};
+
 // some human readable equivalents to HTTP status codes above (must be sorted by code except for last!)
-struct response_struct { const unsigned int code; const char *msg; };
 static const struct response_struct responses[] = {
-    { HTTP_OK, "OK" },
-    { HTTP_NOT_MODIFIED, "Not modified" },
-    { HTTP_BAD_REQUEST, "Bad request" },
-    { HTTP_NOT_FOUND, "Not found" },
-    { HTTP_NOT_ALLOWED, "Method not allowed" },
-    { HTTP_TOO_LARGE, "Payload too large" },
-    { HTTP_SERVER_ERROR, "Server error" },
-    { HTTP_NOT_IMPLEMENTED, "Not implemented" },
+    { HTTP_OK,                  "OK" },
+    { HTTP_NOT_MODIFIED,        "Not modified" },
+    { HTTP_BAD_REQUEST,         "Bad request" },
+    { HTTP_NOT_FOUND,           "Not found" },
+    { HTTP_NOT_ALLOWED,         "Method not allowed" },
+    { HTTP_TOO_LARGE,           "Payload too large" },
+    { HTTP_SERVER_ERROR,        "Server error" },
+    { HTTP_NOT_IMPLEMENTED,     "Not implemented" },
     { HTTP_SERVICE_UNAVAILABLE, "Service unavailable" },
     { 0, NULL }
 };
 
 // allocate memory and set everything to zero
-inline void INIT_REQ( req *c, const int fd )
+static inline void INIT_REQ( req *c, const int fd )
 {
     if( c->data ) free( c->data );  // should never happen but just to be safe
     bzero( c, sizeof(req) );
@@ -91,7 +96,7 @@ inline void INIT_REQ( req *c, const int fd )
 }
 
 // free request memory
-inline void FREE_REQ( req *c )
+static inline void FREE_REQ( req *c )
 {
     if( c->data ) free( c->data );
     c->data = NULL; c->max = 0;
@@ -104,7 +109,7 @@ inline void FREE_REQ( req *c )
 }
 
 // reset a request keeping its data and buffer untouched
-inline void RESET_REQ( req *c )
+static inline void RESET_REQ( req *c )
 {
     c->rl = c->cl = 0;
     c->version = c->method = c->url = c->query = c->head = c->body = c->tail = NULL;
@@ -112,7 +117,7 @@ inline void RESET_REQ( req *c )
 }
 
 // calculate total memory size of write buffers
-inline unsigned int WB_SIZE( const req *c )
+static inline unsigned int WB_SIZE( const req *c )
 {
     if( !c->wb ) return 0;
 
@@ -126,9 +131,9 @@ inline unsigned int WB_SIZE( const req *c )
 }
 
 // signal handler
-void handle_signal( const int sig )
+static void handle_signal( const int sig )
 {
-    if( sig == SIGTERM || sig == SIGINT )
+    if( (sig == SIGTERM) || (sig == SIGINT) )
     {
         running = false;
         debug_printf( "===> Received signal\n" );
@@ -136,7 +141,7 @@ void handle_signal( const int sig )
 }
 
 // get human readable response from code
-const char* get_response( const unsigned int code )
+static inline const char* get_response( const unsigned int code )
 {
     unsigned int i;
     for( i = 0; responses[i].code && responses[i].code < code; i++ );
@@ -387,7 +392,7 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
 }
 
 // handle a query for a special dynamically generated file
-int handle_dynamic_file( req *c )
+static int handle_dynamic_file( req *c )
 {
     if( !conf.handlers )
         return FILE_NOT_FOUND;
@@ -403,7 +408,7 @@ int handle_dynamic_file( req *c )
 }
 
 // handle a file query for an embedded file
-int handle_embedded_file( req *c )
+static int handle_embedded_file( req *c )
 {
     if( !conf.contents )
         return FILE_NOT_FOUND;
@@ -431,9 +436,9 @@ int handle_embedded_file( req *c )
 }
 
 // handle a disk file query
-int handle_disk_file( req *c )
+static int handle_disk_file( req *c )
 {
-   if( strstr( c->url, ".." ) != NULL )
+    if( !conf.www_dir || (strstr( c->url, ".." ) != NULL) )
         return FILE_NOT_FOUND;
 
     const int len_www_dir = strlen( conf.www_dir ),
@@ -503,7 +508,7 @@ int handle_disk_file( req *c )
 }
 
 // finish request after it has been handled
-int finish_request( req *c )
+static int finish_request( req *c )
 {
     // close connection if no keep-alive
     if( c->v == V_10 || c->f & FL_CLOSE )
@@ -524,7 +529,7 @@ int finish_request( req *c )
 }
 
 // handle request after it was completely read
-int handle_request( req *c )
+static int handle_request( req *c )
 {
     int rc;
 
@@ -560,7 +565,7 @@ int handle_request( req *c )
 }
 
 // parse request trailer
-int read_tail( req *c )
+static int read_tail( req *c )
 {
     // did we finish reading the tailers?
     char *tmp = strstr( c->tail, (c->f & FL_CRLF) ? "\r\n\r\n" : "\n\n" );
@@ -605,7 +610,7 @@ int read_tail( req *c )
 }
 
 // parse request body
-int read_body( req *c )
+static int read_body( req *c )
 {
     if( c->f & FL_CHUNKED )
     {
@@ -653,7 +658,7 @@ int read_body( req *c )
 }
 
 // parse request headers
-int read_head( req *c )
+static int read_head( req *c )
 {
     // did we finish reading the headers?
     char *tmp = strstr( c->head, (c->f & FL_CRLF) ? "\r\n\r\n" : "\n\n" );
@@ -754,7 +759,7 @@ int read_head( req *c )
 }
 
 // parse the request line if it is available
-int read_request( req *c )
+static int read_request( req *c )
 {
     // Optionally ignore an empty line(s) at beginning of request (rfc7230, 3.5)
     char* data = c->data;
@@ -850,7 +855,7 @@ int read_request( req *c )
 }
 
 // find out where in the request phase this request is and try to handle new data accordingly
-int parse_data( req *c )
+static int parse_data( req *c )
 {
     int rc;
     char *pcc, cc;
@@ -901,7 +906,7 @@ int parse_data( req *c )
 }
 
 // read from a socket and store data in request
-int read_from_client( req *c )
+static int read_from_client( req *c )
 {
     // suspend reading temporarily if the write buffer is too full
     if( WB_SIZE( c ) > conf.max_rep_len )
@@ -956,7 +961,7 @@ int read_from_client( req *c )
 }
 
 // write internally buffered data to a socket.
-int write_to_client( req *c )
+static int write_to_client( req *c )
 {
     int rc;
     while( c->wb )
@@ -1012,25 +1017,27 @@ int write_to_client( req *c )
 // set server config to defaults
 void http_server_config_defaults( struct server_config_struct *config )
 {
-    config->unpriv_user = UNPRIV_USER;
-    config->www_dir = WWW_DIR;
-    config->dir_index = DIR_INDEX;
-    config->extra_headers = EXTRA_HEADERS;
-    config->ip = SERVER_IP;
-    config->port = SERVER_PORT;
-    config->max_req_len = MAX_REQ_LEN;
-    config->max_rep_len = MAX_REP_LEN;
+    *config = (struct server_config_struct){
+        UNPRIV_USER,
+        WWW_DIR,
+        DIR_INDEX,
+        EXTRA_HEADERS,
+        SERVER_IP,
+        SERVER_PORT,
+        MAX_REQ_LEN,
+        MAX_REP_LEN,
 #ifdef DEFAULT_CONTENT
-    config->contents = contents;
+        contents,
 #else
-    config->contents = NULL;
+        NULL,
 #endif
-    config->handlers = NULL;
-    config->mimetypes = mimetypes;
+        NULL,
+        mimetypes
+    };
 }
 
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
-int http_server_main( struct server_config_struct *config )
+int http_server_main( const struct server_config_struct *config )
 {
     // set up configuration
     if( config )
@@ -1232,4 +1239,3 @@ int http_server_main( struct server_config_struct *config )
 
     return SUCCESS;
 }
-
