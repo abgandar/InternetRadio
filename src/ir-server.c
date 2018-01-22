@@ -208,7 +208,7 @@ int bwrite( req *c, const struct iovec *iov, int niov )
     for( last = c->wb; last && last->next; last = last->next )
         if( last->len > 0 )
             buflen += last->len;
-    buflen += last->len;
+    if( last ) buflen += last->len;
     if( buflen + len - rc > MAX_REP_LEN )
     {
         debug_printf( "===> Output buffer overflow\n" );
