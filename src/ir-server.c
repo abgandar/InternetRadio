@@ -1045,6 +1045,7 @@ void http_server_config_defaults( struct server_config_struct *config )
         SERVER_PORT,
         MAX_REQ_LEN,
         MAX_REP_LEN,
+        TIMEOUT,
 #ifdef DEFAULT_CONTENT
         contents,
 #else

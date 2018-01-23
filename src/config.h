@@ -16,6 +16,7 @@
 #define DIR_INDEX               "index.html"                // directory index file used when requesting a directory from disk
 #define EXTRA_HEADERS           "Connection: Keep-Alive\r\nKeep-Alive: timeout=60,max=999999\r\nX-Frame-Options: SAMEORIGIN\r\n"  // extra headers to send with all replies
 #define MAX_CONNECTIONS         32                          // max number of concurrent connections
+#define TIMEOUT                 60                          // approximate seconds to keep idle connections open
 #define MORE_MIME_TYPES                                     // include more MIME types in database than minimum required for IR application
 #define DEFAULT_CONTENT
 
