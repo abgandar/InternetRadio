@@ -145,7 +145,7 @@ static inline void UNTIMEOUT_REQ( req *c )
 // is the request timed out
 static inline bool REQ_TIMEDOUT( req *c )
 {
-    return c->f & FL_TIMEOUT
+    return c->f & FL_TIMEOUT;
 }
 
 // signal handler
