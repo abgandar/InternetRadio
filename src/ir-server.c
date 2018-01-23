@@ -80,7 +80,7 @@ static const struct response_struct responses[] = {
 };
 
 // allocate memory and set everything to zero
-static inline void INIT_REQ( req *c, const int fd )
+static inline void INIT_REQ( req *c, const int fd, time_t now )
 {
     if( c->data ) free( c->data );  // should never happen but just to be safe
     bzero( c, sizeof(req) );
@@ -93,6 +93,7 @@ static inline void INIT_REQ( req *c, const int fd )
     c->data[0] = '\0';
     c->max = 4096;
     c->fd = fd;
+    c->time = now;
 }
 
 // free request memory
@@ -130,22 +131,16 @@ static inline unsigned int WB_SIZE( const req *c )
     return buflen;
 }
 
-// time out the request
-static inline void TIMEOUT_REQ( req *c )
+// update timestamp on the request
+static inline void TOUCH_REQ( req *c, time_t now )
 {
-    c->f |= FL_TIMEOUT;
+    c->time = now;
 }
 
-// un-time out the request
-static inline void UNTIMEOUT_REQ( req *c )
+// is the request timed out?
+static inline bool TIMEDOUT_REQ( req *c, time_t now )
 {
-    c->f &= ~FL_TIMEOUT;
-}
-
-// is the request timed out
-static inline bool REQ_TIMEDOUT( req *c )
-{
-    return c->f & FL_TIMEOUT;
+    return now = c->time > conf.timeout;
 }
 
 // signal handler
@@ -1193,7 +1188,7 @@ int http_server_main( const struct server_config_struct *config )
                 // initialize request and add to watchlist
                 fds[j].fd = new;
                 fds[j].events = POLLIN | POLLRDHUP;
-                INIT_REQ( &reqs[j], new );
+                INIT_REQ( &reqs[j], new, now );
                 debug_printf( "===> New connection\n" );
             }
         }
@@ -1246,18 +1241,13 @@ int http_server_main( const struct server_config_struct *config )
                         debug_printf( "===> Closing connection\n" );
                         break;
                 }
-                UNTIMEOUT_REQ( &reqs[i] );
+                TOUCH_REQ( &reqs[i], now );
             }
-            else
+            else if( TIMEDOUT_REQ( &reqs[i], now ) )
             {
-                // connection not ready, check if it has timed out
-                if( REQ_TIMEDOUT( &reqs[i] ) )
-                {
-                    shutdown( fds[i].fd, SHUT_RDWR );   // triggers the POLLHUP to complete the shutdown?
-                    debug_printf( "===> Closed idle connection\n" );
-                }
-                else
-                    TIMEOUT_REQ( &reqs[i] );    // time out connection
+                // connection currently not ready and timed out
+                shutdown( fds[i].fd, SHUT_RDWR );   // triggers the POLLHUP to complete the shutdown
+                debug_printf( "===> Shutting down idle connection\n" );
             }
         }
     }

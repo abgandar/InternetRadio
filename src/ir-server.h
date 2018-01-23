@@ -37,12 +37,11 @@ enum state_enum {
 
 // request flags (bitfield, assign powers of 2!)
 enum flags_enum {
-    FL_NONE =        0,
-    FL_CRLF =        1,
-    FL_CHUNKED =     2,
-    FL_CLOSE =       4,
-    FL_SHUTDOWN =    8,
-    FL_TIMEOUT =    16
+    FL_NONE =       0,
+    FL_CRLF =       1,
+    FL_CHUNKED =    2,
+    FL_CLOSE =      4,
+    FL_SHUTDOWN =   8
 };
 
 // request version
@@ -92,6 +91,7 @@ typedef struct req_struct {
     unsigned int max, len;      // max allocated length, current length
     struct wbchain_struct *wb;  // pointer to the head of the write buffer
     unsigned int rl, cl;        // total request length parsed, total body content length
+    t_time time;                // last time the request was active
     char *version, *method,
          *url, *query, *head,
          *body, *tail;          // request pointers into data buffer
@@ -130,7 +130,7 @@ struct server_config_struct {
     const char* ip;                             // IP address of interface to bind to
     short port;                                 // port to bind to
     unsigned int max_req_len, max_rep_len;      // Maximum allowed size of a request (1 MB), Maximum allowed size of the write buffer (10 MB)
-    unsigned int timeout;                       // approximate timeout in seconds before idle connections are closed
+    unsigned int timeout;                       // timeout in seconds before idle connections are closed
     const struct content_struct *contents;      // static embedded file content
     const struct handler_struct *handlers;      // dynamic content handlers
     const struct mimetype_struct *mimetypes;    // mapping extensions to mime types
