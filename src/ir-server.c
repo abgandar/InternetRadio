@@ -31,6 +31,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <getopt.h>
 #include <limits.h>
 #include <pwd.h>
 #include <grp.h>
