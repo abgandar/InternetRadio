@@ -127,7 +127,7 @@ struct server_config_struct {
     const char* unpriv_user;                    // unpriviliged user to drop to after binding if started as root
     const char* www_dir;                        // directory where to look for files (should end in / for safety)
     const char* dir_index;                      // directory index file used when requesting a directory from disk
-    bool dir_list;                              // try to list directories if requested
+    char dir_list;                              // try to list directories if requested
     const char* extra_headers;                  // extra headers to send with all replies
     const char* ip;                             // IP address of interface to bind to
     short port;                                 // port to bind to
