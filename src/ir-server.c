@@ -45,7 +45,6 @@
 #include <sys/uio.h>
 #include <sys/socket.h>
 #include <sys/sendfile.h>
-#include <sys/timespec.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
