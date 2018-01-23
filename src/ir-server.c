@@ -1068,9 +1068,8 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
     };
 
     // process options
-    char ch = 0;
+    int ch = 0;
     while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "d:i:m:M:p:t:u:w:", longopts, NULL )) != -1) )
-    {
         switch( ch )
         {
             case 'd':
@@ -1109,7 +1108,7 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
                 ch = -1;
                 break;
         }
-    }
+
     *argc -= optind;
     *argv += optind;
 }
