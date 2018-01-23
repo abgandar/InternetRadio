@@ -1047,6 +1047,7 @@ void http_server_config_defaults( struct server_config_struct *config )
         UNPRIV_USER,
         WWW_DIR,
         DIR_INDEX,
+        0,
         EXTRA_HEADERS,
         SERVER_IP,
         SERVER_PORT,
