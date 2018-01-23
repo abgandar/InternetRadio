@@ -72,6 +72,7 @@ static const struct response_struct responses[] = {
     { HTTP_OK,                  "OK" },
     { HTTP_NOT_MODIFIED,        "Not modified" },
     { HTTP_BAD_REQUEST,         "Bad request" },
+    { HTTP_FORBIDDEN,           "Forbidden" },
     { HTTP_NOT_FOUND,           "Not found" },
     { HTTP_NOT_ALLOWED,         "Method not allowed" },
     { HTTP_TOO_LARGE,           "Payload too large" },
