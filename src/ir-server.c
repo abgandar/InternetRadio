@@ -1050,6 +1050,69 @@ void http_server_config_defaults( struct server_config_struct *config )
     };
 }
 
+// update server config from command line
+void http_server_config_argv( int *argc, char ***argv, struct server_config_struct *config )
+{
+    // command line options
+    const struct option longopts[] = {
+        { "dirindex",   required_argument,  NULL,   'd' },
+        { "ip",         required_argument,  NULL,   'i' },
+        { "maxreqlen",  required_argument,  NULL,   'm' },
+        { "maxreplen",  required_argument,  NULL,   'M' },
+        { "port",       required_argument,  NULL,   'p' },
+        { "timeout",    required_argument,  NULL,   't' },
+        { "user",       required_argument,  NULL,   'u' },
+        { "www",        required_argument,  NULL,   'w' },
+        { NULL,         0,                  NULL,   0 }
+    };
+
+    // process options
+    char ch = 0;
+    while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "d:i:m:M:p:t:u:w:", longopts, NULL )) != -1) )
+    {
+        switch( ch )
+        {
+            case 'd':
+                config->dir_index = optarg;
+                break;
+
+            case 'i':
+                config->ip = optarg;
+                break;
+
+            case 'm':
+                config->max_req_len = strtol( optarg, NULL, 10 );
+                break;
+
+            case 'M':
+                config->max_rep_len = strtol( optarg, NULL, 10 );
+                break;
+
+            case 'p':
+                config->port = (short)strtol( optarg, NULL, 10 );
+                break;
+
+            case 't':
+                config->timeout = strtol( optarg, NULL, 10 );
+                break;
+
+            case 'u':
+                config->unpriv_user = optarg;
+                break;
+
+            case 'w':
+                config->www_dir = optarg;
+                break;
+
+            default:
+                ch = -1;
+                break;
+        }
+    }
+    *argc -= optind;
+    *argv += optind;
+}
+
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
 int http_server_main( const struct server_config_struct *config )
 {

@@ -140,8 +140,7 @@ int main( int argc, char *argv[] )
     config.contents = contents;
     config.handlers = handlers;
     config.dir_index = "ir.html";
-    if( argc > 1 )
-        config.port = (short)strtol( argv[1], NULL, 10 );
+    http_server_config_argv( &argc, &argv, &config );
 
     // run server
     const int rc = http_server_main( &config );

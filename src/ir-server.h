@@ -139,6 +139,9 @@ struct server_config_struct {
 // set server config to defaults
 void http_server_config_defaults( struct server_config_struct *config );
 
+// update server config from command line
+void http_server_config_argv( int *argc, char ***argv, struct server_config_struct *config );
+
 // server main loop
 int http_server_main( const struct server_config_struct *config );
 
@@ -152,4 +155,3 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
 // get matching header value from the request without leading whitespace, skipping skip entries (or NULL if not found)
 // name must be of the form "Date:" (including colon)
 const char* get_header_field( const req *c, const char* name, unsigned int skip );
-
