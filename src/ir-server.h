@@ -26,22 +26,44 @@ enum statuscode_enum {
 };
 
 // request state
-enum state_enum { STATE_NEW, STATE_HEAD, STATE_BODY, STATE_TAIL, STATE_READY, STATE_FINISH };
+enum state_enum {
+    STATE_NEW,
+    STATE_HEAD,
+    STATE_BODY,
+    STATE_TAIL,
+    STATE_READY,
+    STATE_FINISH
+};
 
 // request flags (bitfield, assign powers of 2!)
 enum flags_enum {
-    FL_NONE =       0,
-    FL_CRLF =       1,
-    FL_CHUNKED =    2,
-    FL_CLOSE =      4,
-    FL_SHUTDOWN =   8
+    FL_NONE =        0,
+    FL_CRLF =        1,
+    FL_CHUNKED =     2,
+    FL_CLOSE =       4,
+    FL_SHUTDOWN =    8,
+    FL_TIMEOUT =    16
 };
 
 // request version
-enum version_enum { V_UNKNOWN, V_10, V_11 };
+enum version_enum {
+    V_UNKNOWN,
+    V_10,
+    V_11
+};
 
 // request method
-enum method_enum { M_UNKNOWN, M_OPTIONS, M_GET, M_HEAD, M_POST, M_PUT, M_DELETE, M_TRACE, M_CONNECT };
+enum method_enum {
+    M_UNKNOWN,
+    M_OPTIONS,
+    M_GET,
+    M_HEAD,
+    M_POST,
+    M_PUT,
+    M_DELETE,
+    M_TRACE,
+    M_CONNECT
+};
 
 // memory flags
 enum memflags_enum {
@@ -108,6 +130,7 @@ struct server_config_struct {
     const char* ip;                             // IP address of interface to bind to
     short port;                                 // port to bind to
     unsigned int max_req_len, max_rep_len;      // Maximum allowed size of a request (1 MB), Maximum allowed size of the write buffer (10 MB)
+    unsigned int timeout;                       // approximate timeout in seconds before idle connections are closed
     const struct content_struct *contents;      // static embedded file content
     const struct handler_struct *handlers;      // dynamic content handlers
     const struct mimetype_struct *mimetypes;    // mapping extensions to mime types
@@ -124,7 +147,7 @@ int http_server_main( const struct server_config_struct *config );
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
 // flag is a memory flag for the body, see bwrite.
-int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen, enum memflags_enum flag );
+int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen, const enum memflags_enum flag );
 
 // get matching header value from the request without leading whitespace, skipping skip entries (or NULL if not found)
 // name must be of the form "Date:" (including colon)

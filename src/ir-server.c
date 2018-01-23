@@ -45,6 +45,7 @@
 #include <sys/uio.h>
 #include <sys/socket.h>
 #include <sys/sendfile.h>
+#include <sys/timespec.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netdb.h>
@@ -128,6 +129,24 @@ static inline unsigned int WB_SIZE( const req *c )
             buflen += last->len;
     
     return buflen;
+}
+
+// time out the request
+static inline void TIMEOUT_REQ( req *c )
+{
+    c->f |= FL_TIMEOUT;
+}
+
+// un-time out the request
+static inline void UNTIMEOUT_REQ( req *c )
+{
+    c->f &= ~FL_TIMEOUT;
+}
+
+// is the request timed out
+static inline bool REQ_TIMEDOUT( req *c )
+{
+    return c->f & FL_TIMEOUT
 }
 
 // signal handler
@@ -363,7 +382,7 @@ int bsendfile( req *c, int fd, off_t offset, int size, const enum memflags_enum 
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
 // flag is a memory flag for the body, see bwrite.
-int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen, enum memflags_enum flag )
+int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen, const enum memflags_enum flag )
 {
     // autodetermine length
     if( body != NULL && bodylen == 0 )
@@ -1122,12 +1141,15 @@ int http_server_main( const struct server_config_struct *config )
         fds[i].fd = -1;
     fds[MAX_CONNECTIONS].fd = serverSocket;
     fds[MAX_CONNECTIONS].events = POLLIN;
+    struct timespec timeout;
+    timeout.tv_sec = conf.timeout/2;
+    timeout.tv_nsec = 0;
 
     // main loop (exited only via signal handler)
     while( running )
     {
         // wait for input
-        if( ppoll( fds, MAX_CONNECTIONS+1, NULL, &sset_enabled ) < 0 )
+        if( ppoll( fds, MAX_CONNECTIONS+1, &timeout, &sset_enabled ) < 0 )
         {
             if( errno == EINTR ) continue;  // ignore interrupted system calls
             perror( "ppoll" );
@@ -1171,7 +1193,7 @@ int http_server_main( const struct server_config_struct *config )
                 // initialize request and add to watchlist
                 fds[j].fd = new;
                 fds[j].events = POLLIN | POLLRDHUP;
-                INIT_REQ( &reqs[j], new );
+                INIT_REQ( &reqs[j], new, now );
                 debug_printf( "===> New connection\n" );
             }
         }
@@ -1179,17 +1201,18 @@ int http_server_main( const struct server_config_struct *config )
         // process all other client sockets
         for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
         {
-            if( fds[i].revents & (POLLRDHUP | POLLHUP | POLLERR | POLLNVAL) )
+            if( fds[i].fd < 0 )
+                continue;   // not an active connection
+            else if( fds[i].revents & (POLLRDHUP | POLLHUP | POLLERR | POLLNVAL) )
             {
                 // other side hung up or somethign went wrong, completely close socket
                 shutdown( fds[i].fd, SHUT_RDWR );
                 close( fds[i].fd );
                 fds[i].fd = -1;
-                // free request data
                 FREE_REQ( &reqs[i] );
                 debug_printf( "===> Closed connection\n" );
             }
-            else
+            else if( fds[i].revents & (POLLIN | POLLOUT) )
             {
                 int res = SUCCESS;
 
@@ -1223,6 +1246,18 @@ int http_server_main( const struct server_config_struct *config )
                         debug_printf( "===> Closing connection\n" );
                         break;
                 }
+                UNTIMEOUT_REQ( &reqs[i] );
+            }
+            else
+            {
+                // connection not ready, check if it has timed out
+                if( REQ_TIMEDOUT( &reqs[i] ) )
+                {
+                    shutdown( fds[i].fd, SHUT_RDWR );   // triggers the POLLHUP to complete the shutdown?
+                    debug_printf( "===> Closed idle connection\n" );
+                }
+                else
+                    TIMEOUT_REQ( &reqs[i] );    // time out connection
             }
         }
     }
