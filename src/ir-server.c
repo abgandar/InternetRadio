@@ -1193,7 +1193,7 @@ int http_server_main( const struct server_config_struct *config )
                 // initialize request and add to watchlist
                 fds[j].fd = new;
                 fds[j].events = POLLIN | POLLRDHUP;
-                INIT_REQ( &reqs[j], new, now );
+                INIT_REQ( &reqs[j], new );
                 debug_printf( "===> New connection\n" );
             }
         }
