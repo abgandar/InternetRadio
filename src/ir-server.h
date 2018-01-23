@@ -91,7 +91,7 @@ typedef struct req_struct {
     unsigned int max, len;      // max allocated length, current length
     struct wbchain_struct *wb;  // pointer to the head of the write buffer
     unsigned int rl, cl;        // total request length parsed, total body content length
-    t_time time;                // last time the request was active
+    time_t time;                // last time the request was active
     char *version, *method,
          *url, *query, *head,
          *body, *tail;          // request pointers into data buffer

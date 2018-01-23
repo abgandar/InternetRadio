@@ -140,7 +140,7 @@ static inline void TOUCH_REQ( req *c, time_t now )
 // is the request timed out?
 static inline bool TIMEDOUT_REQ( req *c, time_t now )
 {
-    return now = c->time > conf.timeout;
+    return (now - c->time) > conf.timeout;
 }
 
 // signal handler
@@ -1150,6 +1150,9 @@ int http_server_main( const struct server_config_struct *config )
             perror( "ppoll" );
             exit( EXIT_FAILURE );
         }
+
+        // current time
+        time_t now = time( NULL );
 
         // check server socket for new connections
         if( fds[MAX_CONNECTIONS].revents & (POLLRDHUP|POLLHUP|POLLERR|POLLNVAL) )
