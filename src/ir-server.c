@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <dirent.h>
 #include <unistd.h>
 #include <getopt.h>
 #include <limits.h>
@@ -487,37 +488,47 @@ static int handle_disk_file( req *c )
     }
     debug_printf( "===> File size, modification time (ETag): %ld, %ld\n", sb.st_size, sb.st_mtim.tv_sec );
 
-    // write headers
-    char *str;
-    asprintf( &str, "ETag: \"%ld\"\r\nContent-Type: %s\r\n", sb.st_mtim.tv_sec, get_mime( fn ) );
-
-    // check ETag
-    const char *inm = get_header_field( c, "If-None-Match:", 0 );
-    char *last = NULL;
-    if( inm && (strtol( inm+1, &last, 10 ) == sb.st_mtim.tv_sec) && last && (*last == '"') )
+    if( S_ISREG( sb.st_mode ) || S_ISLNK( sb.st_mode ) )
     {
-        const int rc = write_response( c, HTTP_NOT_MODIFIED, str, NULL, 0, MEM_KEEP );
+        // write headers
+        char *str;
+        asprintf( &str, "ETag: \"%ld\"\r\nContent-Type: %s\r\n", sb.st_mtim.tv_sec, get_mime( fn ) );
+
+        // check ETag
+        const char *inm = get_header_field( c, "If-None-Match:", 0 );
+        char *last = NULL;
+        if( inm && (strtol( inm+1, &last, 10 ) == sb.st_mtim.tv_sec) && last && (*last == '"') )
+        {
+            const int rc = write_response( c, HTTP_NOT_MODIFIED, str, NULL, 0, MEM_KEEP );
+            free( str );
+            close( fd );
+            debug_printf( "===> ETag %s matches on %s\n", inm, c->url );
+            return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
+        }
+
+        // write response
+        const int rc = write_response( c, HTTP_OK, str, NULL, sb.st_size, MEM_KEEP );
         free( str );
-        close( fd );
-        debug_printf( "===> ETag %s matches on %s\n", inm, c->url );
-        return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
-    }
+        if( rc == BUFFER_OVERFLOW )
+        {
+            close( fd );
+            return CLOSE_SOCKET;
+        }
 
-    // write response
-    const int rc = write_response( c, HTTP_OK, str, NULL, sb.st_size, MEM_KEEP );
-    free( str );
-    if( rc == BUFFER_OVERFLOW )
-    {
-        close( fd );
-        return CLOSE_SOCKET;
-    }
+        if( c->m != M_HEAD )
+            bsendfile( c, fd, 0, sb.st_size, FD_CLOSE );
+        else
+            close( fd );
 
-    if( c->m != M_HEAD )
-        bsendfile( c, fd, 0, sb.st_size, FD_CLOSE );
+        debug_printf( "===> Sent disk file %s\n", fn );
+    }
+//    else if( conf.dir_list && S_ISDIR( sb.st_mode ) )         // TODO: fix directory listing support
+//    {
+//    }
     else
-        close( fd );
+        if( write_response( c, HTTP_FORBIDDEN, NULL, "403 - Forbidden", 0, MEM_KEEP ) == BUFFER_OVERFLOW )
+            return CLOSE_SOCKET;
 
-    debug_printf( "===> Sent disk file %s\n", fn );
     return SUCCESS;     // bsendfile always succeeds (can't buffer-overflow)
 }
 
