@@ -1152,7 +1152,7 @@ int http_server_main( const struct server_config_struct *config )
         }
 
         // current time
-        time_t now = time( NULL );
+        const time_t now = time( NULL );
 
         // check server socket for new connections
         if( fds[MAX_CONNECTIONS].revents & (POLLRDHUP|POLLHUP|POLLERR|POLLNVAL) )
