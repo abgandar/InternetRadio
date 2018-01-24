@@ -1185,8 +1185,8 @@ int http_server_main( const struct server_config_struct *config )
         
         // bind and listen on correct port and IP address
         struct sockaddr_in serverAddr = { 0 };
-        serverAddr.sin6_family = AF_INET;
-        serverAddr.sin6_port = htons( conf.port );
+        serverAddr.sin_family = AF_INET;
+        serverAddr.sin_port = htons( conf.port );
         inet_pton( AF_INET, conf.ip, &serverAddr.sin_addr.s_addr );
         if( bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) ) )
         {
@@ -1212,8 +1212,8 @@ int http_server_main( const struct server_config_struct *config )
         
         // bind and listen on correct port and IP address
         struct sockaddr_in6 serverAddr6 = { 0 };
-        serverAddr6.sin_family = AF_INET6;
-        serverAddr6.sin_port = htons( conf.port );
+        serverAddr6.sin6_family = AF_INET6;
+        serverAddr6.sin6_port = htons( conf.port );
         inet_pton( AF_INET6, conf.ip, &serverAddr6.sin6_addr.s6_addr );
         if( bind( serverSocket6, (struct sockaddr *) &serverAddr6, sizeof(serverAddr6) ) )
         {
