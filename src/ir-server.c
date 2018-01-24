@@ -464,7 +464,7 @@ static int list_directory_contents( req *c, const char *fn )
     unsigned int len = strlen( c->url ), count = 0;
     while( (dp = readdir( d )) )
     {
-        len += dp->d_namlen;
+        len += dp->d_namelen;
         count++;
     }
     rewinddir( d );
