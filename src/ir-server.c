@@ -1100,11 +1100,11 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
             case 'i':
                 config->ip = (*optarg ? optarg : NULL);
                 break;
-                
+
             case 'I':
                 config->ip6 = (*optarg ? optarg : NULL);
                 break;
-                
+
             case 'm':
                 config->max_req_len = strtol( optarg, NULL, 10 );
                 break;
@@ -1204,7 +1204,7 @@ int http_server_main( const struct server_config_struct *config )
     {
         if( !(serverSocket6 = socket( PF_INET6, SOCK_STREAM, 0 )) )
         {
-            perror( "socket" );
+            perror( "socket6" );
             exit( EXIT_FAILURE );
         }
         int yes = 1;
@@ -1217,12 +1217,12 @@ int http_server_main( const struct server_config_struct *config )
         inet_pton( AF_INET6, conf.ip6, &serverAddr6.sin6_addr.s6_addr );
         if( bind( serverSocket6, (struct sockaddr *) &serverAddr6, sizeof(serverAddr6) ) )
         {
-            perror( "bind" );
+            perror( "bind6" );
             exit( EXIT_FAILURE );
         }
         if( listen( serverSocket6, 10 ) < 0 )
         {
-            perror( "listen" );
+            perror( "listen6" );
             exit( EXIT_FAILURE );
         }
     }
