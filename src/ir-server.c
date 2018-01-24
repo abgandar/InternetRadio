@@ -1190,21 +1190,11 @@ int http_server_main( const struct server_config_struct *config )
         exit( EXIT_FAILURE );
     }
 
-    // if we're root and chroot is requested, perform it (really only useful if we also drop priviliges afterward)
-    if( conf.chroot && (geteuid( ) == 0) )
-    {
-        if( chroot( conf.chroot ) )
-        {
-            perror( "chroot" );
-            exit( EXIT_FAILURE );
-        }
-        chdir( "/" );
-    }
-
-    // drop privileges now that init is done
+    // drop group privileges now while /etc/ still is here before chroot
+    const struct passwd *pwd = NULL;
     if( conf.unpriv_user && (geteuid( ) == 0) )
     {
-        const struct passwd *pwd = getpwnam( conf.unpriv_user );
+        pwd = getpwnam( conf.unpriv_user );
         if( pwd == NULL )
         {
             perror( "getpwnam" );
@@ -1220,12 +1210,26 @@ int http_server_main( const struct server_config_struct *config )
             perror( "initgroups" );
             exit( EXIT_FAILURE );
         }
+    }
+
+    // if we're root and chroot is requested, perform it (only useful if we also drop priviliges)
+    if( conf.chroot && (geteuid( ) == 0) )
+    {
+        if( chroot( conf.chroot ) )
+        {
+            perror( "chroot" );
+            exit( EXIT_FAILURE );
+        }
+        chdir( "/" );
+    }
+
+    // finally drop full privileges now that init is done
+    if( conf.unpriv_user && (geteuid( ) == 0) )
         if( setresuid( pwd->pw_uid, pwd->pw_uid, pwd->pw_uid ) )
         {
             perror( "setresuid" );
             exit( EXIT_FAILURE );
         }
-    }
 
     // initialize poll structures
     req reqs[MAX_CONNECTIONS];
