@@ -1366,9 +1366,11 @@ int http_server_main( const struct server_config_struct *config )
     close( serverSocket );
     for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )
     {
-        FREE_REQ( &reqs[j] );
         if( fds[j].fd >= 0 )
+        {
             close( fds[j].fd );
+            FREE_REQ( &reqs[j] );
+        }
     }
 
     return SUCCESS;
