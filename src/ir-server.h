@@ -125,6 +125,7 @@ struct mimetype_struct {
 // server configuration
 struct server_config_struct {
     const char* unpriv_user;                    // unpriviliged user to drop to after binding if started as root
+    const char* chroot;                         // directory to chroot into when running the server
     const char* www_dir;                        // directory where to look for files (should end in / for safety)
     const char* dir_index;                      // directory index file used when requesting a directory from disk
     char dir_list;                              // try to list directories if requested

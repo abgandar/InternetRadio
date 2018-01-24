@@ -1045,6 +1045,7 @@ void http_server_config_defaults( struct server_config_struct *config )
 {
     *config = (struct server_config_struct){
         UNPRIV_USER,
+        CHROOT_DIR,
         WWW_DIR,
         DIR_INDEX,
         0,
@@ -1069,6 +1070,7 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
 {
     // command line options
     const struct option longopts[] = {
+        { "chroot",     required_argument,  NULL,   'c' },
         { "dirindex",   required_argument,  NULL,   'd' },
         { "ip",         required_argument,  NULL,   'i' },
         { "maxreqlen",  required_argument,  NULL,   'm' },
@@ -1077,18 +1079,22 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
         { "timeout",    required_argument,  NULL,   't' },
         { "user",       required_argument,  NULL,   'u' },
         { "www",        required_argument,  NULL,   'w' },
-        { NULL,         0,                  NULL,   0 }
+        { NULL,         0,                  NULL,    0  }
     };
 
     // process options
     int ch = 0;
-    while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "d:i:m:M:p:t:u:w:", longopts, NULL )) != -1) )
+    while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "c:d:i:m:M:p:t:u:w:", longopts, NULL )) != -1) )
         switch( ch )
         {
+            case 'c':
+                config->chroot = optarg;
+                break;
+                
             case 'd':
                 config->dir_index = optarg;
                 break;
-
+                
             case 'i':
                 config->ip = optarg;
                 break;
@@ -1184,8 +1190,19 @@ int http_server_main( const struct server_config_struct *config )
         exit( EXIT_FAILURE );
     }
 
+    // if we're root and chroot is requested, perform it (really only useful if we also drop priviliges afterward)
+    if( conf.chroot && (geteuid( ) == 0) )
+    {
+        if( chroot( conf.chroot ) )
+        {
+            perror( "chroot" );
+            exit( EXIT_FAILURE );
+        }
+        chdir( "/" );
+    }
+
     // drop privileges now that init is done
-    if( conf.unpriv_user && (getuid( ) == 0) )
+    if( conf.unpriv_user && (geteuid( ) == 0) )
     {
         const struct passwd *pwd = getpwnam( conf.unpriv_user );
         if( pwd == NULL )
@@ -1193,27 +1210,32 @@ int http_server_main( const struct server_config_struct *config )
             perror( "getpwnam" );
             exit( EXIT_FAILURE );
         }
-        if( initgroups( UNPRIV_USER, pwd->pw_gid ) != 0 )
+        if( setresgid( pwd->pw_gid, pwd->pw_gid, pwd->pw_gid ) )
+        {
+            perror( "setresgid" );
+            exit( EXIT_FAILURE );
+        }
+        if( initgroups( UNPRIV_USER, pwd->pw_gid ) )
         {
             perror( "initgroups" );
             exit( EXIT_FAILURE );
         }
-        if( setuid( pwd->pw_uid ) != 0 )
+        if( setresuid( pwd->pw_uid, pwd->pw_uid, pwd->pw_uid ) )
         {
-            perror( "setuid" );
+            perror( "setresuid" );
             exit( EXIT_FAILURE );
         }
     }
 
     // initialize poll structures
-    req reqs[MAX_CONNECTIONS] = { 0 };
+    req reqs[MAX_CONNECTIONS];
     struct pollfd fds[MAX_CONNECTIONS+1];
     for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
         fds[i].fd = -1;
     fds[MAX_CONNECTIONS].fd = serverSocket;
     fds[MAX_CONNECTIONS].events = POLLIN;
     struct timespec timeout;
-    timeout.tv_sec = conf.timeout/2;
+    timeout.tv_sec = conf.timeout;
     timeout.tv_nsec = 0;
 
     // main loop (exited only via signal handler)
@@ -1233,9 +1255,9 @@ int http_server_main( const struct server_config_struct *config )
         // check server socket for new connections
         if( fds[MAX_CONNECTIONS].revents & (POLLRDHUP|POLLHUP|POLLERR|POLLNVAL) )
         {
-            // something went wrong with the server socket, shut the whole thing down
+            // something went wrong with the server socket, shut the whole thing down hard
             running = false;
-            continue;
+            break;
         }
         else if( fds[MAX_CONNECTIONS].revents & POLLIN )
         {
@@ -1245,10 +1267,10 @@ int http_server_main( const struct server_config_struct *config )
                 perror( "accept" );
                 exit( EXIT_FAILURE );
             }
-            
+
             // find free connection slot
             unsigned int j;
-            for( j = 0; j < MAX_CONNECTIONS && fds[j].fd >= 0; j++ );
+            for( j = 0; (j < MAX_CONNECTIONS) && (fds[j].fd >= 0); j++ );
             if( j == MAX_CONNECTIONS )
             {
                 // can't handle any more clients. Client will have to retry later.
@@ -1265,9 +1287,9 @@ int http_server_main( const struct server_config_struct *config )
                     fcntl( new, F_SETFL, flags | O_NONBLOCK );
 
                 // initialize request and add to watchlist
+                INIT_REQ( &reqs[j], new, now );
                 fds[j].fd = new;
                 fds[j].events = POLLIN | POLLRDHUP;
-                INIT_REQ( &reqs[j], new, now );
                 debug_printf( "===> New connection\n" );
             }
         }
@@ -1337,8 +1359,8 @@ int http_server_main( const struct server_config_struct *config )
     for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )
     {
         FREE_REQ( &reqs[j] );
-        if( fds[j].fd < 0 ) continue;
-        close( fds[j].fd );
+        if( fds[j].fd >= 0 )
+            close( fds[j].fd );
     }
 
     return SUCCESS;

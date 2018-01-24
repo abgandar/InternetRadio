@@ -8,6 +8,7 @@
 //#define EASTEREGG                                           // include easteregg
 
 #define UNPRIV_USER             "www"                       // unpriviliged user to drop to after binding if started as root
+#define CHROOT_DIR              NULL                        // directory to chroot into when running the server
 #define SERVER_PORT             80                          // port to bind to
 #define SERVER_IP               "0.0.0.0"                   // IP address of interface to bind to
 #define MAX_REQ_LEN             (1024*1024*1)               // Maximum allowed size of a request (1 MB)
