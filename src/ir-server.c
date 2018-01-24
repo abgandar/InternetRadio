@@ -1090,19 +1090,19 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
         switch( ch )
         {
             case 'c':
-                config->chroot = optarg;
+                config->chroot = (*optarg ? optarg : NULL);
                 break;
                 
             case 'd':
-                config->dir_index = optarg;
+                config->dir_index = (*optarg ? optarg : NULL);
                 break;
                 
             case 'i':
-                config->ip = optarg;
+                config->ip = (*optarg ? optarg : NULL);
                 break;
                 
             case 'I':
-                config->ip6 = optarg;
+                config->ip6 = (*optarg ? optarg : NULL);
                 break;
                 
             case 'm':
@@ -1122,11 +1122,11 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
                 break;
 
             case 'u':
-                config->unpriv_user = optarg;
+                config->unpriv_user = (*optarg ? optarg : NULL);
                 break;
 
             case 'w':
-                config->www_dir = optarg;
+                config->www_dir = (*optarg ? optarg : NULL);
                 break;
 
             default:
