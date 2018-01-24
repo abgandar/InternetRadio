@@ -464,7 +464,7 @@ static int list_directory_contents( req *c, const char *fn )
     unsigned int len = strlen( c->url ), count = 0;
     while( (dp = readdir( d )) )
     {
-        len += dp->d_namelen;
+        len += strlen( dp->d_name );
         count++;
     }
     rewinddir( d );
@@ -559,10 +559,12 @@ static int handle_disk_file( req *c )
     }
 
     if( fd < 0 )
+    {
         if( write_response( c, HTTP_FORBIDDEN, NULL, "403 - Forbidden", 0, MEM_KEEP ) == BUFFER_OVERFLOW )
             return CLOSE_SOCKET;
         else
             return SUCCESS;
+    }
 
     // write headers
     char *str;
