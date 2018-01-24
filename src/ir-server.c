@@ -467,7 +467,7 @@ static int list_directory_contents( req *c, const char *fn )
     // run through the directories to copy them out and sort them
     debug_printf( "===> Listing directory: %s\n", fn );
     struct dirent *dp;
-    unsigned int len = 0, max = 64, n = 0;
+    unsigned int len = 0, max = 1024, n = 0;
     char **dir = (char**)malloc( max*sizeof(char*) );
     if( !dir )
     {
@@ -479,7 +479,7 @@ static int list_directory_contents( req *c, const char *fn )
         if( (dp->d_name[0] == '.') && (dp->d_name[1] == '\0') ) continue;   // skip current directory entry
         if( n >= max )
         {
-            max += 128;
+            max += 1024;
             dir = (char**)realloc( dir, max*sizeof(char) );
             if( !dir )
             {
@@ -496,7 +496,7 @@ static int list_directory_contents( req *c, const char *fn )
 
 
     // allocate buffer for output
-    len = 2*(len + strlen( c->url )) + 69 + 18 + 1 + 24*n;
+    len = 2*(len + strlen( c->url )) + 69 + 18 + 1 + 25*n;
     char *buf = malloc( len ), *pos = buf;
     if( !buf )
     {
@@ -521,10 +521,11 @@ static int list_directory_contents( req *c, const char *fn )
     free( dir );
 
     // print tail
-    strcpy( pos, "</ul><body></html>" );
+    strncpy( pos, "</ul><body></html>", len );
     pos += 18;
     len -= 18;
-    debug_printf( "===> Listed directory, %u bytes left\n", len );
+    *pos = '\0';    // just for safety
+    debug_printf( "===> Listed directory, %u bytes left (should be 0)\n", len-1 );  // -1 for terminating NUL
 
     // send result
     if( write_response( c, HTTP_OK, "Content-Type: text/html\r\n", buf, pos-buf, MEM_FREE ) == BUFFER_OVERFLOW )
