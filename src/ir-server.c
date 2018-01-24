@@ -451,6 +451,12 @@ static int handle_embedded_file( req *c )
     return FILE_NOT_FOUND;
 }
 
+// comparison function for qsort
+static int cmpstringp( const void *p1, const void *p2 )
+{
+    return strcmp( *(char* const*)p1, *(char* const*)p2 );
+}
+
 // list a directory's content
 static int list_directory_contents( req *c, const char *fn )
 {
@@ -458,40 +464,61 @@ static int list_directory_contents( req *c, const char *fn )
     if( d == NULL )
         return FILE_NOT_FOUND;
 
-    // run through the directories to count length
+    // run through the directories to copy them out and sort them
     debug_printf( "===> Listing directory: %s\n", fn );
     struct dirent *dp;
-    unsigned int len = strlen( c->url ), count = 0;
+    unsigned int len = 0, max = 64, n = 0;
+    char **dir = (char**)malloc( max*sizeof(char*) );
+    if( !dir )
+    {
+        perror( "malloc" );
+        exit( EXIT_FAILURE );
+    }
     while( (dp = readdir( d )) )
     {
+        if( (dp->name[0] == '.') && (dp->name[1] == '\0') ) continue;   // skip current directory entry
+        if( n >= max )
+        {
+            max += 128;
+            dir = (char**)realloc( dir, max*sizeof(char) );
+            if( !dir )
+            {
+                perror( "realloc" );
+                exit( EXIT_FAILURE );
+            }
+        }
+        dir[n] = strdup( dp->d_name );
         len += strlen( dp->d_name );
-        count++;
+        n++;
     }
-    rewinddir( d );
+    closedir( d );
+    qsort( dir, n, sizeof(char*), cmpstringp );
+
 
     // allocate buffer for output
-    len *= 2;
-    len += 69 + 18 + 1 + 24*count;
-    char *buf = malloc( len ), *pos = buf;
+    len = 2*(len + strlen( c->url )) + 69 + 18 + 1 + 24*count;
+    char *buf = malloc( len ), pos = buf;
     if( !buf )
     {
         perror( "malloc" );
         exit( EXIT_FAILURE );
     }
 
-    // print header
+    // print things
     int l = snprintf( pos, len, "<!doctype html><html><head><title>%s</title></html><body><h1>%s</h1><ul>", c->url, c->url );
     pos += l;
     len -= l;
 
-    // run through the directories and print each
-    while( (dp = readdir( d )) )
+    // run through the directories, print each entry, and free it
+    for( unsigned int i = 0; i < n; i++ )
     {
-        l = snprintf( pos, len, "<li><a href=\"%s\">%s</a></li>", dp->d_name, dp->d_name );
+        if( (dir[i][0] == '.') && (dir[i][1] == '\0') ) continue;   // skip current directory entry
+        l = snprintf( pos, len, "<li><a href=\"%s\">%s</a></li>", dir[i], dir[i] );
         pos += l;
         len -= l;
+        free( dir[i] );
     }
-    closedir( d );
+    free( dir );
 
     // print tail
     strcpy( pos, "</ul><body></html>" );
