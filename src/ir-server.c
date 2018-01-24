@@ -451,6 +451,61 @@ static int handle_embedded_file( req *c )
     return FILE_NOT_FOUND;
 }
 
+// list a directory's content
+static int list_directory_contents( req *c, const char *fn )
+{
+    DIR *d = opendir( fn );
+    if( d == NULL )
+        return FILE_NOT_FOUND;
+
+    // run through the directories to count length
+    debug_printf( "===> Listing directory: %s\n", fn );
+    struct dirent *dp;
+    unsigned int len = strlen( c->url ), count = 0;
+    while( (dp = readdir( d )) )
+    {
+        len += dp->d_namlen;
+        count++;
+    }
+    rewinddir( d );
+
+    // allocate buffer for output
+    len *= 2;
+    len += 69 + 18 + 1 + 24*count;
+    char *buf = malloc( len ), *pos = buf;
+    if( !buf )
+    {
+        perror( "malloc" );
+        exit( EXIT_FAILURE );
+    }
+
+    // print header
+    int l = snprintf( pos, len, "<!doctype html><html><head><title>%s</title></html><body><h1>%s</h1><ul>", c->url, c->url );
+    pos += l;
+    len -= l;
+
+    // run through the directories and print each
+    while( (dp = readdir( d )) )
+    {
+        l = snprintf( pos, len, "<li><a href=\"%s\">%s</a></li>", dp->d_name, dp->d_name );
+        pos += l;
+        len -= l;
+    }
+    closedir( d );
+
+    // print tail
+    strcpy( pos, "</ul><body></html>" );
+    pos += 18;
+    len -= 18;
+    debug_printf( "===> Listed directory, %u bytes left\n", len );
+
+    // send result
+    if( write_response( c, HTTP_OK, "Content-Type: text/html\r\n", buf, pos-buf, MEM_FREE ) == BUFFER_OVERFLOW )
+        return CLOSE_SOCKET;
+    else
+        return SUCCESS;
+}
+
 // handle a disk file query
 static int handle_disk_file( req *c )
 {
@@ -463,72 +518,84 @@ static int handle_disk_file( req *c )
     if( len_www_dir + len_url + len_dir_index >= PATH_MAX )
         return FILE_NOT_FOUND;
 
-    char fn[PATH_MAX];
+    char fn[PATH_MAX+2];
     memcpy( fn, conf.www_dir, len_www_dir );
     memcpy( fn + len_www_dir, c->url, len_url );
     fn[len_www_dir + len_url] = '\0';
-    if( (len_url == 0) || (c->url[len_url-1] == '/') )
-    {
-        memcpy( fn + len_www_dir + len_url, conf.dir_index, len_dir_index );
-        fn[len_www_dir + len_url + len_dir_index] = '\0';
-    }
-    debug_printf( "===> Trying to open file: %s\n", fn );
 
-    // open file
-    int fd = open( fn, O_RDONLY );
-    if( fd < 0 )
-        return FILE_NOT_FOUND;
-
-    // file statistics
+    // try to see if this is a file
     struct stat sb;
-    if( fstat( fd, &sb ) )
+    int fd = -1;
+    if( stat( fn, &sb ) )
+        return HTTP_NOT_FOUND;
+    else
     {
-        write_response( c, HTTP_SERVER_ERROR, NULL, "500 - Server error", 0, MEM_KEEP );
+        // the path exists
+        if( S_ISREG( sb.st_mode ) )
+        {
+            // it's a file: open it
+            fd = open( fn, O_RDONLY );
+            debug_printf( "===> Trying to open file: %s\n", fn );
+        }
+        else if( S_ISDIR( sb.st_mode ) )
+        {
+            // this is a directory, try with dir-index file first
+            if( conf.dir_index )
+            {
+                fn[len_www_dir + len_url] = '/';
+                memcpy( fn + len_www_dir + len_url + 1, conf.dir_index, len_dir_index );
+                fn[len_www_dir + len_url + len_dir_index + 1] = '\0';
+                fd = open( fn, O_RDONLY );
+                if( fd >= 0 ) fstat( fd, &sb );
+                debug_printf( "===> Trying to open file: %s\n", fn );
+            }
+            // if that didn't work, try to send the directory content if enabled
+            if( (fd < 0) && conf.dir_list )
+            {
+                fn[len_www_dir + len_url] = '\0';
+                return list_directory_contents( c, fn );
+            }
+        }
+    }
+
+    if( fd < 0 )
+        if( write_response( c, HTTP_FORBIDDEN, NULL, "403 - Forbidden", 0, MEM_KEEP ) == BUFFER_OVERFLOW )
+            return CLOSE_SOCKET;
+        else
+            return SUCCESS;
+
+    // write headers
+    char *str;
+    asprintf( &str, "ETag: \"%ld\"\r\nContent-Type: %s\r\n", sb.st_mtim.tv_sec, get_mime( fn ) );
+    debug_printf( "===> File size, modification time (ETag): %ld, %ld\n", sb.st_size, sb.st_mtim.tv_sec );
+
+    // check ETag
+    const char *inm = get_header_field( c, "If-None-Match:", 0 );
+    char *last = NULL;
+    if( inm && (strtol( inm+1, &last, 10 ) == sb.st_mtim.tv_sec) && last && (*last == '"') )
+    {
+        const int rc = write_response( c, HTTP_NOT_MODIFIED, str, NULL, 0, MEM_KEEP );
+        free( str );
+        close( fd );
+        debug_printf( "===> ETag %s matches on %s\n", inm, c->url );
+        return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
+    }
+
+    // write response
+    const int rc = write_response( c, HTTP_OK, str, NULL, sb.st_size, MEM_KEEP );
+    free( str );
+    if( rc == BUFFER_OVERFLOW )
+    {
         close( fd );
         return CLOSE_SOCKET;
     }
-    debug_printf( "===> File size, modification time (ETag): %ld, %ld\n", sb.st_size, sb.st_mtim.tv_sec );
 
-    if( S_ISREG( sb.st_mode ) || S_ISLNK( sb.st_mode ) )
-    {
-        // write headers
-        char *str;
-        asprintf( &str, "ETag: \"%ld\"\r\nContent-Type: %s\r\n", sb.st_mtim.tv_sec, get_mime( fn ) );
-
-        // check ETag
-        const char *inm = get_header_field( c, "If-None-Match:", 0 );
-        char *last = NULL;
-        if( inm && (strtol( inm+1, &last, 10 ) == sb.st_mtim.tv_sec) && last && (*last == '"') )
-        {
-            const int rc = write_response( c, HTTP_NOT_MODIFIED, str, NULL, 0, MEM_KEEP );
-            free( str );
-            close( fd );
-            debug_printf( "===> ETag %s matches on %s\n", inm, c->url );
-            return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
-        }
-
-        // write response
-        const int rc = write_response( c, HTTP_OK, str, NULL, sb.st_size, MEM_KEEP );
-        free( str );
-        if( rc == BUFFER_OVERFLOW )
-        {
-            close( fd );
-            return CLOSE_SOCKET;
-        }
-
-        if( c->m != M_HEAD )
-            bsendfile( c, fd, 0, sb.st_size, FD_CLOSE );
-        else
-            close( fd );
-
-        debug_printf( "===> Sent disk file %s\n", fn );
-    }
-//    else if( conf.dir_list && S_ISDIR( sb.st_mode ) )         // TODO: fix directory listing support
-//    {
-//    }
+    if( c->m != M_HEAD )
+        bsendfile( c, fd, 0, sb.st_size, FD_CLOSE );
     else
-        if( write_response( c, HTTP_FORBIDDEN, NULL, "403 - Forbidden", 0, MEM_KEEP ) == BUFFER_OVERFLOW )
-            return CLOSE_SOCKET;
+        close( fd );
+
+    debug_printf( "===> Sent disk file %s\n", fn );
 
     return SUCCESS;     // bsendfile always succeeds (can't buffer-overflow)
 }
@@ -1048,7 +1115,7 @@ void http_server_config_defaults( struct server_config_struct *config )
         CHROOT_DIR,
         WWW_DIR,
         DIR_INDEX,
-        0,
+        1,
         EXTRA_HEADERS,
         SERVER_IP,
         NULL,
