@@ -1140,6 +1140,7 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
     const struct option longopts[] = {
         { "chroot",     required_argument,  NULL,   'c' },
         { "dirindex",   required_argument,  NULL,   'd' },
+        { "dirlist",    required_argument,  NULL,   'D' },
         { "ip",         required_argument,  NULL,   'i' },
         { "ip6",        required_argument,  NULL,   'I' },
         { "maxreqlen",  required_argument,  NULL,   'm' },
@@ -1153,7 +1154,7 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
 
     // process options
     int ch = 0;
-    while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "c:d:i:I:m:M:p:t:u:w:", longopts, NULL )) != -1) )
+    while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "c:d:D:i:I:m:M:p:t:u:w:", longopts, NULL )) != -1) )
         switch( ch )
         {
             case 'c':
@@ -1163,7 +1164,11 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
             case 'd':
                 config->dir_index = (*optarg ? optarg : NULL);
                 break;
-                
+
+            case 'D':
+                config->dir_list = ((*optarg == '1') || (*optarg == 't') || (*optarg == 'T') || (*optarg == 'y') || (*optarg == 'Y'));
+                break;
+
             case 'i':
                 config->ip = (*optarg ? optarg : NULL);
                 break;
