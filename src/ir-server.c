@@ -1051,6 +1051,7 @@ void http_server_config_defaults( struct server_config_struct *config )
         0,
         EXTRA_HEADERS,
         SERVER_IP,
+        NULL,
         SERVER_PORT,
         MAX_REQ_LEN,
         MAX_REP_LEN,
@@ -1073,6 +1074,7 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
         { "chroot",     required_argument,  NULL,   'c' },
         { "dirindex",   required_argument,  NULL,   'd' },
         { "ip",         required_argument,  NULL,   'i' },
+        { "ip6",        required_argument,  NULL,   'I' },
         { "maxreqlen",  required_argument,  NULL,   'm' },
         { "maxreplen",  required_argument,  NULL,   'M' },
         { "port",       required_argument,  NULL,   'p' },
@@ -1084,7 +1086,7 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
 
     // process options
     int ch = 0;
-    while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "c:d:i:m:M:p:t:u:w:", longopts, NULL )) != -1) )
+    while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "c:d:i:I:m:M:p:t:u:w:", longopts, NULL )) != -1) )
         switch( ch )
         {
             case 'c':
@@ -1098,7 +1100,11 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
             case 'i':
                 config->ip = optarg;
                 break;
-
+                
+            case 'I':
+                config->ip6 = optarg;
+                break;
+                
             case 'm':
                 config->max_req_len = strtol( optarg, NULL, 10 );
                 break;
@@ -1165,28 +1171,65 @@ int http_server_main( const struct server_config_struct *config )
     sigdelset( &sset_enabled, SIGTERM );
 
     // get and set up server socket
-    int serverSocket;
-    if( !(serverSocket = socket( PF_INET, SOCK_STREAM, 0 )) )
-    {
-        perror( "socket" );
-        exit( EXIT_FAILURE );
-    }
-    int yes = 1;
-    setsockopt( serverSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int) );
+    int serverSocket = -1, serverSocket6 = -1;
 
-    // bind and listen on correct port and IP address
-    struct sockaddr_in serverAddr = { 0 };
-    serverAddr.sin_family = AF_INET;
-    serverAddr.sin_port = htons( conf.port );
-    inet_pton( AF_INET, conf.ip, &serverAddr.sin_addr.s_addr );
-    if( bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) ) )
+    if( conf.ip )
     {
-        perror( "bind" );
-        exit( EXIT_FAILURE );
+        if( !(serverSocket = socket( PF_INET, SOCK_STREAM, 0 )) )
+        {
+            perror( "socket" );
+            exit( EXIT_FAILURE );
+        }
+        int yes = 1;
+        setsockopt( serverSocket, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int) );
+        
+        // bind and listen on correct port and IP address
+        struct sockaddr_in serverAddr = { 0 };
+        serverAddr.sin_family = AF_INET;
+        serverAddr.sin_port = htons( conf.port );
+        inet_pton( AF_INET, conf.ip, &serverAddr.sin_addr.s_addr );
+        if( bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) ) )
+        {
+            perror( "bind" );
+            exit( EXIT_FAILURE );
+        }
+        if( listen( serverSocket, 10 ) < 0 )
+        {
+            perror( "listen" );
+            exit( EXIT_FAILURE );
+        }
     }
-    if( listen( serverSocket, 10 ) < 0 )
+    
+    if( conf.ip6 )
     {
-        perror( "listen" );
+        if( !(serverSocket6 = socket( PF_INET6, SOCK_STREAM, 0 )) )
+        {
+            perror( "socket" );
+            exit( EXIT_FAILURE );
+        }
+        int yes = 1;
+        setsockopt( serverSocket6, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int) );
+        
+        // bind and listen on correct port and IP address
+        struct sockaddr_in6 serverAddr6 = { 0 };
+        serverAddr6.sin_family = AF_INET6;
+        serverAddr6.sin_port = htons( conf.port );
+        inet_pton( AF_INET6, conf.ip, &serverAddr6.sin6_addr.s6_addr );
+        if( bind( serverSocket6, (struct sockaddr *) &serverAddr6, sizeof(serverAddr6) ) )
+        {
+            perror( "bind" );
+            exit( EXIT_FAILURE );
+        }
+        if( listen( serverSocket6, 10 ) < 0 )
+        {
+            perror( "listen" );
+            exit( EXIT_FAILURE );
+        }
+    }
+
+    if( (serverSocket == -1) && (serverSocket6 == -1) )
+    {
+        puts( "Neither IP4 nor IP6 server socket connected" );
         exit( EXIT_FAILURE );
     }
 
@@ -1237,11 +1280,13 @@ int http_server_main( const struct server_config_struct *config )
 
     // initialize poll structures
     req reqs[MAX_CONNECTIONS];
-    struct pollfd fds[MAX_CONNECTIONS+1];
+    struct pollfd fds[MAX_CONNECTIONS+2];
     for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
         fds[i].fd = -1;
     fds[MAX_CONNECTIONS].fd = serverSocket;
     fds[MAX_CONNECTIONS].events = POLLIN;
+    fds[MAX_CONNECTIONS+1].fd = serverSocket6;
+    fds[MAX_CONNECTIONS+1].events = POLLIN;
     struct timespec timeout;
     timeout.tv_sec = conf.timeout;
     timeout.tv_nsec = 0;
@@ -1260,45 +1305,49 @@ int http_server_main( const struct server_config_struct *config )
         // current time
         const time_t now = time( NULL );
 
-        // check server socket for new connections
-        if( fds[MAX_CONNECTIONS].revents & (POLLRDHUP|POLLHUP|POLLERR|POLLNVAL) )
+        // check server sockets for new connections
+        for( unsigned int i = MAX_CONNECTIONS; i < MAX_CONNECTIONS+2; i++ )
         {
-            // something went wrong with the server socket, shut the whole thing down hard
-            running = false;
-            break;
-        }
-        else if( fds[MAX_CONNECTIONS].revents & POLLIN )
-        {
-            const int new = accept( serverSocket, NULL, NULL );
-            if( new < 0 )
+            if( fds[i].fd < 0 ) continue;   // skip inactive sockets
+            if( fds[i].revents & (POLLRDHUP|POLLHUP|POLLERR|POLLNVAL) )
             {
-                perror( "accept" );
-                exit( EXIT_FAILURE );
+                // something went wrong with the server socket, shut the whole thing down hard
+                running = false;
+                break;
             }
-
-            // find free connection slot
-            unsigned int j;
-            for( j = 0; (j < MAX_CONNECTIONS) && (fds[j].fd >= 0); j++ );
-            if( j == MAX_CONNECTIONS )
+            else if( fds[i].revents & POLLIN )
             {
-                // can't handle any more clients. Client will have to retry later.
-                write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
-                shutdown( new, SHUT_RDWR );
-                close( new );
-                debug_printf( "===> Dropped connection\n" );
-            }
-            else
-            {
-                // try to switch socket to non-blocking I/O
-                const int flags = fcntl( new, F_GETFL, 0 );
-                if( flags != -1 )
-                    fcntl( new, F_SETFL, flags | O_NONBLOCK );
+                const int new = accept( fds[i].fd, NULL, NULL );
+                if( new < 0 )
+                {
+                    perror( "accept" );
+                    exit( EXIT_FAILURE );
+                }
 
-                // initialize request and add to watchlist
-                INIT_REQ( &reqs[j], new, now );
-                fds[j].fd = new;
-                fds[j].events = POLLIN | POLLRDHUP;
-                debug_printf( "===> New connection\n" );
+                // find free connection slot
+                unsigned int j;
+                for( j = 0; (j < MAX_CONNECTIONS) && (fds[j].fd >= 0); j++ );
+                if( j == MAX_CONNECTIONS )
+                {
+                    // can't handle any more clients. Client will have to retry later.
+                    write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
+                    shutdown( new, SHUT_RDWR );
+                    close( new );
+                    debug_printf( "===> Dropped connection\n" );
+                }
+                else
+                {
+                    // try to switch socket to non-blocking I/O
+                    const int flags = fcntl( new, F_GETFL, 0 );
+                    if( flags != -1 )
+                        fcntl( new, F_SETFL, flags | O_NONBLOCK );
+
+                    // initialize request and add to watchlist
+                    INIT_REQ( &reqs[j], new, now );
+                    fds[j].fd = new;
+                    fds[j].events = POLLIN | POLLRDHUP;
+                    debug_printf( "===> New connection\n" );
+                }
             }
         }
 
@@ -1361,8 +1410,8 @@ int http_server_main( const struct server_config_struct *config )
         }
     }
 
-    debug_printf( "===> Exiting\n" );
     // shut all connections down hard
+    debug_printf( "===> Exiting\n" );
     close( serverSocket );
     for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )
     {

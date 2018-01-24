@@ -131,6 +131,7 @@ struct server_config_struct {
     char dir_list;                              // try to list directories if requested
     const char* extra_headers;                  // extra headers to send with all replies
     const char* ip;                             // IP address of interface to bind to
+    const char* ip6;                            // IP6 address of interface to bind to
     short port;                                 // port to bind to
     unsigned int max_req_len, max_rep_len;      // Maximum allowed size of a request (1 MB), Maximum allowed size of the write buffer (10 MB)
     unsigned int timeout;                       // timeout in seconds before idle connections are closed
