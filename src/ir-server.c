@@ -476,7 +476,7 @@ static int list_directory_contents( req *c, const char *fn )
     }
     while( (dp = readdir( d )) )
     {
-        if( (dp->name[0] == '.') && (dp->name[1] == '\0') ) continue;   // skip current directory entry
+        if( (dp->d_name[0] == '.') && (dp->d_name[1] == '\0') ) continue;   // skip current directory entry
         if( n >= max )
         {
             max += 128;
@@ -496,8 +496,8 @@ static int list_directory_contents( req *c, const char *fn )
 
 
     // allocate buffer for output
-    len = 2*(len + strlen( c->url )) + 69 + 18 + 1 + 24*count;
-    char *buf = malloc( len ), pos = buf;
+    len = 2*(len + strlen( c->url )) + 69 + 18 + 1 + 24*n;
+    char *buf = malloc( len ), *pos = buf;
     if( !buf )
     {
         perror( "malloc" );
