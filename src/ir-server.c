@@ -1214,7 +1214,7 @@ int http_server_main( const struct server_config_struct *config )
         struct sockaddr_in6 serverAddr6 = { 0 };
         serverAddr6.sin6_family = AF_INET6;
         serverAddr6.sin6_port = htons( conf.port );
-        inet_pton( AF_INET6, conf.ip, &serverAddr6.sin6_addr.s6_addr );
+        inet_pton( AF_INET6, conf.ip6, &serverAddr6.sin6_addr.s6_addr );
         if( bind( serverSocket6, (struct sockaddr *) &serverAddr6, sizeof(serverAddr6) ) )
         {
             perror( "bind" );
