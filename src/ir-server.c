@@ -273,7 +273,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
         if( last->f & MEM_PTR )
             buflen += last->len;
     if( last && (last->f & MEM_PTR) ) buflen += last->len;
-    if( buflen + len - rc > max_wb_len )
+    if( buflen + len - rc > conf.max_wb_len )
     {
         debug_printf( "===> Output buffer overflow\n" );
         return BUFFER_OVERFLOW;
@@ -1463,7 +1463,7 @@ int http_server_main( const struct server_config_struct *config )
                         fcntl( new, F_SETFL, flags | O_NONBLOCK );
 
                     // initialize request and add to watchlist
-                    INIT_REQ( &reqs[j], new, now, &rip, riplen );
+                    INIT_REQ( &reqs[j], new, now, (struct sockaddr*)&rip, riplen );
                     fds[j].fd = new;
                     fds[j].events = POLLIN | POLLRDHUP;
                     debug_printf( "===> New connection\n" );
