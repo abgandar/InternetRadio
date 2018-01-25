@@ -1,4 +1,6 @@
 #include <sys/types.h>
+#include <sys/socket.h>     // for sockaddr etc
+#include <netinet/in.h>
 
 // some return codes
 enum retcode_enum {
