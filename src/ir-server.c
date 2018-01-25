@@ -1166,6 +1166,7 @@ void http_server_config_defaults( struct server_config_struct *config )
         MAX_HEAD_LEN,
         MAX_BODY_LEN,
         MAX_WB_LEN,
+        MAX_CLIENT_CONN,
         TIMEOUT,
 #ifdef DEFAULT_CONTENT
         contents,
@@ -1447,7 +1448,7 @@ int http_server_main( const struct server_config_struct *config )
                 for( j = 0; (j < MAX_CONNECTIONS) && (fds[j].fd >= 0); j++ );
                 for( unsigned int k = 0; k < MAX_CONNECTIONS; k++ )
                     if( (fds[k].fd >= 0) && MATCH_IP_REQ( &reqs[i], (struct sockaddr*)&rip, riplen )) count++;
-                if( j == MAX_CONNECTIONS )
+                if( (j == MAX_CONNECTIONS) || (count > conf.max_client_conn) )
                 {
                     // can't handle any more clients. Client will have to retry later.
                     write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
