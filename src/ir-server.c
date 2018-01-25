@@ -555,7 +555,7 @@ static int handle_disk_file( req *c )
     struct stat sb;
     int fd = -1;
     if( stat( fn, &sb ) )
-        return HTTP_NOT_FOUND;
+        return FILE_NOT_FOUND;
     else
     {
         // the path exists
