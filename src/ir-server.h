@@ -136,7 +136,7 @@ struct server_config_struct {
     const char* ip6;                            // IP6 address of interface to bind to
     short port;                                 // port to bind to
     unsigned int max_req_len, max_head_len,
-                 max_body_len, max_wb_len;      // Maximum allowed sizees in bytes of request, headers, body, write buffer
+                 max_body_len, max_wb_len;      // Maximum allowed sizees in bytes of request, headers, body, write buffer (hard limit for writes is twice this)
     unsigned int timeout;                       // timeout in seconds before idle connections are closed
     const struct content_struct *contents;      // static embedded file content
     const struct handler_struct *handlers;      // dynamic content handlers

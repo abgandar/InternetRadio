@@ -273,7 +273,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
         if( last->f & MEM_PTR )
             buflen += last->len;
     if( last && (last->f & MEM_PTR) ) buflen += last->len;
-    if( buflen + len - rc > conf.max_wb_len )
+    if( buflen + len - rc > 2*conf.max_wb_len )
     {
         debug_printf( "===> Output buffer overflow\n" );
         return BUFFER_OVERFLOW;
