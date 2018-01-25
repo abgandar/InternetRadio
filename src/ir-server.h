@@ -88,6 +88,8 @@ struct wbchain_struct {
 // an active request
 typedef struct req_struct {
     int fd;                     // socket associated with this request
+    struct sockaddr_in6 rip;    // sockaddr of the remote client
+    socklen_t riplen;           // length of the sockaddr
     char *data;                 // data buffer pointer
     unsigned int max, len;      // max allocated length, current length
     struct wbchain_struct *wb;  // pointer to the head of the write buffer
@@ -133,7 +135,8 @@ struct server_config_struct {
     const char* ip;                             // IP address of interface to bind to
     const char* ip6;                            // IP6 address of interface to bind to
     short port;                                 // port to bind to
-    unsigned int max_req_len, max_rep_len;      // Maximum allowed size of a request (1 MB), Maximum allowed size of the write buffer (10 MB)
+    unsigned int max_req_len, max_head_len,
+                 max_body_len, max_wb_len;      // Maximum allowed sizees in bytes of request, headers, body, write buffer
     unsigned int timeout;                       // timeout in seconds before idle connections are closed
     const struct content_struct *contents;      // static embedded file content
     const struct handler_struct *handlers;      // dynamic content handlers

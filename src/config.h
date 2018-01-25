@@ -11,8 +11,10 @@
 #define CHROOT_DIR              NULL                        // directory to chroot into when running the server
 #define SERVER_PORT             80                          // port to bind to
 #define SERVER_IP               "0.0.0.0"                   // IP address of interface to bind to
-#define MAX_REQ_LEN             (1024*1024*1)               // Maximum allowed size of a request (1 MB)
-#define MAX_REP_LEN             (1024*1024*10)              // Maximum allowed size of the write buffer (10 MB)
+#define MAX_REQ_LEN             (1024*64)                   // Maximum allowed size of a request (64 kB)
+#define MAX_HEAD_LEN            (1024*128)                  // Maximum allowed size of headers (128 kB)
+#define MAX_BODY_LEN            (1024*1024*2)               // Maximum allowed size of body (2 MB)
+#define MAX_WB_LEN              (1024*1024*10)              // Maximum allowed size of the write buffer (10 MB)
 #define WWW_DIR                 "/var/www/html/"            // directory where to look for files (should end in / for safety)
 #define DIR_INDEX               "index.html"                // directory index file used when requesting a directory from disk
 #define EXTRA_HEADERS           "Connection: Keep-Alive\r\nKeep-Alive: timeout=60,max=999999\r\nX-Frame-Options: SAMEORIGIN\r\n"  // extra headers to send with all replies

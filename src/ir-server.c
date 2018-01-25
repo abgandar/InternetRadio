@@ -83,7 +83,7 @@ static const struct response_struct responses[] = {
 };
 
 // allocate memory and set everything to zero
-static inline void INIT_REQ( req *c, const int fd, time_t now )
+static inline void INIT_REQ( req *c, const int fd, time_t now, struct sockaddr *rip, socklen_t riplen )
 {
     if( c->data ) free( c->data );  // should never happen but just to be safe
     bzero( c, sizeof(req) );
@@ -97,6 +97,8 @@ static inline void INIT_REQ( req *c, const int fd, time_t now )
     c->max = 4096;
     c->fd = fd;
     c->time = now;
+    memcpy( &(c->rip), rip, riplen );
+    c->riplen = riplen;
 }
 
 // free request memory
@@ -144,6 +146,12 @@ static inline void TOUCH_REQ( req *c, time_t now )
 static inline bool TIMEDOUT_REQ( req *c, time_t now )
 {
     return (now - c->time) > conf.timeout;
+}
+
+// does this request match the given IP address
+static inline bool MATCH_IP_REQ( req *c, struct sockaddr *rip, socklen_t riplen )
+{
+    return (c->riplen == riplen) && !memcmp( &(c->rip), rip, riplen );
 }
 
 // signal handler
@@ -265,7 +273,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
         if( last->f & MEM_PTR )
             buflen += last->len;
     if( last && (last->f & MEM_PTR) ) buflen += last->len;
-    if( buflen + len - rc > MAX_REP_LEN )
+    if( buflen + len - rc > max_wb_len )
     {
         debug_printf( "===> Output buffer overflow\n" );
         return BUFFER_OVERFLOW;
@@ -894,7 +902,11 @@ static int read_request( req *c )
     if( tmp == NULL )
     {
         tmp = strstr( data, "\n" );
-        if( tmp == NULL ) return READ_DATA;     // we need more data
+        if( tmp == NULL )
+        {
+            if(
+            return READ_DATA;     // we need more data
+        }
         c->f &= ~FL_CRLF;
     }
 
@@ -980,30 +992,31 @@ static int read_request( req *c )
 // find out where in the request phase this request is and try to handle new data accordingly
 static int parse_data( req *c )
 {
-    int rc;
+    int rc = SUCCESS;
+    unsigned int maxlen = c->len;
     char *pcc, cc;
 
-    while( true )
+    while( !rc )
         switch( c->s )
         {
             case STATE_NEW:
                 rc = read_request( c );
-                if( rc ) return rc;
+                maxlen = conf.max_req_len;
                 break;
 
             case STATE_HEAD:
                 rc = read_head( c );
-                if( rc ) return rc;
+                maxlen = conf.max_head_len;
                 break;
 
             case STATE_BODY:
                 rc = read_body( c );
-                if( rc ) return rc;
+                maxlen = conf.max_body_len;
                 break;
 
             case STATE_TAIL:
                 rc = read_tail( c );
-                if( rc ) return rc;
+                maxlen = conf.max_body_len;
                 break;
 
             case STATE_READY:
@@ -1016,14 +1029,21 @@ static int parse_data( req *c )
                 *pcc = '\0';
                 rc = handle_request( c );
                 *pcc = cc;
-                if( rc ) return rc;
+                maxlen = conf.max_body_len;
                 break;
 
             case STATE_FINISH:
                 rc = finish_request( c );
-                if( rc ) return rc;
+                maxlen = conf.max_body_len;
                 break;
         }
+
+    // check memory limit
+    if( c->len > maxlen )
+    {
+        write_response( c, HTTP_TOO_LARGE, NULL, "413 - Payload too large", 0, MEM_KEEP );      // ideally this could be also "header too large"
+        return CLOSE_SOCKET;
+    }
 
     return SUCCESS;
 }
@@ -1032,18 +1052,13 @@ static int parse_data( req *c )
 static int read_from_client( req *c )
 {
     // suspend reading temporarily if the write buffer is too full
-    if( WB_SIZE( c ) > conf.max_rep_len )
+    if( WB_SIZE( c ) > conf.max_wb_len )
         return WRITE_DATA;
 
     // speculatively increase buffer if needed to avoid short reads
     int len = c->max - c->len - 1;
     if( len < 128 )
     {
-        if( c->max > MAX_REQ_LEN )
-        {
-            write_response( c, HTTP_TOO_LARGE, NULL, "413 - Payload too large", 0, MEM_KEEP );
-            return CLOSE_SOCKET;  // request is finished
-        }
         if( !(c->data = realloc( c->data, c->max+4096 )) )
         {
             perror( "realloc" );
@@ -1100,12 +1115,12 @@ static int write_to_client( req *c )
                 if( (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != EINTR) )
                     return CLOSE_SOCKET;
                 else
-                    return WB_SIZE( c ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;
+                    return WB_SIZE( c ) > conf.max_wb_len ? WRITE_DATA : READ_WRITE_DATA;
             }
             c->wb->offset += rc;
             c->wb->len -= rc;
             if( c->wb->len > 0 )
-                return WB_SIZE( c ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
+                return WB_SIZE( c ) > conf.max_wb_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
             if( c->wb->f & (MEM_FREE | MEM_COPY) ) free( c->wb->payload.data );
         }
         else if( c->wb->f & MEM_FD )
@@ -1119,11 +1134,11 @@ static int write_to_client( req *c )
                 if( (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != EINTR) )
                     return CLOSE_SOCKET;
                 else
-                    return WB_SIZE( c ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;
+                    return WB_SIZE( c ) > conf.max_wb_len ? WRITE_DATA : READ_WRITE_DATA;
             }
             c->wb->len -= rc;
             if( c->wb->len > 0 )
-                return WB_SIZE( c ) > conf.max_rep_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
+                return WB_SIZE( c ) > conf.max_wb_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
             if( c->wb->f & FD_CLOSE ) close( c->wb->payload.fd );
         }
 
@@ -1151,7 +1166,9 @@ void http_server_config_defaults( struct server_config_struct *config )
         NULL,
         SERVER_PORT,
         MAX_REQ_LEN,
-        MAX_REP_LEN,
+        MAX_HEAD_LEN,
+        MAX_BODY_LEN,
+        MAX_WB_LEN,
         TIMEOUT,
 #ifdef DEFAULT_CONTENT
         contents,
@@ -1173,8 +1190,8 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
         { "dirlist",    required_argument,  NULL,   'D' },
         { "ip",         required_argument,  NULL,   'i' },
         { "ip6",        required_argument,  NULL,   'I' },
-        { "maxreqlen",  required_argument,  NULL,   'm' },
-        { "maxreplen",  required_argument,  NULL,   'M' },
+        { "maxbodylen", required_argument,  NULL,   'm' },
+        { "maxwblen",   required_argument,  NULL,   'M' },
         { "port",       required_argument,  NULL,   'p' },
         { "timeout",    required_argument,  NULL,   't' },
         { "user",       required_argument,  NULL,   'u' },
@@ -1208,11 +1225,11 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
                 break;
 
             case 'm':
-                config->max_req_len = strtol( optarg, NULL, 10 );
+                config->max_body_len = strtol( optarg, NULL, 10 );
                 break;
 
             case 'M':
-                config->max_rep_len = strtol( optarg, NULL, 10 );
+                config->max_wb_len = strtol( optarg, NULL, 10 );
                 break;
 
             case 'p':
@@ -1317,7 +1334,7 @@ int http_server_main( const struct server_config_struct *config )
         serverAddr6.sin6_family = AF_INET6;
         serverAddr6.sin6_port = htons( conf.port );
         inet_pton( AF_INET6, conf.ip6, &serverAddr6.sin6_addr.s6_addr );
-        if( bind( serverSocket6, (struct sockaddr *) &serverAddr6, sizeof(serverAddr6) ) )
+        if( bind( serverSocket6, (struct sockaddr *)&serverAddr6, sizeof(serverAddr6) ) )
         {
             perror( "bind6" );
             exit( EXIT_FAILURE );
@@ -1419,16 +1436,20 @@ int http_server_main( const struct server_config_struct *config )
             }
             else if( fds[i].revents & POLLIN )
             {
-                const int new = accept( fds[i].fd, NULL, NULL );
+                struct sockaddr_in6 rip = { 0 };
+                socklen_t riplen = sizeof(rip);
+                const int new = accept( fds[i].fd, (struct sockaddr *)&rip, &riplen );
                 if( new < 0 )
                 {
                     perror( "accept" );
                     exit( EXIT_FAILURE );
                 }
 
-                // find free connection slot
-                unsigned int j;
+                // find free connection slot and count connections from same host
+                unsigned int j, count = 0;
                 for( j = 0; (j < MAX_CONNECTIONS) && (fds[j].fd >= 0); j++ );
+                for( unsigned int k = 0; k < MAX_CONNECTIONS; k++ )
+                    if( (fds[k].fd >= 0) && MATCH_IP_REQ( &reqs[i], &rip, riplen )) count++;
                 if( j == MAX_CONNECTIONS )
                 {
                     // can't handle any more clients. Client will have to retry later.
@@ -1445,7 +1466,7 @@ int http_server_main( const struct server_config_struct *config )
                         fcntl( new, F_SETFL, flags | O_NONBLOCK );
 
                     // initialize request and add to watchlist
-                    INIT_REQ( &reqs[j], new, now );
+                    INIT_REQ( &reqs[j], new, now, &rip, riplen );
                     fds[j].fd = new;
                     fds[j].events = POLLIN | POLLRDHUP;
                     debug_printf( "===> New connection\n" );
