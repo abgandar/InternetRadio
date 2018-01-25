@@ -903,10 +903,7 @@ static int read_request( req *c )
     {
         tmp = strstr( data, "\n" );
         if( tmp == NULL )
-        {
-            if(
             return READ_DATA;     // we need more data
-        }
         c->f &= ~FL_CRLF;
     }
 
@@ -1438,7 +1435,7 @@ int http_server_main( const struct server_config_struct *config )
             {
                 struct sockaddr_in6 rip = { 0 };
                 socklen_t riplen = sizeof(rip);
-                const int new = accept( fds[i].fd, (struct sockaddr *)&rip, &riplen );
+                const int new = accept( fds[i].fd, (struct sockaddr*)&rip, &riplen );
                 if( new < 0 )
                 {
                     perror( "accept" );
@@ -1449,7 +1446,7 @@ int http_server_main( const struct server_config_struct *config )
                 unsigned int j, count = 0;
                 for( j = 0; (j < MAX_CONNECTIONS) && (fds[j].fd >= 0); j++ );
                 for( unsigned int k = 0; k < MAX_CONNECTIONS; k++ )
-                    if( (fds[k].fd >= 0) && MATCH_IP_REQ( &reqs[i], &rip, riplen )) count++;
+                    if( (fds[k].fd >= 0) && MATCH_IP_REQ( &reqs[i], (struct sockaddr*)&rip, riplen )) count++;
                 if( j == MAX_CONNECTIONS )
                 {
                     // can't handle any more clients. Client will have to retry later.
