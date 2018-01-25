@@ -90,7 +90,7 @@ struct wbchain_struct {
 // an active request
 typedef struct req_struct {
     int fd;                     // socket associated with this request
-    struct sockaddr_in6 rip;    // sockaddr of the remote client
+    struct sockaddr_storage rip;// sockaddr of the remote client
     socklen_t riplen;           // length of the sockaddr
     char *data;                 // data buffer pointer
     unsigned int max, len;      // max allocated length, current length
