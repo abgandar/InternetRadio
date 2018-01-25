@@ -1448,6 +1448,7 @@ int http_server_main( const struct server_config_struct *config )
                 for( j = 0; (j < MAX_CONNECTIONS) && (fds[j].fd >= 0); j++ );
                 for( unsigned int k = 0; k < MAX_CONNECTIONS; k++ )
                     if( (fds[k].fd >= 0) && MATCH_IP_REQ( &reqs[k], (struct sockaddr*)&rip, riplen ) ) count++;
+                debug_printf( "===> New connection from %s (%u previous)\n", inet_ntoa( rip ), count );
                 if( (j == MAX_CONNECTIONS) || (count > conf.max_client_conn) )
                 {
                     // can't handle any more clients. Client will have to retry later.
