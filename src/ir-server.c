@@ -152,9 +152,9 @@ static inline bool TIMEDOUT_REQ( req *c, time_t now )
 static inline bool MATCH_IP_REQ( req *c, struct sockaddr_storage *rip )
 {
     if( rip->ss_family == AF_INET )
-        return !memcmp( ((struct sockaddr_in*)&c->rip)->sin_addr.s_addr, ((struct sockaddr_in*)rip)->sin_addr.s_addr, sizeof(((struct sockaddr_in*)&c->rip)->sin_addr.s_addr) );
+        return !memcmp( &(((struct sockaddr_in*)&c->rip)->sin_addr.s_addr), &(((struct sockaddr_in*)rip)->sin_addr.s_addr), sizeof(((struct sockaddr_in*)&c->rip)->sin_addr.s_addr) );
     else if( rip->ss_family == AF_INET6 )
-        return !memcmp( ((struct sockaddr_in6*)&c->rip)->sin6_addr.s6_addr, ((struct sockaddr_in6*)rip)->sin6_addr.s6_addr, sizeof(((struct sockaddr_in6*)&c->rip)->sin6_addr.s6_addr) );
+        return !memcmp( &(((struct sockaddr_in6*)&c->rip)->sin6_addr.s6_addr), &(((struct sockaddr_in6*)rip)->sin6_addr.s6_addr), sizeof(((struct sockaddr_in6*)&c->rip)->sin6_addr.s6_addr) );
 }
 
 // signal handler
