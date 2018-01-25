@@ -1378,6 +1378,7 @@ int http_server_main( const struct server_config_struct *config )
                 perror( "initgroups" );
                 exit( EXIT_FAILURE );
             }
+            debug_printf( "===> Dropped priviliges to user %s (I)\n", conf.unpriv_user );
         }
 
         // if we're root and chroot is requested, perform it (only useful if we also drop priviliges)
@@ -1389,15 +1390,19 @@ int http_server_main( const struct server_config_struct *config )
                 exit( EXIT_FAILURE );
             }
             chdir( "/" );
+            debug_printf( "===> Chrooted into %s\n", conf.chroot );
         }
 
         // finally drop full privileges now that init is done
         if( conf.unpriv_user )
+        {
             if( setresuid( pwd->pw_uid, pwd->pw_uid, pwd->pw_uid ) )
             {
                 perror( "setresuid" );
                 exit( EXIT_FAILURE );
             }
+            debug_printf( "===> Dropped priviliges to user %s (II)\n", conf.unpriv_user );
+        }
     }
 
     // initialize poll structures
