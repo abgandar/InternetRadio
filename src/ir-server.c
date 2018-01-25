@@ -496,7 +496,7 @@ static int list_directory_contents( req *c, const char *fn )
 
 
     // allocate buffer for output
-    len = 2*(len + strlen( c->url )) + 69 + 18 + 1 + 25*n;
+    len = 2*(len + strlen( c->url )) + 68 + 18 + 1 + 24*n;
     char *buf = malloc( len ), *pos = buf;
     if( !buf )
     {
@@ -520,11 +520,11 @@ static int list_directory_contents( req *c, const char *fn )
     }
     free( dir );
 
-    // print tail
+    // print tail (size is allocated to be exactly correct)
     strncpy( pos, "</ul><body></html>", len );
     pos += 18;
     len -= 18;
-    *pos = '\0';    // just for safety
+
     debug_printf( "===> Listed directory, %u bytes left (should be 0)\n", len-1 );  // -1 for terminating NUL
 
     // send result
