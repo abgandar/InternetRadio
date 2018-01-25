@@ -1396,7 +1396,7 @@ int http_server_main( const struct server_config_struct *config )
     }
 
     // initialize poll structures
-    req reqs[MAX_CONNECTIONS];
+    req reqs[MAX_CONNECTIONS] = { 0 };
     struct pollfd fds[MAX_CONNECTIONS+2];
     for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
         fds[i].fd = -1;
