@@ -83,7 +83,7 @@ static const struct response_struct responses[] = {
 };
 
 // allocate memory and set everything to zero
-static inline void INIT_REQ( req *c, const int fd, time_t now, struct sockaddr *rip, socklen_t riplen )
+static inline void INIT_REQ( req *c, const int fd, time_t now, struct sockaddr_storage *rip, socklen_t riplen )
 {
     if( c->data ) free( c->data );  // should never happen but just to be safe
     bzero( c, sizeof(req) );
@@ -149,9 +149,12 @@ static inline bool TIMEDOUT_REQ( req *c, time_t now )
 }
 
 // does this request match the given IP address
-static inline bool MATCH_IP_REQ( req *c, struct sockaddr *rip, socklen_t riplen )
+static inline bool MATCH_IP_REQ( req *c, struct sockaddr_storage *rip )
 {
-    return (c->riplen == riplen) && !memcmp( &(c->rip), rip, riplen );
+    if( rip->ss_family == AF_INET )
+        return ((struct sockaddr_in*)&c->rip)->sin_addr == ((struct sockaddr_in*)rip)->sin_addr;
+    else if( rip->ss_family == AF_INET6 )
+        return ((struct sockaddr_in6*)&c->rip)->sin6_addr == ((struct sockaddr_in6*)rip)->sin6_addr;
 }
 
 // signal handler
@@ -1447,7 +1450,7 @@ int http_server_main( const struct server_config_struct *config )
                 unsigned int j, count = 0;
                 for( j = 0; (j < MAX_CONNECTIONS) && (fds[j].fd >= 0); j++ );
                 for( unsigned int k = 0; k < MAX_CONNECTIONS; k++ )
-                    if( (fds[k].fd >= 0) && MATCH_IP_REQ( &reqs[k], (struct sockaddr*)&rip, riplen ) ) count++;
+                    if( (fds[k].fd >= 0) && MATCH_IP_REQ( &reqs[k], &rip ) ) count++;
                 debug_printf( "===> New connection from %s (%u previous)\n", inet_ntoa( ((struct sockaddr_in*)&rip)->sin_addr ), count );
                 if( (j == MAX_CONNECTIONS) || (count > conf.max_client_conn) )
                 {
@@ -1465,7 +1468,7 @@ int http_server_main( const struct server_config_struct *config )
                         fcntl( new, F_SETFL, flags | O_NONBLOCK );
 
                     // initialize request and add to watchlist
-                    INIT_REQ( &reqs[j], new, now, (struct sockaddr*)&rip, riplen );
+                    INIT_REQ( &reqs[j], new, now, &rip, riplen );
                     fds[j].fd = new;
                     fds[j].events = POLLIN | POLLRDHUP;
                     debug_printf( "===> New connection\n" );
