@@ -890,7 +890,7 @@ static int read_head( req *c )
     return SUCCESS;
 }
 
-// clean URL up to canonical form
+// clean URL up to canonical form (done in place)
 static void clean_url( char *url )
 {
     char *p = url, *q = url;
@@ -1575,13 +1575,11 @@ int http_server_main( const struct server_config_struct *config )
     debug_printf( "===> Exiting\n" );
     close( serverSocket );
     for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )
-    {
         if( fds[j].fd >= 0 )
         {
             close( fds[j].fd );
             FREE_REQ( &reqs[j] );
         }
-    }
 
     return SUCCESS;
 }
