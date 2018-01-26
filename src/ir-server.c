@@ -893,7 +893,7 @@ static int read_head( req *c )
 // clean URL up to canonical form
 static void clean_url( char *url )
 {
-    char *p = url, *q;
+    char *p = url, *q = url;
 
     // handle special case of urls starting with ./ and ../
     if( (p[0] == '.') && ((p[1] == '/') || (p[1] == '\0')) )
@@ -902,7 +902,7 @@ static void clean_url( char *url )
         p += 3;
 
     // handle rest of url
-    for( q = url; *p; p++ )
+    while( *p )
         if( (p[0] == '/') && (p[1] == '/') )
             p++;
         else if( (p[0] == '/') && (p[1] == '.') && ((p[2] == '/') || (p[2] == '\0')) )
@@ -914,7 +914,7 @@ static void clean_url( char *url )
             *q = '\0';
         }
         else
-            *(q++) = *p;
+            *(q++) = *(p++);
 
     *q = '\0';
 }
