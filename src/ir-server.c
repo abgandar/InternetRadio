@@ -108,7 +108,7 @@ static inline void FREE_REQ( req *c )
     c->data = NULL; c->max = 0;
     while( c->wb )
     {
-        const struct wbchain_struct *p = c->wb->next;
+        struct wbchain_struct *p = c->wb->next;
         free( c->wb );
         c->wb = p;
     }
