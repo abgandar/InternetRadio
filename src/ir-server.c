@@ -108,7 +108,7 @@ static inline void FREE_REQ( req *c )
     c->data = NULL; c->max = 0;
     while( c->wb )
     {
-        struct wbchain_struct *p = c->wb->next;
+        const struct wbchain_struct *p = c->wb->next;
         free( c->wb );
         c->wb = p;
     }
@@ -123,16 +123,14 @@ static inline void RESET_REQ( req *c )
 }
 
 // calculate total memory size of write buffers
-static inline unsigned int WB_SIZE( const req *c )
+static unsigned int WB_SIZE( const req *c )
 {
-    if( !c->wb ) return 0;
-
     unsigned int buflen = 0;
-    struct wbchain_struct *last;
-    for( last = c->wb; last; last = last->next )
+
+    for( struct wbchain_struct *last = c->wb; last; last = last->next )
         if( last->f & MEM_PTR )
             buflen += last->len;
-    
+
     return buflen;
 }
 
@@ -170,7 +168,7 @@ static void handle_signal( const int sig )
 }
 
 // get human readable response from code
-static inline const char* get_response( const unsigned int code )
+static const char* get_response( const unsigned int code )
 {
     unsigned int i;
     for( i = 0; responses[i].code && responses[i].code < code; i++ );
@@ -181,19 +179,19 @@ static inline const char* get_response( const unsigned int code )
 }
 
 // guess a mime type for a filename
-const char* get_mime( const char* fn )
+static const char* get_mime( const char* fn )
 {
-    if( !conf.mimetypes )
-        return "application/octet-stream";
-
-    const char const* end = fn+strlen( fn )-1;
-
-    for( unsigned int i = 0; conf.mimetypes[i].ext; i++ )
+    if( conf.mimetypes )
     {
-        const char *p, *q;
-        for( p = end, q = conf.mimetypes[i].ext; *q && p >= fn && *p == *q; p--, q++ );
-        if( *q == '\0' )
-            return conf.mimetypes[i].mime;
+        const char const* end = fn+strlen( fn )-1;
+
+        for( unsigned int i = 0; conf.mimetypes[i].ext; i++ )
+        {
+            const char *p, *q;
+            for( p = end, q = conf.mimetypes[i].ext; *q && p >= fn && *p == *q; p--, q++ );
+            if( *q == '\0' )
+                return conf.mimetypes[i].mime;
+        }
     }
 
     return "application/octet-stream";  // don't know, fall back to this
@@ -493,7 +491,7 @@ static int list_directory_contents( req *c, const char *fn )
         if( n >= max )
         {
             max += 1024;
-            dir = (char**)realloc( dir, max*sizeof(char) );
+            dir = (char**)realloc( dir, max*sizeof(char*) );
             if( !dir )
             {
                 perror( "realloc" );
@@ -506,7 +504,6 @@ static int list_directory_contents( req *c, const char *fn )
     }
     closedir( d );
     qsort( dir, n, sizeof(char*), cmpstringp );
-
 
     // allocate buffer for output
     len = 2*(len + strlen( c->url )) + 68 + 18 + 1 + 24*n;
@@ -525,7 +522,6 @@ static int list_directory_contents( req *c, const char *fn )
     // run through the directories, print each entry, and free it
     for( unsigned int i = 0; i < n; i++ )
     {
-        if( (dir[i][0] == '.') && (dir[i][1] == '\0') ) continue;   // skip current directory entry
         l = snprintf( pos, len, "<li><a href=\"%s\">%s</a></li>", dir[i], dir[i] );
         pos += l;
         len -= l;
@@ -591,7 +587,7 @@ static int handle_disk_file( req *c )
                 debug_printf( "===> Trying to open file: %s\n", fn );
             }
             // if that didn't work, try to send the directory content if enabled
-            if( (fd < 0) && conf.dir_list )
+            if( (fd < 0) && (conf.flags & CONF_DIR_LIST) )
             {
                 fn[len_www_dir + len_url] = '\0';
                 return list_directory_contents( c, fn );
@@ -894,6 +890,33 @@ static int read_head( req *c )
     return SUCCESS;
 }
 
+// clean URL up to canonical form
+static void clean_url( char *url )
+{
+    char *p = url, *q;
+
+    // handle special case of urls starting with ./ and ../
+    if( (p[0] == '.') && ((p[1] == '/') || (p[1] == '\0')) )
+        p += 2;
+    else if( (p[0] == '.') && (p[1] == '.') && ((p[2] == '/') || (p[2] == '\0')) )
+        p += 3;
+
+    // handle rest of url
+    for( q = url; *p; p++ )
+        if( (p[0] == '/') && (p[1] == '.') && ((p[2] == '/') || (p[2] == '\0')) )
+            p += 2;
+        else if( (p[0] == '/') && (p[1] == '.') && (p[2] == '.') && ((p[3] == '/') || (p[3] == '\0')) )
+        {
+            p += 3;
+            for( ; (*q != '/') && (q > url); q-- );
+            *q = '\0';
+        }
+        else
+            *(q++) = *p;
+
+    *q = '\0';
+}
+
 // parse the request line if it is available
 static int read_request( req *c )
 {
@@ -949,7 +972,11 @@ static int read_request( req *c )
         *tmp = '\0';
         c->query = tmp;
     }
-    
+
+    // clean up URL
+    if( conf.flags & CONF_CLEAN_URL )
+        clean_url( c->url );
+
     // identify method
     if( strcmp( c->method, "GET" ) == 0 )
         c->m = M_GET;
@@ -1162,7 +1189,7 @@ void http_server_config_defaults( struct server_config_struct *config )
         CHROOT_DIR,
         WWW_DIR,
         DIR_INDEX,
-        1,
+        CONF_DIR_LIST | CONF_CLEAN_URL,
         EXTRA_HEADERS,
         SERVER_IP,
         NULL,
@@ -1216,7 +1243,7 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
                 break;
 
             case 'D':
-                config->dir_list = ((*optarg == '1') || (*optarg == 't') || (*optarg == 'T') || (*optarg == 'y') || (*optarg == 'Y'));
+                config->flags |= ((*optarg == '1') || (*optarg == 't') || (*optarg == 'T') || (*optarg == 'y') || (*optarg == 'Y')) ? CONF_DIR_LIST : 0;
                 break;
 
             case 'i':

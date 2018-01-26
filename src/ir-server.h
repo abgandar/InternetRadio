@@ -126,13 +126,19 @@ struct mimetype_struct {
     const char *mime;
 };
 
+// flags for configuration
+enum config_flags_enum {
+    CONF_DIR_LIST = 1,
+    CONF_CLEAN_URL = 2
+};
+
 // server configuration
 struct server_config_struct {
     const char* unpriv_user;                    // unpriviliged user to drop to after binding if started as root
     const char* chroot;                         // directory to chroot into when running the server
     const char* www_dir;                        // directory where to look for files (should end in / for safety)
     const char* dir_index;                      // directory index file used when requesting a directory from disk
-    char dir_list;                              // try to list directories if requested
+    enum config_flags_enum flags;               // yes/no flags
     const char* extra_headers;                  // extra headers to send with all replies
     const char* ip;                             // IP address of interface to bind to
     const char* ip6;                            // IP6 address of interface to bind to
