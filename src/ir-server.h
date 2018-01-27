@@ -145,6 +145,7 @@ struct server_config_struct {
     short port;                                 // port to bind to
     unsigned int max_req_len, max_head_len,
                  max_body_len, max_wb_len;      // Maximum allowed sizees in bytes of request, headers, body, write buffer (hard limit for writes is twice this)
+    unsigned int max_connections;               // maximum number of total connections
     unsigned int max_client_conn;               // max number of connections per client
     unsigned int timeout;                       // timeout in seconds before idle connections are closed
     const struct content_struct *contents;      // static embedded file content

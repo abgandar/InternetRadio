@@ -1200,6 +1200,7 @@ void http_server_config_defaults( struct server_config_struct *config )
         MAX_HEAD_LEN,
         MAX_BODY_LEN,
         MAX_WB_LEN,
+        MAX_CONNECTIONS,
         MAX_CLIENT_CONN,
         TIMEOUT,
 #ifdef DEFAULT_CONTENT
@@ -1217,6 +1218,7 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
 {
     // command line options
     const struct option longopts[] = {
+        { "maxconn",    required_argument,  NULL,   'C' },
         { "chroot",     required_argument,  NULL,   'c' },
         { "dirindex",   required_argument,  NULL,   'd' },
         { "dirlist",    required_argument,  NULL,   'D' },
@@ -1233,13 +1235,18 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
 
     // process options
     int ch = 0;
-    while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "c:d:D:i:I:m:M:p:t:u:w:", longopts, NULL )) != -1) )
+    while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "C:c:d:D:i:I:m:M:p:t:u:w:", longopts, NULL )) != -1) )
         switch( ch )
         {
+            case 'C':
+                config->max_connections = strtol( optarg, NULL, 10 );
+                if( config->max_connections < 1 ) config->max_connections = 1;
+                break;
+                
             case 'c':
                 config->chroot = (*optarg ? optarg : NULL);
                 break;
-                
+
             case 'd':
                 config->dir_index = (*optarg ? optarg : NULL);
                 break;
@@ -1435,14 +1442,25 @@ int http_server_main( const struct server_config_struct *config )
     }
 
     // initialize poll structures
-    req reqs[MAX_CONNECTIONS] = { 0 };
-    struct pollfd fds[MAX_CONNECTIONS+2];
-    for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
+    req *reqs[conf.max_connections] = malloc( conf.max_connections*sizeof(req) );
+    if( !req )
+    {
+        perror( "malloc" );
+        exit( EXIT_FAILURE );
+    }
+    bzero( req, conf.max_connections*sizeof(req) );
+    struct pollfd *fds = malloc( (conf.max_connections+2)*sizeof(struct pollfd) );
+    if( !fds )
+    {
+        perror( "malloc" );
+        exit( EXIT_FAILURE );
+    }
+    for( unsigned int i = 0; i < conf.max_connections; i++ )
         fds[i].fd = -1;
-    fds[MAX_CONNECTIONS].fd = serverSocket;
-    fds[MAX_CONNECTIONS].events = POLLIN;
-    fds[MAX_CONNECTIONS+1].fd = serverSocket6;
-    fds[MAX_CONNECTIONS+1].events = POLLIN;
+    fds[conf.max_connections].fd = serverSocket;
+    fds[conf.max_connections].events = POLLIN;
+    fds[conf.max_connections+1].fd = serverSocket6;
+    fds[conf.max_connections+1].events = POLLIN;
     struct timespec timeout;
     timeout.tv_sec = conf.timeout;
     timeout.tv_nsec = 0;
@@ -1451,7 +1469,7 @@ int http_server_main( const struct server_config_struct *config )
     while( running )
     {
         // wait for input
-        if( ppoll( fds, MAX_CONNECTIONS+1, &timeout, &sset_enabled ) < 0 )
+        if( ppoll( fds, conf.max_connections+2, &timeout, &sset_enabled ) < 0 )
         {
             if( errno == EINTR ) continue;  // ignore interrupted system calls
             perror( "ppoll" );
@@ -1462,7 +1480,7 @@ int http_server_main( const struct server_config_struct *config )
         const time_t now = time( NULL );
 
         // check server sockets for new connections
-        for( unsigned int i = MAX_CONNECTIONS; i < MAX_CONNECTIONS+2; i++ )
+        for( unsigned int i = conf.max_connections; i < conf.max_connections+2; i++ )
         {
             if( fds[i].fd < 0 ) continue;   // skip inactive sockets
             if( fds[i].revents & (POLLRDHUP|POLLHUP|POLLERR|POLLNVAL) )
@@ -1484,11 +1502,11 @@ int http_server_main( const struct server_config_struct *config )
 
                 // find free connection slot and count connections from same host
                 unsigned int j, count = 0;
-                for( j = 0; (j < MAX_CONNECTIONS) && (fds[j].fd >= 0); j++ );
-                for( unsigned int k = 0; k < MAX_CONNECTIONS; k++ )
+                for( j = 0; (j < conf.max_connections) && (fds[j].fd >= 0); j++ );
+                for( unsigned int k = 0; k < conf.max_connections; k++ )
                     if( (fds[k].fd >= 0) && MATCH_IP_REQ( &reqs[k], &rip ) ) count++;
                 debug_printf( "===> New connection from %s (%u previous)\n", inet_ntoa( ((struct sockaddr_in*)&rip)->sin_addr ), count );
-                if( (j == MAX_CONNECTIONS) || (count > conf.max_client_conn) )
+                if( (j == conf.max_connections) || (count > conf.max_client_conn) )
                 {
                     // can't handle any more clients. Client will have to retry later.
                     write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
@@ -1513,7 +1531,7 @@ int http_server_main( const struct server_config_struct *config )
         }
 
         // process all other client sockets
-        for( unsigned int i = 0; i < MAX_CONNECTIONS; i++ )
+        for( unsigned int i = 0; i < conf.max_connections; i++ )
         {
             if( fds[i].fd < 0 )
                 continue;   // not an active connection
@@ -1573,8 +1591,9 @@ int http_server_main( const struct server_config_struct *config )
 
     // shut all connections down hard
     debug_printf( "===> Exiting\n" );
-    close( serverSocket );
-    for( unsigned int j = 0; j < MAX_CONNECTIONS; j++ )
+    if( serverSocket >= 0 ) close( serverSocket );
+    if( serverSocket6 >= 0) close( serverSocket );
+    for( unsigned int j = 0; j < conf.max_connections; j++ )
         if( fds[j].fd >= 0 )
         {
             close( fds[j].fd );
