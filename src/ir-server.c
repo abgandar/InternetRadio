@@ -693,6 +693,7 @@ static int handle_request( req *c )
             {
                 // check Host
                 debug_printf( "===> Hosts: \"%s\" \"%s\"\n", c->host ? c->host : "", conf.contents[i].host ? conf.contents[i].host : "" );
+                if( c->host && conf.contents[i].host ) debug_printf( "===> %d\n", strcmp( conf.contents[i].host, c->host ) );
                 if( conf.contents[i].host && c->host && !strcmp( conf.contents[i].host, c->host ) ) continue;
                 debug_printf( "     match\n" );
 
