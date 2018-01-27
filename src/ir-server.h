@@ -28,6 +28,15 @@ enum statuscode_enum {
     HTTP_SERVICE_UNAVAILABLE =  503
 };
 
+// request flags (bitfield, assign powers of 2!)
+enum req_flags_enum {
+    REQ_NONE =       0,
+    REQ_CRLF =       1,
+    REQ_CHUNKED =    2,
+    REQ_CLOSE =      4,
+    REQ_SHUTDOWN =   8
+};
+
 // request state
 enum state_enum {
     STATE_NEW,
@@ -36,15 +45,6 @@ enum state_enum {
     STATE_TAIL,
     STATE_READY,
     STATE_FINISH
-};
-
-// request flags (bitfield, assign powers of 2!)
-enum flags_enum {
-    FL_NONE =       0,
-    FL_CRLF =       1,
-    FL_CHUNKED =    2,
-    FL_CLOSE =      4,
-    FL_SHUTDOWN =   8
 };
 
 // request version
@@ -68,7 +68,7 @@ enum method_enum {
 };
 
 // memory flags
-enum memflags_enum {
+enum wbchain_flags_enum {
     MEM_FD   =      1,      // type is an FD
     MEM_PTR  =      2,      // type is a data pointer
     MEM_KEEP =      4,      // keep open/untouched when done
@@ -81,7 +81,7 @@ enum memflags_enum {
 // write buffer chain entry
 struct wbchain_struct {
     struct wbchain_struct *next;
-    enum memflags_enum f;
+    enum wbchain_flags_enum flags;
     int len;
     off_t offset;
     union { char *data; int fd; } payload;
@@ -97,27 +97,58 @@ typedef struct req_struct {
     struct wbchain_struct *wb;  // pointer to the head of the write buffer
     unsigned int rl, cl;        // total request length parsed, total body content length
     time_t time;                // last time the request was active
-    char *version, *method,
+    char *ver, *meth,
          *url, *query, *head,
          *body, *tail;          // request pointers into data buffer
-    enum state_enum s;          // state of this request
-    enum flags_enum f;          // flags for this request
-    enum version_enum v;        // HTTP version of request
-    enum method_enum m;         // enumerated method
+    enum state_enum state;      // state of this request
+    enum req_flags_enum flags;  // flags for this request
+    enum version_enum version;  // HTTP version of request
+    enum method_enum method;    // enumerated method
 } req;
 
-// special URI handler list entry
-struct handler_struct {
-    const char *url;
-    int (*handler)( req* );
+// dynamic file
+struct dynamic_content_struct {
+    int (*handler)( req*, void* );
+    void* userdata;
 };
 
-// embedded file list entry
-struct content_struct {
-    const char *url;
+// embedded file
+struct embedded_content_struct {
     const char *headers;
     const char *body;
     unsigned int len;
+};
+
+// flags for disk content
+enum config_flags_enum {
+    DISK_LIST_DIRS = 1
+};
+
+// disk file
+struct disk_content_struct {
+    const char *www_dir;
+    const char* dir_index;
+    enum disk_content_flags_enum flags;
+};
+
+// flags for content
+enum content_flags_enum {
+    CONT_EMBEDDED = 1,
+    CONT_DISK = 2,
+    CONT_DYNAMIC = 4,
+    CONT_STOP = 8,
+    CONT_PREFIX_MATCH = 16
+};
+
+// content list entry
+struct content_struct {
+    const char *url;
+    enum content_flags_enum flags;
+    union {
+        struct embedded_content_struct embedded;
+        struct dynamic_content_struct dynamic;
+        struct disk_content_struct disk;
+    } content;
 };
 
 // some common MIME types (note: extensions must be backwards for faster matching later!)
@@ -128,16 +159,13 @@ struct mimetype_struct {
 
 // flags for configuration
 enum config_flags_enum {
-    CONF_DIR_LIST = 1,
-    CONF_CLEAN_URL = 2
+    CONF_CLEAN_URL = 1
 };
 
 // server configuration
 struct server_config_struct {
     const char* unpriv_user;                    // unpriviliged user to drop to after binding if started as root
     const char* chroot;                         // directory to chroot into when running the server
-    const char* www_dir;                        // directory where to look for files (should end in / for safety)
-    const char* dir_index;                      // directory index file used when requesting a directory from disk
     enum config_flags_enum flags;               // yes/no flags
     const char* extra_headers;                  // extra headers to send with all replies
     const char* ip;                             // IP address of interface to bind to
@@ -148,8 +176,7 @@ struct server_config_struct {
     unsigned int max_connections;               // maximum number of total connections
     unsigned int max_client_conn;               // max number of connections per client
     unsigned int timeout;                       // timeout in seconds before idle connections are closed
-    const struct content_struct *contents;      // static embedded file content
-    const struct handler_struct *handlers;      // dynamic content handlers
+    const struct content_struct *contents;      // web server contents definitions
     const struct mimetype_struct *mimetypes;    // mapping extensions to mime types
 };
 

@@ -64,7 +64,7 @@ static const struct mimetype_struct mimetypes[] = {
     { "lmth.", "text/html" },
     { "oci.", "image/x-icon" },
 #endif
-    { NULL, NULL }
+    { NULL }
 };
 
 
@@ -78,8 +78,8 @@ static const struct mimetype_struct mimetypes[] = {
 #endif
 
 static const struct content_struct contents[] = {
-    { "/", "Content-Type: text/html\r\n" LM_HEADER,
-        "<!doctype html><html><head><title>New website</title></html><body><h1>Welcome</h1><p>This is your new webserver which seems to be set up correctly.</p><body></html>", 156 },
-    { NULL, NULL, NULL, 0 }
+    { "/", CONT_EMBEDDED | CONT_PREFIX_MATCH, { .embedded = { "Content-Type: text/html\r\n" LM_HEADER,
+        "<!doctype html><html><head><title>New website</title></html><body><h1>Welcome</h1><p>This is your new webserver which seems to be set up correctly.</p><body></html>", 156 } } },
+    { NULL }
 };
 #endif

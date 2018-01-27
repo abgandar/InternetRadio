@@ -61,7 +61,7 @@ extern const char _binary_easteregg_png_size;
 #endif
 
 // handle CGI queries
-int handle_ir_cgi( req *c )
+int handle_ir_cgi( req *c, void* userdata )
 {
     // open output buffer
     char *obuf = NULL;
@@ -103,12 +103,6 @@ int handle_ir_cgi( req *c )
     return SUCCESS;
 }
 
-// list of special request handlers
-static const struct handler_struct handlers[] = {
-    { "/cgi-bin/ir.cgi",    &handle_ir_cgi },
-    { NULL, NULL }
-};
-
 #ifdef TIMESTAMP
 #define LM_HEADER "ETag: " TIMESTAMP "\r\n"
 #else
@@ -117,19 +111,43 @@ static const struct handler_struct handlers[] = {
 
 // list of embedded files to serve directly
 static const struct content_struct contents[] = {
-    { "/",                  "Content-Type: text/html\r\n" LM_HEADER, &_binary_ir_html_start,          (unsigned int)&_binary_ir_html_size },
-    { "/ir.html",           "Content-Type: text/html\r\n" LM_HEADER, &_binary_ir_html_start,          (unsigned int)&_binary_ir_html_size },
-    { "/radio.ico",         "Content-Type: image/png\r\n" LM_HEADER, &_binary_radio_ico_start,        (unsigned int)&_binary_radio_ico_size },
-    { "/radio-0-75x.png",   "Content-Type: image/png\r\n" LM_HEADER, &_binary_radio_0_75x_png_start,  (unsigned int)&_binary_radio_0_75x_png_size },
-    { "/radio-1x.png",      "Content-Type: image/png\r\n" LM_HEADER, &_binary_radio_1x_png_start,     (unsigned int)&_binary_radio_1x_png_size },
-    { "/radio-2x.png",      "Content-Type: image/png\r\n" LM_HEADER, &_binary_radio_2x_png_start,     (unsigned int)&_binary_radio_2x_png_size },
-    { "/radio-2-6x.png",    "Content-Type: image/png\r\n" LM_HEADER, &_binary_radio_2_6x_png_start,   (unsigned int)&_binary_radio_2_6x_png_size },
-    { "/radio-4x.png",      "Content-Type: image/png\r\n" LM_HEADER, &_binary_radio_4x_png_start,     (unsigned int)&_binary_radio_4x_png_size },
-    { "/radio-5-3x.png",    "Content-Type: image/png\r\n" LM_HEADER, &_binary_radio_5_3x_png_start,   (unsigned int)&_binary_radio_5_3x_png_size },
+    { "/cgi-bin/ir.cgi",    CONT_DYNAMIC,       { .dynamic = { &handle_ir_cgi, NULL } } },
+    { "/",                  CONT_EMBEDDED,      {
+        .embedded = {       "Content-Type: text/html\r\n" LM_HEADER,    &_binary_ir_html_start,         (unsigned int)&_binary_ir_html_size } }
+    },
+    { "/ir.html",           CONT_EMBEDDED,      {
+        .embedded = {       "Content-Type: text/html\r\n" LM_HEADER,    &_binary_ir_html_start,         (unsigned int)&_binary_ir_html_size } }
+    },
+    { "/radio.ico",         CONT_EMBEDDED,      {
+        .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_ico_start,       (unsigned int)&_binary_radio_ico_size } }
+    },
+    { "/radio-0-75x.png",   CONT_EMBEDDED,      {
+        .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_0_75x_png_start, (unsigned int)&_binary_radio_0_75x_png_size } }
+    },
+    { "/radio-1x.png",      CONT_EMBEDDED,      {
+        .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_1x_png_start,    (unsigned int)&_binary_radio_1x_png_size } }
+    },
+    { "/radio-2x.png",      CONT_EMBEDDED,      {
+        .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_2x_png_start,    (unsigned int)&_binary_radio_2x_png_size } }
+    },
+    { "/radio-2-6x.png",    CONT_EMBEDDED,      {
+        .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_2_6x_png_start,  (unsigned int)&_binary_radio_2_6x_png_size } }
+    },
+    { "/radio-4x.png",      CONT_EMBEDDED,      {
+        .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_4x_png_start,    (unsigned int)&_binary_radio_4x_png_size } }
+    },
+    { "/radio-5-3x.png",    CONT_EMBEDDED,      {
+        .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_5_3x_png_start,  (unsigned int)&_binary_radio_5_3x_png_size } }
+    },
 #ifdef EASTEREGG
-    { "/hidden/easteregg",  "Content-Type: image/png\r\n" LM_HEADER, &_binary_easteregg_png_start,    (unsigned int)&_binary_easteregg_png_size },
+    { "/hidden/easteregg",  CONT_EMBEDDED,      {
+        .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_easteregg_png_start,   (unsigned int)&_binary_easteregg_png_size } }
+    },
 #endif
-    { NULL, NULL, NULL, 0 }
+    { "/",                  CONT_DISK | CONT_PREFIX_MATCH,      {
+        .disk = { "/var/www/html/", "index.html", DISK_LIST_DIRS } }
+    },
+    { NULL }
 };
 
 // Main HTTP server program entry point
@@ -141,7 +159,6 @@ int main( int argc, char *argv[] )
     http_server_config_defaults( &config );
     config.unpriv_user = "mpd";
     config.contents = contents;
-    config.handlers = handlers;
     config.dir_index = "ir.html";
     http_server_config_argv( &argc, &argv, &config );
 

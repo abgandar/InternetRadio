@@ -121,8 +121,8 @@ static inline void FREE_REQ( req *c )
 static inline void RESET_REQ( req *c )
 {
     c->rl = c->cl = 0;
-    c->version = c->method = c->url = c->query = c->head = c->body = c->tail = NULL;
-    c->s = c->f = c->v = c->m = 0;
+    c->ver = c->meth = c->url = c->query = c->head = c->body = c->tail = NULL;
+    c->state = c->flags = c->version = c->method = 0;
 }
 
 // calculate total memory size of write buffers
@@ -306,7 +306,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
                 perror( "malloc" );
                 exit( EXIT_FAILURE );
             }
-            wbc->f = MEM_COPY;
+            wbc->flags = MEM_COPY;
             wbc->payload.data = (char*)wbc + sizeof(struct wbchain_struct);
             memcpy( wbc->payload.data, iov[i].iov_base + rc, l );
             debug_printf( "===> buffered %d bytes (of %d) by copying\n", l, iov[i].iov_len );
@@ -320,11 +320,11 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
                 perror( "malloc" );
                 exit( EXIT_FAILURE );
             }
-            wbc->f = flags[i] & (MEM_KEEP | MEM_FREE);      // sanitize user supplied flags
+            wbc->flags = flags[i] & (MEM_KEEP | MEM_FREE);      // sanitize user supplied flags
             wbc->payload.data = iov[i].iov_base + rc;
             debug_printf( "===> Buffered %d bytes (of %d)\n", l, iov[i].iov_len );
         }
-        wbc->f |= MEM_PTR;
+        wbc->flags |= MEM_PTR;
         wbc->len = l;
         wbc->offset = 0;
         wbc->next = NULL;
@@ -371,7 +371,7 @@ int bsendfile( req *c, int fd, off_t offset, int size, const enum memflags_enum 
         exit( EXIT_FAILURE );
     }
     // fill buffer
-    wbc->f = (flag & (FD_CLOSE | FD_KEEP)) | MEM_FD;    // sanitize user supplied flags
+    wbc->flags = (flag & (FD_CLOSE | FD_KEEP)) | MEM_FD;    // sanitize user supplied flags
     wbc->payload.fd = fd;
     wbc->len = size-rc;
     wbc->offset = offset;
@@ -410,7 +410,7 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
     flags[0] = MEM_FREE;
     iov[0].iov_len = asprintf( (char** restrict) &(iov[0].iov_base),
                                "HTTP/1.%c %u %s\r\n%s%sContent-Length: %u\r\nDate: %s\r\n\r\n",
-                              c->v == V_10 ? '0' : '1', code, get_response( code ),
+                              c->version == V_10 ? '0' : '1', code, get_response( code ),
                               conf.extra_headers ? conf.extra_headers : "",
                               headers ? headers : "", bodylen, str );
 
@@ -418,51 +418,24 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
     flags[1] = flag;
     iov[1].iov_base = (char*)body;
     iov[1].iov_len = bodylen;
-    return bwrite( c, iov, (body && (c->m != M_HEAD) && (bodylen > 0)) ? 2 : 1, flags );
-}
-
-// handle a query for a special dynamically generated file
-static int handle_dynamic_file( req *c )
-{
-    if( !conf.handlers )
-        return FILE_NOT_FOUND;
-
-    // find matching url
-    unsigned int i;
-    for( i = 0; conf.handlers[i].url && strcmp( c->url, conf.handlers[i].url ); i++ );
-
-    if( conf.handlers[i].handler )
-        return conf.handlers[i].handler( c );
-    
-    return FILE_NOT_FOUND;
+    return bwrite( c, iov, (body && (c->method != M_HEAD) && (bodylen > 0)) ? 2 : 1, flags );
 }
 
 // handle a file query for an embedded file
-static int handle_embedded_file( req *c )
+static int handle_embedded_file( req *c, const struct content_struct *cs )
 {
-    if( !conf.contents )
-        return FILE_NOT_FOUND;
-
-    unsigned int i;
-    for( i = 0; conf.contents[i].url && strcmp( c->url, conf.contents[i].url ); i++ );
-
-    if( conf.contents[i].url )
-    {
 #ifdef TIMESTAMP
-        const char *inm = get_header_field( c, "If-None-Match:", 0 );
-        if( inm && strcmp( inm, TIMESTAMP ) == 0 )
-        {
-            const int rc = write_response( c, HTTP_NOT_MODIFIED, conf.contents[i].headers, NULL, 0, MEM_KEEP );
-            debug_printf( "===> ETag %s matches on %s\n", TIMESTAMP, c->url );
-            return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
-        }
-#endif
-        const int rc = write_response( c, HTTP_OK, conf.contents[i].headers, conf.contents[i].body, conf.contents[i].len, MEM_KEEP );
-        debug_printf( "===> Send embedded file %s (ETag %s)\n", c->url, TIMESTAMP );
+    const char *inm = get_header_field( c, "If-None-Match:", 0 );
+    if( inm && strcmp( inm, TIMESTAMP ) == 0 )
+    {
+        const int rc = write_response( c, HTTP_NOT_MODIFIED, cs->content.embedded.headers, NULL, 0, MEM_KEEP );
+        debug_printf( "===> ETag %s matches on %s\n", TIMESTAMP, c->url );
         return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
     }
-
-    return FILE_NOT_FOUND;
+#endif
+    const int rc = write_response( c, HTTP_OK, cs->content.embedded.headers, cs->content.embedded.body, cs->content.embedded.len, MEM_KEEP );
+    debug_printf( "===> Send embedded file %s (ETag %s)\n", c->url, TIMESTAMP );
+    return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
 }
 
 // comparison function for qsort
@@ -547,14 +520,14 @@ static int list_directory_contents( req *c, const char *fn )
 }
 
 // handle a disk file query
-static int handle_disk_file( req *c )
+static int handle_disk_file( req *c, const struct content_struct *cs )
 {
-    if( !conf.www_dir || (strstr( c->url, ".." ) != NULL) )
+    if( !cs->content.disk.www_dir )
         return FILE_NOT_FOUND;
 
-    const int len_www_dir = strlen( conf.www_dir ),
+    const int len_www_dir = strlen( cs->content.disk.www_dir ),
               len_url = strlen( c->url ),
-              len_dir_index = strlen( conf.dir_index );
+              len_dir_index = cs->content.disk.dir_index ? strlen( cs->content.disk.dir_index ) : 0;
     if( len_www_dir + len_url + len_dir_index >= PATH_MAX )
         return FILE_NOT_FOUND;
 
@@ -580,17 +553,17 @@ static int handle_disk_file( req *c )
         else if( S_ISDIR( sb.st_mode ) )
         {
             // this is a directory, try with dir-index file first
-            if( conf.dir_index )
+            if( cs->content.disk.dir_index )
             {
                 fn[len_www_dir + len_url] = '/';
-                memcpy( fn + len_www_dir + len_url + 1, conf.dir_index, len_dir_index );
+                memcpy( fn + len_www_dir + len_url + 1, cs->content.disk.dir_index, len_dir_index );
                 fn[len_www_dir + len_url + len_dir_index + 1] = '\0';
                 fd = open( fn, O_RDONLY );
                 if( fd >= 0 ) fstat( fd, &sb );
                 debug_printf( "===> Trying to open file: %s\n", fn );
             }
             // if that didn't work, try to send the directory content if enabled
-            if( (fd < 0) && (conf.flags & CONF_DIR_LIST) )
+            if( (fd < 0) && (cs->content.disk.flags & DISK_LIST_DIRS) )
             {
                 fn[len_www_dir + len_url] = '\0';
                 return list_directory_contents( c, fn );
@@ -632,7 +605,7 @@ static int handle_disk_file( req *c )
         return CLOSE_SOCKET;
     }
 
-    if( c->m != M_HEAD )
+    if( c->method != M_HEAD )
         bsendfile( c, fd, 0, sb.st_size, FD_CLOSE );
     else
         close( fd );
@@ -646,7 +619,7 @@ static int handle_disk_file( req *c )
 static int finish_request( req *c )
 {
     // close connection if no keep-alive
-    if( c->v == V_10 || c->f & FL_CLOSE )
+    if( c->version == V_10 || c->flags & REQ_CLOSE )
         return CLOSE_SOCKET;
 
     // remove handled data from request buffer, ready for next request (allowing pipelining, keep-alive)
@@ -666,36 +639,61 @@ static int finish_request( req *c )
 // handle request after it was completely read
 static int handle_request( req *c )
 {
-    int rc;
+    int rc = FILE_NOT_FOUND;
 
-    if( c->m != M_GET && c->m != M_POST && c->m != M_HEAD )
+    if( c->method != M_GET && c->method != M_POST && c->method != M_HEAD )
     {
         if( write_response( c, HTTP_NOT_ALLOWED, NULL, "405 - Not allowed", 0, MEM_KEEP ) == BUFFER_OVERFLOW )
             return CLOSE_SOCKET;
+        rc = SUCCESS;
     }
     else
     {
-        // try different mechanisms in order
-        if( (rc = handle_dynamic_file( c ) ) == CLOSE_SOCKET )
-            return CLOSE_SOCKET;
-        else if( rc == FILE_NOT_FOUND )
-        {
-            if( (rc = handle_embedded_file( c )) == CLOSE_SOCKET )
-                return CLOSE_SOCKET;
-            else if( rc == FILE_NOT_FOUND )
+        // walk through the list of content
+        if( conf.contents )
+            for( unsigned int i = 0; (rc == FILE_NOT_FOUND) && conf.contents[i].url; i++ )
             {
-                if( (rc = handle_disk_file( c )) == CLOSE_SOCKET )
-                    return CLOSE_SOCKET;
-                else if( rc == FILE_NOT_FOUND )
+                // check URL
+                if( conf.contents[i].flags & CONT_PREFIX_MATCH )
                 {
-                    if( write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0, MEM_KEEP ) == BUFFER_OVERFLOW )
-                        return CLOSE_SOCKET;
+                    if( strncmp( conf.contents[i].url, c->url, strlen( conf.contents[i].url ) ) != 0 ) continue;
                 }
+                else
+                {
+                    if( strcmp( conf.contents[i].url, c->url ) != 0 ) continue;
+                }
+
+                // invoke each handler
+                if( conf.contents[i].flags & CONT_EMBEDDED )
+                {
+                    rc = handle_embedded_file( c, &conf.contents[i] );
+                }
+                else if( conf.contents[i].flags & CONT_DISK )
+                {
+                    rc = handle_disk_file( c, &conf.contents[i] );
+                }
+                else if( conf.contents[i].flags & CONT_DYNAMIC )
+                {
+                    if( conf.contents[i].content.dynamic.handler )
+                        rc = conf.contents[i].content.dynamic.handler( c, conf.contents[i].content.dynamic.userdata );
+                }
+
+                // done?
+                if( conf.contents[i].flags & CONT_STOP )
+                    break;
             }
-        }
     }
 
-    c->s = STATE_FINISH;
+    // handle errors
+    if( rc == CLOSE_SOCKET )
+        return CLOSE_SOCKET;
+    else if( rc == FILE_NOT_FOUND )
+    {
+        if( write_response( c, HTTP_NOT_FOUND, NULL, "404 - Not found", 0, MEM_KEEP ) == BUFFER_OVERFLOW )
+            return CLOSE_SOCKET;
+    }
+
+    c->state = STATE_FINISH;
     return SUCCESS;
 }
 
@@ -703,20 +701,20 @@ static int handle_request( req *c )
 static int read_tail( req *c )
 {
     // did we finish reading the tailers?
-    char *tmp = strstr( c->tail, (c->f & FL_CRLF) ? "\r\n\r\n" : "\n\n" );
+    char *tmp = strstr( c->tail, (c->flags & REQ_CRLF) ? "\r\n\r\n" : "\n\n" );
     if( tmp == NULL )
     {
         // in case no tailers were sent at all there's only one empty line
-        if( strncmp( c->tail, (c->f & FL_CRLF) ? "\r\n" : "\n", 1+(c->f & FL_CRLF) ) == 0 )
+        if( strncmp( c->tail, (c->flags & REQ_CRLF) ? "\r\n" : "\n", 1+(c->flags & REQ_CRLF) ) == 0 )
         {
             tmp = c->tail;
-            c->rl = tmp - c->data + 1 + (c->f & FL_CRLF);
+            c->rl = tmp - c->data + 1 + (c->flags & REQ_CRLF);
         }
         else
             return READ_DATA;           // need more data
     }
     else
-        c->rl = tmp - c->data + 2 + 2*(c->f & FL_CRLF);
+        c->rl = tmp - c->data + 2 + 2*(c->flags & REQ_CRLF);
 
     debug_printf( "===> Trailers:\n" );
 
@@ -725,8 +723,8 @@ static int read_tail( req *c )
     while( p )
     {
         // find end of current trailer and zero terminate it => p points to current trailer line
-        tmp = strstr( p, (c->f & FL_CRLF) ? "\r\n" : "\n" );    // always finds something as we checked for existing empty line above
-        tmp[0] = tmp[c->f & FL_CRLF] = '\0';
+        tmp = strstr( p, (c->flags & REQ_CRLF) ? "\r\n" : "\n" );    // always finds something as we checked for existing empty line above
+        tmp[0] = tmp[c->flags & REQ_CRLF] = '\0';
         if( !*p ) break;    // found empty trailer => done reading trailers
         if( *p == ' ' || *p == '\t' )
         {
@@ -737,25 +735,25 @@ static int read_tail( req *c )
             *end = '\0';       // trim white space at end and replace by NUL
         debug_printf( "     %s\n", p );
         // point p to next trailer
-        p = tmp + 1 + (c->f & FL_CRLF);
+        p = tmp + 1 + (c->flags & REQ_CRLF);
     }
 
-    c->s = STATE_READY;
+    c->state = STATE_READY;
     return SUCCESS;
 }
 
 // parse request body
 static int read_body( req *c )
 {
-    if( c->f & FL_CHUNKED )
+    if( c->flags & REQ_CHUNKED )
     {
         // Read as many chunks as there are
         while( true )
         {
-            char *tmp = strstr( c->data + c->rl, (c->f & FL_CRLF) ? "\r\n" : "\n" );
+            char *tmp = strstr( c->data + c->rl, (c->flags & REQ_CRLF) ? "\r\n" : "\n" );
             if( !tmp ) return READ_DATA;
             // get next chunk length
-            tmp += 1 + (c->f & FL_CRLF);
+            tmp += 1 + (c->flags & REQ_CRLF);
             char *perr;
             unsigned int chunklen = strtol( c->data + c->rl, &perr, 16 );
             if( *perr != '\n' && *perr != '\r' && *perr != ';' )
@@ -770,22 +768,22 @@ static int read_body( req *c )
                 break;
             }
             // wait till the entire chunk is here
-            if( c->len < (tmp - c->data + chunklen + 1 + (c->f & FL_CRLF)) )
+            if( c->len < (tmp - c->data + chunklen + 1 + (c->flags & REQ_CRLF)) )
                 return READ_DATA;
             debug_printf( "===> Reading chunk size %d\n", chunklen );
             // copy the chunk back to the end of the body
             memmove( c->body + c->cl, tmp, chunklen );
             c->cl += chunklen;
-            c->rl = tmp - c->data + chunklen + 1 + (c->f & FL_CRLF);   // skip the terminating CRLF
+            c->rl = tmp - c->data + chunklen + 1 + (c->flags & REQ_CRLF);   // skip the terminating CRLF
         }
         c->tail = c->data+c->rl;
-        c->s = STATE_TAIL;
+        c->state = STATE_TAIL;
     }
     else
     {
         // Normal read of given content length
         if( c->len < c->rl ) return READ_DATA;
-        c->s = STATE_READY;
+        c->state = STATE_READY;
     }
     debug_printf( "===> Body (%d bytes):\n%.*s\n", c->cl, c->cl, c->body );
 
@@ -796,20 +794,20 @@ static int read_body( req *c )
 static int read_head( req *c )
 {
     // did we finish reading the headers?
-    char *tmp = strstr( c->head, (c->f & FL_CRLF) ? "\r\n\r\n" : "\n\n" );
+    char *tmp = strstr( c->head, (c->flags & REQ_CRLF) ? "\r\n\r\n" : "\n\n" );
     if( tmp == NULL )
     {
         // in case no headers were sent at all there's only one empty line
-        if( strncmp( c->head, (c->f & FL_CRLF) ? "\r\n" : "\n", 1+(c->f & FL_CRLF) ) == 0 )
+        if( strncmp( c->head, (c->flags & REQ_CRLF) ? "\r\n" : "\n", 1+(c->flags & REQ_CRLF) ) == 0 )
         {
             tmp = c->head;
-            c->body = tmp + 1 + (c->f & FL_CRLF);    // this is where the body starts (1 or 2 forward)
+            c->body = tmp + 1 + (c->flags & REQ_CRLF);    // this is where the body starts (1 or 2 forward)
         }
         else
             return READ_DATA;           // need more data
     }
     else
-        c->body = tmp + 2*(1 + (c->f & FL_CRLF));      // this is where the body starts (2 or 4 forward)
+        c->body = tmp + 2*(1 + (c->flags & REQ_CRLF));      // this is where the body starts (2 or 4 forward)
     c->rl = c->body - c->data;  // request length so far (not including body)
 
     debug_printf( "===> Headers:\n" );
@@ -819,8 +817,8 @@ static int read_head( req *c )
     while( p )
     {
         // find end of current header and zero terminate it => p points to current header line
-        tmp = strstr( p, (c->f & FL_CRLF) ? "\r\n" : "\n" );    // always finds something as we checked for existing empty line above
-        tmp[0] = tmp[c->f & FL_CRLF] = '\0';
+        tmp = strstr( p, (c->flags & REQ_CRLF) ? "\r\n" : "\n" );    // always finds something as we checked for existing empty line above
+        tmp[0] = tmp[c->flags & REQ_CRLF] = '\0';
         if( !*p ) break;    // found empty header => done reading headers
         if( *p == ' ' || *p == '\t' )
         {
@@ -859,7 +857,7 @@ static int read_head( req *c )
                 write_response( c, HTTP_NOT_IMPLEMENTED, NULL, "501 - requested Transfer-Encoding not implemented", 0, MEM_KEEP );
                 return CLOSE_SOCKET;
             }
-            c->f |= FL_CHUNKED;
+            c->flags |= REQ_CHUNKED;
         }
         else if( strncasecmp( p, "Host:", 5 ) == 0 )
         {
@@ -875,21 +873,21 @@ static int read_head( req *c )
         {
             const char *val = p+11+strspn( p+11, " \t" );
             if( strcasecmp( val, "close" ) == 0 )
-                c->f |= FL_CLOSE;
+                c->flags |= REQ_CLOSE;
         }
         // point p to next header
-        p = tmp + 1 + (c->f & FL_CRLF);
+        p = tmp + 1 + (c->flags & REQ_CRLF);
     }
 
     // check if host header has been received
-    if( c->v == V_11 && !host )
+    if( c->version == V_11 && !host )
     {
         // c.f. https://tools.ietf.org/html/rfc7230
         write_response( c, HTTP_BAD_REQUEST, NULL, "400 - missing Host headers", 0, MEM_KEEP );
         return CLOSE_SOCKET;
     }
 
-    c->s = STATE_BODY;
+    c->state = STATE_BODY;
     return SUCCESS;
 }
 
@@ -930,26 +928,26 @@ static int read_request( req *c )
     data += strspn( data, "\r\n" );
 
     // Try to read the request line
-    c->f |= FL_CRLF;
+    c->flags |= REQ_CRLF;
     char *tmp = strstr( data, "\r\n" );
     if( tmp == NULL )
     {
         tmp = strstr( data, "\n" );
         if( tmp == NULL )
             return READ_DATA;     // we need more data
-        c->f &= ~FL_CRLF;
+        c->flags &= ~REQ_CRLF;
     }
 
     // zero terminate request line and mark header position
     *tmp = '\0';
-    c->head = tmp+1+(c->f & FL_CRLF);  // where the headers begin
+    c->head = tmp+1+(c->flags & REQ_CRLF);  // where the headers begin
 
     // parse request line
     tmp = data;
     debug_printf( "===> Request:\n%s\n", tmp );
     // method
     tmp += strspn( data, " \t" );
-    c->method = tmp;
+    c->meth = tmp;
     tmp += strcspn( tmp, " \t" );
     if( *tmp )
     {
@@ -968,7 +966,7 @@ static int read_request( req *c )
     }
     // version
     tmp += strspn( tmp, " \t" );
-    c->version = tmp;
+    c->ver = tmp;
 
     // split uri into url and query sting
     tmp = strrchr( c->url, '?' );
@@ -983,43 +981,43 @@ static int read_request( req *c )
         clean_url( c->url );
 
     // identify method
-    if( strcmp( c->method, "GET" ) == 0 )
-        c->m = M_GET;
-    else if( strcmp( c->method, "POST" ) == 0 )
-        c->m = M_POST;
-    else if( strcmp( c->method, "HEAD" ) == 0 )
-        c->m = M_HEAD;
-    else if( strcmp( c->method, "OPTIONS" ) == 0 )
-        c->m = M_OPTIONS;
-    else if( strcmp( c->method, "PUT" ) == 0 )
-        c->m = M_PUT;
-    else if( strcmp( c->method, "DELETE" ) == 0 )
-        c->m = M_DELETE;
-    else if( strcmp( c->method, "TRACE" ) == 0 )
-        c->m = M_TRACE;
-    else if( strcmp( c->method, "CONNECT" ) == 0 )
-        c->m = M_CONNECT;
+    if( strcmp( c->meth, "GET" ) == 0 )
+        c->method = M_GET;
+    else if( strcmp( c->meth, "POST" ) == 0 )
+        c->method = M_POST;
+    else if( strcmp( c->meth, "HEAD" ) == 0 )
+        c->method = M_HEAD;
+    else if( strcmp( c->meth, "OPTIONS" ) == 0 )
+        c->method = M_OPTIONS;
+    else if( strcmp( c->meth, "PUT" ) == 0 )
+        c->method = M_PUT;
+    else if( strcmp( c->meth, "DELETE" ) == 0 )
+        c->method = M_DELETE;
+    else if( strcmp( c->meth, "TRACE" ) == 0 )
+        c->method = M_TRACE;
+    else if( strcmp( c->meth, "CONNECT" ) == 0 )
+        c->method = M_CONNECT;
     else
-        c->m = M_UNKNOWN;
+        c->method = M_UNKNOWN;
 
     // identify version
-    if( strcmp( c->version, "HTTP/1.1" ) == 0 )
-        c->v = V_11;
-    else if( strcmp( c->version, "HTTP/1.0" ) == 0 )
-        c->v = V_10;
+    if( strcmp( c->ver, "HTTP/1.1" ) == 0 )
+        c->version = V_11;
+    else if( strcmp( c->ver, "HTTP/1.0" ) == 0 )
+        c->version = V_10;
     else
-        c->v = V_UNKNOWN;
+        c->version = V_UNKNOWN;
 
-    debug_printf( "===> Version: %s\tMethod: %s\tURL: %s\tQuery: %s\n", c->version, c->method, c->url, c->query );
+    debug_printf( "===> Version: %s\tMethod: %s\tURL: %s\tQuery: %s\n", c->ver, c->meth, c->url, c->query );
 
     // does it look like a valid request?
-    if( c->v == V_UNKNOWN || c->m == M_UNKNOWN )
+    if( c->version == V_UNKNOWN || c->method == M_UNKNOWN )
     {
         write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request", 0, MEM_KEEP );
         return CLOSE_SOCKET;  // garbage request received, drop this connection
     }
 
-    c->s = STATE_HEAD;
+    c->state = STATE_HEAD;
     return SUCCESS;
 }
 
@@ -1031,7 +1029,7 @@ static int parse_data( req *c )
     char *pcc, cc;
 
     while( !rc )
-        switch( c->s )
+        switch( c->state )
         {
             case STATE_NEW:
                 rc = read_request( c );
@@ -1104,7 +1102,7 @@ static int read_from_client( req *c )
 
     // read data
     int rc = READ_DATA;
-    const int nbytes = read( c->fd, c->data+c->len, len );
+    const int nbytes = read( c->flagsd, c->data+c->len, len );
     if( nbytes == 0 )
         rc = CLOSE_SOCKET;  // nothing to read from this socket, must be closed => request finished
     else if( nbytes < 0 )
@@ -1123,7 +1121,7 @@ static int read_from_client( req *c )
     // figure out what action to take next
     if( rc == CLOSE_SOCKET )
     {
-        c->f |= FL_SHUTDOWN;
+        c->flags |= REQ_SHUTDOWN;
         return WRITE_DATA;          // flush write buffer then shutdown connection
     }
     else if( c->wb )
@@ -1138,7 +1136,7 @@ static int write_to_client( req *c )
     int rc;
     while( c->wb )
     {
-        if( c->wb->f & MEM_PTR )
+        if( c->wb->flags & MEM_PTR )
         {
             // try to write data
             rc = write( c->fd, c->wb->payload.data + c->wb->offset, c->wb->len );
@@ -1155,9 +1153,9 @@ static int write_to_client( req *c )
             c->wb->len -= rc;
             if( c->wb->len > 0 )
                 return WB_SIZE( c ) > conf.max_wb_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
-            if( c->wb->f & MEM_FREE ) free( c->wb->payload.data );
+            if( c->wb->flags & MEM_FREE ) free( c->wb->payload.data );
         }
-        else if( c->wb->f & MEM_FD )
+        else if( c->wb->flags & MEM_FD )
         {
             // try to send file
             rc = sendfile( c->fd, c->wb->payload.fd, &(c->wb->offset), c->wb->len );
@@ -1173,7 +1171,7 @@ static int write_to_client( req *c )
             c->wb->len -= rc;
             if( c->wb->len > 0 )
                 return WB_SIZE( c ) > conf.max_wb_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
-            if( c->wb->f & FD_CLOSE ) close( c->wb->payload.fd );
+            if( c->wb->flags & FD_CLOSE ) close( c->wb->payload.fd );
         }
 
         // finished this one. Free buffer and move on
@@ -1183,7 +1181,7 @@ static int write_to_client( req *c )
     }
 
     // everything written successfully
-    return (c->f & FL_SHUTDOWN) ? CLOSE_SOCKET : READ_DATA;
+    return (c->flags & REQ_SHUTDOWN) ? CLOSE_SOCKET : READ_DATA;
 }
 
 // set server config to defaults
@@ -1192,9 +1190,7 @@ void http_server_config_defaults( struct server_config_struct *config )
     *config = (struct server_config_struct){
         UNPRIV_USER,
         CHROOT_DIR,
-        WWW_DIR,
-        DIR_INDEX,
-        CONF_DIR_LIST | CONF_CLEAN_URL,
+        CONF_CLEAN_URL,
         EXTRA_HEADERS,
         SERVER_IP,
         NULL,
@@ -1211,7 +1207,6 @@ void http_server_config_defaults( struct server_config_struct *config )
 #else
         NULL,
 #endif
-        NULL,
         mimetypes
     };
 }
@@ -1223,8 +1218,6 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
     const struct option longopts[] = {
         { "maxconn",    required_argument,  NULL,   'C' },
         { "chroot",     required_argument,  NULL,   'c' },
-        { "dirindex",   required_argument,  NULL,   'd' },
-        { "dirlist",    required_argument,  NULL,   'D' },
         { "ip",         required_argument,  NULL,   'i' },
         { "ip6",        required_argument,  NULL,   'I' },
         { "maxbodylen", required_argument,  NULL,   'm' },
@@ -1232,13 +1225,12 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
         { "port",       required_argument,  NULL,   'p' },
         { "timeout",    required_argument,  NULL,   't' },
         { "user",       required_argument,  NULL,   'u' },
-        { "www",        required_argument,  NULL,   'w' },
         { NULL,         0,                  NULL,    0  }
     };
 
     // process options
     int ch = 0;
-    while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "C:c:d:D:i:I:m:M:p:t:u:w:", longopts, NULL )) != -1) )
+    while ( (ch != -1) && ((ch = getopt_long( *argc, *argv, "C:c:i:I:m:M:p:t:u:", longopts, NULL )) != -1) )
         switch( ch )
         {
             case 'C':
@@ -1248,14 +1240,6 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
                 
             case 'c':
                 config->chroot = (*optarg ? optarg : NULL);
-                break;
-
-            case 'd':
-                config->dir_index = (*optarg ? optarg : NULL);
-                break;
-
-            case 'D':
-                config->flags |= ((*optarg == '1') || (*optarg == 't') || (*optarg == 'T') || (*optarg == 'y') || (*optarg == 'Y')) ? CONF_DIR_LIST : 0;
                 break;
 
             case 'i':
@@ -1284,10 +1268,6 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
 
             case 'u':
                 config->unpriv_user = (*optarg ? optarg : NULL);
-                break;
-
-            case 'w':
-                config->www_dir = (*optarg ? optarg : NULL);
                 break;
 
             default:
