@@ -1310,10 +1310,6 @@ int http_server_main( const struct server_config_struct *config )
     setenv( "TZ", "GMT", true );
     setlocale( LC_ALL, "C" );
 
-#if DEBUG>1
-    malloc_info( 0, stderr );
-#endif
-
     // connect signal handlers
     struct sigaction sa_new;
     sa_new.sa_handler = handle_signal;
@@ -1323,10 +1319,6 @@ int http_server_main( const struct server_config_struct *config )
     sigaction( SIGTERM, &sa_new, NULL );
     sa_new.sa_handler = SIG_IGN;
     sigaction( SIGPIPE, &sa_new, NULL );
-
-#if DEBUG>1
-    malloc_info( 0, stderr );
-#endif
 
     // block signals temporarily (re-enabled only in pselect)
     sigset_t sset_disabled, sset_enabled;
@@ -1339,10 +1331,6 @@ int http_server_main( const struct server_config_struct *config )
 
     // get and set up server socket
     int serverSocket = -1, serverSocket6 = -1;
-
-#if DEBUG>1
-    malloc_info( 0, stderr );
-#endif
 
     if( conf.ip )
     {
@@ -1404,10 +1392,6 @@ int http_server_main( const struct server_config_struct *config )
         exit( EXIT_FAILURE );
     }
 
-#if DEBUG>1
-    malloc_info( 0, stderr );
-#endif
-
     // init stuff we can only do as root
     if( (geteuid( ) == 0) && (conf.unpriv_user || conf.chroot) )
     {
@@ -1457,6 +1441,10 @@ int http_server_main( const struct server_config_struct *config )
             debug_printf( "===> Dropped priviliges to user %s (II)\n", conf.unpriv_user );
         }
     }
+
+#if DEBUG>1
+    malloc_info( 0, stderr );
+#endif
 
     // initialize poll structures
     req *reqs = malloc( conf.max_connections*sizeof(req) );
