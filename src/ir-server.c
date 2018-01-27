@@ -694,7 +694,7 @@ static int handle_request( req *c )
                 // check Host
                 debug_printf( "===> Hosts: \"%s\" \"%s\"\n", c->host ? c->host : "", conf.contents[i].host ? conf.contents[i].host : "" );
                 if( conf.contents[i].host && c->host && !strcmp( conf.contents[i].host, c->host ) ) continue;
-                debug_printf( "     match\n", );
+                debug_printf( "     match\n" );
 
                 // check URL
                 if( conf.contents[i].flags & CONT_PREFIX_MATCH )
