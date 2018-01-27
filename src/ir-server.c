@@ -1597,7 +1597,7 @@ int http_server_main( const struct server_config_struct *config )
     // shut all connections down hard
     debug_printf( "===> Exiting\n" );
     if( serverSocket >= 0 ) close( serverSocket );
-    if( serverSocket6 >= 0) close( serverSocket );
+    if( serverSocket6 >= 0) close( serverSocket6 );
     for( unsigned int j = 0; j < conf.max_connections; j++ )
         if( fds[j].fd >= 0 )
         {

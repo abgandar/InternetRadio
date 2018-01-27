@@ -147,5 +147,10 @@ int main( int argc, char *argv[] )
 
     // clean up
     disconnectMPD( );
+
+#if DEBUG>1
+    malloc_info( 0, stderr );
+#endif
+
     return rc;
 }
