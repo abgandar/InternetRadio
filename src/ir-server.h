@@ -120,7 +120,7 @@ struct embedded_content_struct {
 };
 
 // flags for disk content
-enum config_flags_enum {
+enum disk_content_flags_enum {
     DISK_LIST_DIRS = 1
 };
 
@@ -194,7 +194,7 @@ int http_server_main( const struct server_config_struct *config );
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
 // flag is a memory flag for the body, see bwrite.
-int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen, const enum memflags_enum flag );
+int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen, const enum wbchain_flags_enum flag );
 
 // get matching header value from the request without leading whitespace, skipping skip entries (or NULL if not found)
 // name must be of the form "Date:" (including colon)

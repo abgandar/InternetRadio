@@ -131,7 +131,7 @@ static unsigned int WB_SIZE( const req *c )
     unsigned int buflen = 0;
 
     for( struct wbchain_struct *last = c->wb; last; last = last->next )
-        if( last->f & MEM_PTR )
+        if( last->flags & MEM_PTR )
             buflen += last->len;
 
     return buflen;
@@ -250,7 +250,7 @@ const char* get_header_field( const req *c, const char* name, unsigned int skip 
 // flags is an array of the same length as iov containing memory specifiers for each buffer
 // MEM_KEEP means the buffer is always valid, MEM_FREE means the buffer will be free()ed after use, and
 // MEM_COPY means the buffer will be copied internally. If NULL, the safe option of MEM_COPY is assumed for all buffers.
-int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum *flags )
+int bwrite( req *c, const struct iovec *iov, int niov, const enum wbchain_flags_enum *flags )
 {
     // total length of data to write
     int len = 0, rc = 0;
@@ -276,9 +276,9 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum memflags_enum 
     struct wbchain_struct *last;
     int buflen = 0;
     for( last = c->wb; last && last->next; last = last->next )
-        if( last->f & MEM_PTR )
+        if( last->flags & MEM_PTR )
             buflen += last->len;
-    if( last && (last->f & MEM_PTR) ) buflen += last->len;
+    if( last && (last->flags & MEM_PTR) ) buflen += last->len;
     if( buflen + len - rc > 2*conf.max_wb_len )
     {
         debug_printf( "===> Output buffer overflow\n" );
@@ -1102,7 +1102,7 @@ static int read_from_client( req *c )
 
     // read data
     int rc = READ_DATA;
-    const int nbytes = read( c->flagsd, c->data+c->len, len );
+    const int nbytes = read( c->fd, c->data+c->len, len );
     if( nbytes == 0 )
         rc = CLOSE_SOCKET;  // nothing to read from this socket, must be closed => request finished
     else if( nbytes < 0 )
