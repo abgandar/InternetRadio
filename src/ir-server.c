@@ -42,6 +42,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <errno.h>
+#include <malloc.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
@@ -1152,7 +1153,7 @@ static int write_to_client( req *c )
             c->wb->len -= rc;
             if( c->wb->len > 0 )
                 return WB_SIZE( c ) > conf.max_wb_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
-            if( c->wb->f & (MEM_FREE | MEM_COPY) ) free( c->wb->payload.data );
+            if( c->wb->f & MEM_FREE ) free( c->wb->payload.data );
         }
         else if( c->wb->f & MEM_FD )
         {
@@ -1599,6 +1600,12 @@ int http_server_main( const struct server_config_struct *config )
             close( fds[j].fd );
             FREE_REQ( &reqs[j] );
         }
+    free( fds );
+    free( reqs );
+
+#ifdef DEBUG
+    malloc_info( 0, stderr );
+#endif
 
     return SUCCESS;
 }
