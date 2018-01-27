@@ -692,9 +692,9 @@ static int handle_request( req *c )
             for( unsigned int i = 0; (rc == FILE_NOT_FOUND) && conf.contents[i].url; i++ )
             {
                 // check Host
-                debug_printf( "===> Hosts: \"%s\"\n", c->host ? c->host : "" );
+                debug_printf( "===> Hosts: \"%s\" \"%s\"\n", c->host ? c->host : "", conf.contents[i].host ? conf.contents[i].host : "" );
                 if( conf.contents[i].host && c->host && !strcmp( conf.contents[i].host, c->host ) ) continue;
-                debug_printf( "     matches: \"%s\"\n", conf.contents[i].host ? conf.contents[i].host : "" );
+                debug_printf( "     match\n", );
 
                 // check URL
                 if( conf.contents[i].flags & CONT_PREFIX_MATCH )
