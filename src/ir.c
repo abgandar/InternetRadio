@@ -145,7 +145,7 @@ static const struct content_struct contents[] = {
     },
 #endif
     { NULL, "/hidden/redirect",   CONT_DYNAMIC | CONT_DIR_MATCH,      { .dynamic = { &handle_redirect, "http://www.web.de" } } },
-    { "192.168.0.1", "/",                  CONT_DISK | CONT_PREFIX_MATCH,      {
+    { "192.168.1.6", "/",                  CONT_DISK | CONT_PREFIX_MATCH,      {
         .disk = { "/var/www/html/", "ir.html", DISK_LIST_DIRS } }
     },
     { NULL, NULL }
