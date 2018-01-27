@@ -18,6 +18,7 @@ enum retcode_enum {
 enum statuscode_enum {
     HTTP_OK =                   200,
     HTTP_NOT_MODIFIED =         304,
+    HTTP_REDIRECT =             308,
     HTTP_BAD_REQUEST =          400,
     HTTP_FORBIDDEN =            403,
     HTTP_NOT_FOUND =            404,
