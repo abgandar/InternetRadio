@@ -1442,13 +1442,13 @@ int http_server_main( const struct server_config_struct *config )
     }
 
     // initialize poll structures
-    req *reqs[conf.max_connections] = malloc( conf.max_connections*sizeof(req) );
-    if( !req )
+    req *reqs = malloc( conf.max_connections*sizeof(req) );
+    if( !reqs )
     {
         perror( "malloc" );
         exit( EXIT_FAILURE );
     }
-    bzero( req, conf.max_connections*sizeof(req) );
+    bzero( reqs, conf.max_connections*sizeof(reqs) );
     struct pollfd *fds = malloc( (conf.max_connections+2)*sizeof(struct pollfd) );
     if( !fds )
     {
