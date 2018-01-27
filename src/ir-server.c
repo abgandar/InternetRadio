@@ -1300,6 +1300,10 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
 int http_server_main( const struct server_config_struct *config )
 {
+#ifdef DEBUG
+    malloc_info( 0, stderr );
+#endif
+
     // set up configuration
     if( config )
         conf = *config;
