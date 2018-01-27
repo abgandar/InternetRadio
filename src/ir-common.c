@@ -248,12 +248,13 @@ int connectMPD( )
         // clear errors if possible, else disconnect
         if( mpd_connection_clear_error( conn ) )
             return SUCCESS;
-        debug_printf( "     Failed\n" );
+        debug_printf( "     failed\n" );
         mpd_connection_free( conn );
         conn = NULL;
     }
     
     // Open new connection to MPD
+    debug_printf( "===> Connecting to MPD\n" );
     conn = mpd_connection_new( SOCKET_PFAD, 0, 0 );
     if( (conn == NULL) || (mpd_connection_get_error( conn ) != MPD_ERROR_SUCCESS) )
         return SERVER_ERROR;

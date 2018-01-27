@@ -29,6 +29,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if DEBUG>1
+#include <malloc.h>
+#endif
 #include <sys/types.h>
 
 #include "config.h"

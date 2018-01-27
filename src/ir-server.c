@@ -42,7 +42,9 @@
 #include <poll.h>
 #include <signal.h>
 #include <errno.h>
+#if DEBUG>1
 #include <malloc.h>
+#endif
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/uio.h>
