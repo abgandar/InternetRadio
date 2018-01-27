@@ -620,7 +620,7 @@ static int handle_disk_file( req *c, const struct content_struct *cs )
     // write headers
     char *str;
     asprintf( &str, "ETag: \"%ld\"\r\nContent-Type: %s\r\n", sb.st_mtim.tv_sec, get_mime( fn ) );
-    debug_printf( "===> File size, modification time (ETag): %ld, %ld\n", sb.st_size, sb.st_mtim.tv_sec );
+    debug_printf( "===> File size, modification time (ETag), MIME type: %ld, %ld, %s\n", sb.st_size, sb.st_mtim.tv_sec, get_mime( fn ) );
 
     // check ETag
     const char *inm = get_header_field( c, "If-None-Match:", 0 );
