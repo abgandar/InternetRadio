@@ -83,7 +83,7 @@ static const struct response_struct responses[] = {
     { HTTP_SERVER_ERROR,        "Server error" },
     { HTTP_NOT_IMPLEMENTED,     "Not implemented" },
     { HTTP_SERVICE_UNAVAILABLE, "Service unavailable" },
-    { 0, NULL }
+    { 0 }
 };
 
 // allocate memory and set everything to zero
@@ -187,7 +187,8 @@ static const char* get_mime( const char* fn )
 {
     if( conf.mimetypes )
     {
-        const char const* end = fn+strlen( fn )-1;
+        const unsigned int sl = strlen( fn );
+        const char const* end = (sl ? fn+sl-1 : fn);
 
         for( unsigned int i = 0; conf.mimetypes[i].ext; i++ )
         {
@@ -1279,7 +1280,7 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
         { "port",       required_argument,  NULL,   'p' },
         { "timeout",    required_argument,  NULL,   't' },
         { "user",       required_argument,  NULL,   'u' },
-        { NULL,         0,                  NULL,    0  }
+        { NULL }
     };
 
     // process options

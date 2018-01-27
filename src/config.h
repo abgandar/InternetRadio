@@ -15,8 +15,6 @@
 #define MAX_HEAD_LEN            (1024*128)                  // Maximum allowed size of headers (128 kB)
 #define MAX_BODY_LEN            (1024*1024*2)               // Maximum allowed size of body (2 MB)
 #define MAX_WB_LEN              (1024*1024*10)              // Maximum allowed size of the write buffer (10 MB)
-#define WWW_DIR                 "/var/www/html/"            // directory where to look for files (should end in / for safety)
-#define DIR_INDEX               "index.html"                // directory index file used when requesting a directory from disk
 #define EXTRA_HEADERS           "Connection: Keep-Alive\r\nKeep-Alive: timeout=60,max=999999\r\nX-Frame-Options: SAMEORIGIN\r\n"  // extra headers to send with all replies
 #define MAX_CONNECTIONS         32                          // max number of concurrent connections
 #define MAX_CLIENT_CONN         4                           // max number of connections per client address

@@ -73,7 +73,6 @@ static const struct mimetype_struct mimetypes[] = {
     { NULL }
 };
 
-
 // some simple default content
 #ifdef DEFAULT_CONTENT
 
