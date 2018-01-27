@@ -1300,10 +1300,6 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
 // Main HTTP server program entry point (adapted from https://www.gnu.org/software/libc/manual/html_node/Waiting-for-I_002fO.html#Waiting-for-I_002fO)
 int http_server_main( const struct server_config_struct *config )
 {
-#ifdef DEBUG
-    malloc_info( 0, stderr );
-#endif
-
     // set up configuration
     if( config )
         conf = *config;
@@ -1445,6 +1441,10 @@ int http_server_main( const struct server_config_struct *config )
             debug_printf( "===> Dropped priviliges to user %s (II)\n", conf.unpriv_user );
         }
     }
+
+#if DEBUG>1
+    malloc_info( 0, stderr );
+#endif
 
     // initialize poll structures
     req *reqs = malloc( conf.max_connections*sizeof(req) );
@@ -1607,7 +1607,7 @@ int http_server_main( const struct server_config_struct *config )
     free( fds );
     free( reqs );
 
-#ifdef DEBUG
+#if DEBUG>1
     malloc_info( 0, stderr );
 #endif
 
