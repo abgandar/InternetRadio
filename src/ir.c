@@ -144,8 +144,8 @@ static const struct content_struct contents[] = {
         .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_easteregg_png_start,   (unsigned int)&_binary_easteregg_png_size } }
     },
 #endif
-    { NULL, "/hidden/redirect",   CONT_DYNAMIC | CONT_DIR_MATCH,      { .dynamic = { &handle_redirect, "http://www.web.de" } } },
-    { "192.168.1.6", "/",                  CONT_DISK | CONT_PREFIX_MATCH,      {
+    { NULL, "/hidden/redirect",   CONT_DYNAMIC | CONT_DIR_MATCH,      { .dynamic = { &handle_redirect, "http://www.web.de/" } } },
+    { "192.168.1.6", "/",         CONT_DISK | CONT_PREFIX_MATCH,      {
         .disk = { "/var/www/html/", "ir.html", DISK_LIST_DIRS } }
     },
     { NULL, NULL }

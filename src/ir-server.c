@@ -679,7 +679,7 @@ static int handle_request( req *c )
 {
     int rc = FILE_NOT_FOUND;
 
-    if( c->method != M_GET && c->method != M_POST && c->method != M_HEAD )
+    if( (c->method != M_GET) && (c->method != M_POST) && (c->method != M_HEAD) )
     {
         if( write_response( c, HTTP_NOT_ALLOWED, NULL, "405 - Not allowed", 0, MEM_KEEP ) == BUFFER_OVERFLOW )
             return CLOSE_SOCKET;
@@ -691,6 +691,7 @@ static int handle_request( req *c )
         if( conf.contents )
             for( unsigned int i = 0; (rc == FILE_NOT_FOUND) && conf.contents[i].url; i++ )
             {
+                debug_printf( "===> Hosts: \"%s\" \"%s\"\n", conf.contents[i].host ? conf.contents[i].host : "", c->host ? c->host : "" );
                 // check Host
                 if( conf.contents[i].host && c->host && !strcmp( conf.contents[i].host, c->host ) ) continue;
 
@@ -940,6 +941,7 @@ static int read_head( req *c )
         write_response( c, HTTP_BAD_REQUEST, NULL, "400 - missing Host headers", 0, MEM_KEEP );
         return CLOSE_SOCKET;
     }
+    debug_printf( "===> Host: %s\n", c->host );
 
     c->state = STATE_BODY;
     return SUCCESS;
