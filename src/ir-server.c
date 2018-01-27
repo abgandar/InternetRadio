@@ -448,19 +448,6 @@ static int cmpstringp( const void *p1, const void *p2 )
 // list a directory's content
 static int list_directory_contents( req *c, const char *fn )
 {
-    // check if url properly ends in a /, otherwise redirect
-    if( !c->url[0] || c->url[strlen( c->url )-1] != '/' )
-    {
-        char* str;
-        asprintf( &str, "Location: %s/\r\n", c->url );
-        const int rc = write_response( c, HTTP_REDIRECT, str, "308 - Permanent redirect", 0, MEM_KEEP );
-        free( str );
-        if( rc == BUFFER_OVERFLOW )
-            return CLOSE_SOCKET;
-        else
-            return SUCCESS;
-    }
-
     // open directory
     DIR *d = opendir( fn );
     if( d == NULL )
@@ -567,7 +554,20 @@ static int handle_disk_file( req *c, const struct content_struct *cs )
         }
         else if( S_ISDIR( sb.st_mode ) )
         {
-            // this is a directory, try with dir-index file first
+            // this is a directory, check if url ends in a / and redirect if needed
+            if( !len_url || c->url[len_url-1] != '/' )
+            {
+                char* str;
+                asprintf( &str, "Location: %s/\r\n", c->url );
+                debug_printf( "===> Redirecting to canonical directory URL: %s/\n", c->url );
+                const int rc = write_response( c, HTTP_REDIRECT, str, "308 - Permanent redirect", 0, MEM_KEEP );
+                free( str );
+                if( rc == BUFFER_OVERFLOW )
+                    return CLOSE_SOCKET;
+                else
+                    return SUCCESS;
+            }
+            // try with dir-index file first
             if( cs->content.disk.dir_index )
             {
                 fn[len_www_dir + len_url] = '/';
