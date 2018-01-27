@@ -447,6 +447,21 @@ static int cmpstringp( const void *p1, const void *p2 )
 // list a directory's content
 static int list_directory_contents( req *c, const char *fn )
 {
+    // check if url properly ends in a /, otherwise redirect
+    const unsigned int ul = ;
+    if( !c->url[0] || c->url[strlen( c->url )-1] != '/' )
+    {
+        char* str;
+        asprintf( &str, "Location: %s/\r\n", c->url );
+        const int rc = write_response( c, HTTP_REDIRECT, str, "308 - Permanent redirect", 0, MEM_KEEP );
+        free( str );
+        if( rc == BUFFER_OVERFLOW )
+            return CLOSE_SOCKET;
+        else
+            return SUCCESS;
+    }
+
+    // open directory
     DIR *d = opendir( fn );
     if( d == NULL )
         return FILE_NOT_FOUND;
