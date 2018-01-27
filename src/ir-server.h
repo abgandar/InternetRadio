@@ -99,8 +99,8 @@ typedef struct req_struct {
     unsigned int rl, cl;        // total request length parsed, total body content length
     time_t time;                // last time the request was active
     char *ver, *meth,
-         *url, *query, *head,
-         *body, *tail;          // request pointers into data buffer
+         *url, *query, *host,
+         *head, *body, *tail;   // request pointers into data buffer
     enum state_enum state;      // state of this request
     enum req_flags_enum flags;  // flags for this request
     enum version_enum version;  // HTTP version of request
@@ -146,6 +146,7 @@ enum content_flags_enum {
 
 // content list entry
 struct content_struct {
+    const char *host;
     const char *url;
     enum content_flags_enum flags;
     union {

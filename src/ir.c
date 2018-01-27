@@ -111,44 +111,44 @@ int handle_ir_cgi( req *c, const struct content_struct *cs )
 
 // list of embedded files to serve directly
 static const struct content_struct contents[] = {
-    { "/cgi-bin/ir.cgi",    CONT_DYNAMIC,       { .dynamic = { &handle_ir_cgi, NULL } } },
-    { "/",                  CONT_EMBEDDED,      {
+    { NULL, "/cgi-bin/ir.cgi",    CONT_DYNAMIC,       { .dynamic = { &handle_ir_cgi, NULL } } },
+    { NULL, "/",                  CONT_EMBEDDED,      {
         .embedded = {       "Content-Type: text/html\r\n" LM_HEADER,    &_binary_ir_html_start,         (unsigned int)&_binary_ir_html_size } }
     },
-    { "/ir.html",           CONT_EMBEDDED,      {
+    { NULL, "/ir.html",           CONT_EMBEDDED,      {
         .embedded = {       "Content-Type: text/html\r\n" LM_HEADER,    &_binary_ir_html_start,         (unsigned int)&_binary_ir_html_size } }
     },
-    { "/radio.ico",         CONT_EMBEDDED,      {
+    { NULL, "/radio.ico",         CONT_EMBEDDED,      {
         .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_ico_start,       (unsigned int)&_binary_radio_ico_size } }
     },
-    { "/radio-0-75x.png",   CONT_EMBEDDED,      {
+    { NULL, "/radio-0-75x.png",   CONT_EMBEDDED,      {
         .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_0_75x_png_start, (unsigned int)&_binary_radio_0_75x_png_size } }
     },
-    { "/radio-1x.png",      CONT_EMBEDDED,      {
+    { NULL, "/radio-1x.png",      CONT_EMBEDDED,      {
         .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_1x_png_start,    (unsigned int)&_binary_radio_1x_png_size } }
     },
-    { "/radio-2x.png",      CONT_EMBEDDED,      {
+    { NULL, "/radio-2x.png",      CONT_EMBEDDED,      {
         .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_2x_png_start,    (unsigned int)&_binary_radio_2x_png_size } }
     },
-    { "/radio-2-6x.png",    CONT_EMBEDDED,      {
+    { NULL, "/radio-2-6x.png",    CONT_EMBEDDED,      {
         .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_2_6x_png_start,  (unsigned int)&_binary_radio_2_6x_png_size } }
     },
-    { "/radio-4x.png",      CONT_EMBEDDED,      {
+    { NULL, "/radio-4x.png",      CONT_EMBEDDED,      {
         .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_4x_png_start,    (unsigned int)&_binary_radio_4x_png_size } }
     },
-    { "/radio-5-3x.png",    CONT_EMBEDDED,      {
+    { NULL, "/radio-5-3x.png",    CONT_EMBEDDED,      {
         .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_5_3x_png_start,  (unsigned int)&_binary_radio_5_3x_png_size } }
     },
 #ifdef EASTEREGG
-    { "/hidden/easteregg",  CONT_DYNAMIC,      {
+    { NULL, "/hidden/easteregg",  CONT_DYNAMIC,      {
         .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_easteregg_png_start,   (unsigned int)&_binary_easteregg_png_size } }
     },
 #endif
-    { "/hidden/redirect",   CONT_DYNAMIC | CONT_DIR_MATCH,      { .dynamic = { &handle_redirect, "http://www.web.de" } } },
-    { "/",                  CONT_DISK | CONT_PREFIX_MATCH,      {
+    { NULL, "/hidden/redirect",   CONT_DYNAMIC | CONT_DIR_MATCH,      { .dynamic = { &handle_redirect, "http://www.web.de" } } },
+    { "192.168.0.1", "/",                  CONT_DISK | CONT_PREFIX_MATCH,      {
         .disk = { "/var/www/html/", "ir.html", DISK_LIST_DIRS } }
     },
-    { NULL }
+    { NULL, NULL }
 };
 
 // Main HTTP server program entry point

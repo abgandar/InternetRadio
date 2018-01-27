@@ -122,7 +122,7 @@ static inline void FREE_REQ( req *c )
 static inline void RESET_REQ( req *c )
 {
     c->rl = c->cl = 0;
-    c->ver = c->meth = c->url = c->query = c->head = c->body = c->tail = NULL;
+    c->ver = c->meth = c->url = c->query = c->host = c->head = c->body = c->tail = NULL;
     c->state = c->flags = c->version = c->method = 0;
 }
 
@@ -692,7 +692,7 @@ static int handle_request( req *c )
             for( unsigned int i = 0; (rc == FILE_NOT_FOUND) && conf.contents[i].url; i++ )
             {
                 // check Host
-                if( conf.contents[i].host && !strcmp( conf.contents[i].host, c->host ) ) continue;
+                if( conf.contents[i].host && c->host && !strcmp( conf.contents[i].host, c->host ) ) continue;
 
                 // check URL
                 if( conf.contents[i].flags & CONT_PREFIX_MATCH )
@@ -867,7 +867,7 @@ static int read_head( req *c )
     debug_printf( "===> Headers:\n" );
 
     // hooray! we have headers, parse them
-    char *p = c->head, *host = NULL;
+    char *p = c->head;
     while( p )
     {
         // find end of current header and zero terminate it => p points to current header line
@@ -915,13 +915,13 @@ static int read_head( req *c )
         }
         else if( strncasecmp( p, "Host:", 5 ) == 0 )
         {
-            if( host )
+            if( c->host )
             {
                 // c.f. https://tools.ietf.org/html/rfc7230
                 write_response( c, HTTP_BAD_REQUEST, NULL, "400 - multiple Host headers", 0, MEM_KEEP );
                 return CLOSE_SOCKET;
             }
-            host = p+5+strspn( p+5, " \t" );
+            c->host = p+5+strspn( p+5, " \t" );
         }
         else if( strncasecmp( p, "Connection:", 11 ) == 0 )
         {
@@ -934,7 +934,7 @@ static int read_head( req *c )
     }
 
     // check if host header has been received
-    if( c->version == V_11 && !host )
+    if( c->version == V_11 && !c->host )
     {
         // c.f. https://tools.ietf.org/html/rfc7230
         write_response( c, HTTP_BAD_REQUEST, NULL, "400 - missing Host headers", 0, MEM_KEEP );
