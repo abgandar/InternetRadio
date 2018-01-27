@@ -430,8 +430,8 @@ int handle_redirect( req *c, const struct content_struct *cs )
         return FILE_NOT_FOUND;
 
     // skip initial (identical) part of URL
-    char *url = c->url, *p = cs->url;
-    for( ; *p && *url && (*p == *url); p++, url++ );
+    const char *url = c->url;
+    for( const char *p = cs->url; *p && *url && (*p == *url); p++, url++ );
 
     // assemble and send response
     char *str;
