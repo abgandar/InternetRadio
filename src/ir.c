@@ -74,7 +74,7 @@ int handle_ir_cgi( req *c, void* userdata )
     
     // find correct query string and run actual query
     char *query;
-    if( c->m == M_POST )
+    if( c->method == M_POST )
         query = c->body;    // rely on body being null terminated
     else
         query = c->query;
@@ -145,7 +145,7 @@ static const struct content_struct contents[] = {
     },
 #endif
     { "/",                  CONT_DISK | CONT_PREFIX_MATCH,      {
-        .disk = { "/var/www/html/", "index.html", DISK_LIST_DIRS } }
+        .disk = { "/var/www/html/", "ir.html", DISK_LIST_DIRS } }
     },
     { NULL }
 };
@@ -159,7 +159,6 @@ int main( int argc, char *argv[] )
     http_server_config_defaults( &config );
     config.unpriv_user = "mpd";
     config.contents = contents;
-    config.dir_index = "ir.html";
     http_server_config_argv( &argc, &argv, &config );
 
     // run server
