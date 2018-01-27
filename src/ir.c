@@ -61,7 +61,7 @@ extern const char _binary_easteregg_png_size;
 #endif
 
 // handle CGI queries
-int handle_ir_cgi( req *c, void* userdata )
+int handle_ir_cgi( req *c, const struct content_struct *cs )
 {
     // open output buffer
     char *obuf = NULL;
@@ -140,10 +140,11 @@ static const struct content_struct contents[] = {
         .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_radio_5_3x_png_start,  (unsigned int)&_binary_radio_5_3x_png_size } }
     },
 #ifdef EASTEREGG
-    { "/hidden/easteregg",  CONT_EMBEDDED,      {
+    { "/hidden/easteregg",  CONT_DYNAMIC,      {
         .embedded = {       "Content-Type: image/png\r\n" LM_HEADER,    &_binary_easteregg_png_start,   (unsigned int)&_binary_easteregg_png_size } }
     },
 #endif
+    { "/hidden/redirect",   CONT_DYNAMIC | CONT_DIR_MATCH,      { .dynamic = { &handle_redirect, "http://www.web.de" } } },
     { "/",                  CONT_DISK | CONT_PREFIX_MATCH,      {
         .disk = { "/var/www/html/", "ir.html", DISK_LIST_DIRS } }
     },

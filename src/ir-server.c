@@ -422,6 +422,29 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
     return bwrite( c, iov, (body && (c->method != M_HEAD) && (bodylen > 0)) ? 2 : 1, flags );
 }
 
+// handle a redirect. Removes as much of the full request URL as matches the content url pattern,
+// then appends the remainder to the string pointed to by userdata
+int handle_redirect( req *c, const struct content_struct *cs )
+{
+    if( !cs->content.dynamic.userdata )
+        return FILE_NOT_FOUND;
+
+    // skip initial (identical) part of URL
+    char *url = c->url, *p = cs->url;
+    for( ; *p && *url && (*p == *url); p++, url++ );
+
+    // assemble and send response
+    char *str;
+    asprintf( &str, "Location: %s%s\r\n", (const char*)cs->content.dynamic.userdata, url );
+    debug_printf( "===> Redirecting to: %s%s\n", (const char*)cs->content.dynamic.userdata, url );
+    const int rc = write_response( c, HTTP_REDIRECT, str, "308 - Permanent redirect", 0, MEM_KEEP );
+    free( str );
+    if( rc == BUFFER_OVERFLOW )
+        return CLOSE_SOCKET;
+    else
+        return SUCCESS;
+}
+
 // handle a file query for an embedded file
 static int handle_embedded_file( req *c, const struct content_struct *cs )
 {
@@ -668,30 +691,46 @@ static int handle_request( req *c )
         if( conf.contents )
             for( unsigned int i = 0; (rc == FILE_NOT_FOUND) && conf.contents[i].url; i++ )
             {
+                // check Host
+                if( conf.contents[i].host && !strcmp( conf.contents[i].host, c->host ) ) continue;
+
                 // check URL
                 if( conf.contents[i].flags & CONT_PREFIX_MATCH )
                 {
+                    // simple prefix match
                     if( strncmp( conf.contents[i].url, c->url, strlen( conf.contents[i].url ) ) != 0 ) continue;
                 }
-                else
+                else if( conf.contents[i].flags & CONT_DIR_MATCH )
                 {
+                    // Directory prefix match
+                    unsigned int url_len = strlen( conf.contents[i].url );
+                    const char last = (url_len > 0) ? conf.contents[i].url[url_len-1] : '\0';
+                    if( last == '/' )
+                    {
+                        // only accept URLs starting with the exact string and strictly longer than it (i.e. thing in the directory but not the directory itself)
+                        if( strncmp( conf.contents[i].url, c->url, url_len ) != 0 ) continue;
+                        if( c->url[url_len] == '\0' ) continue;
+                    }
+                    else
+                    {
+                        // only accept URLs either being either identical, or continuing with '/' (i.e. things in the directory but also the directory itself)
+                        if( strncmp( conf.contents[i].url, c->url, url_len ) != 0 ) continue;
+                        if( (c->url[url_len] != '\0') && (c->url[url_len] != '/') ) continue;
+                    }
+                }
+                {
+                    // full match
                     if( strcmp( conf.contents[i].url, c->url ) != 0 ) continue;
                 }
 
-                // invoke each handler
+                // invoke appropriate handler
                 if( conf.contents[i].flags & CONT_EMBEDDED )
-                {
                     rc = handle_embedded_file( c, &conf.contents[i] );
-                }
                 else if( conf.contents[i].flags & CONT_DISK )
-                {
                     rc = handle_disk_file( c, &conf.contents[i] );
-                }
                 else if( conf.contents[i].flags & CONT_DYNAMIC )
-                {
                     if( conf.contents[i].content.dynamic.handler )
-                        rc = conf.contents[i].content.dynamic.handler( c, conf.contents[i].content.dynamic.userdata );
-                }
+                        rc = conf.contents[i].content.dynamic.handler( c, &conf.contents[i] );
 
                 // done?
                 if( conf.contents[i].flags & CONT_STOP )

@@ -108,8 +108,9 @@ typedef struct req_struct {
 } req;
 
 // dynamic file
+struct content_struct;
 struct dynamic_content_struct {
-    int (*handler)( req*, void* );
+    int (*handler)( req*, const struct content_struct *cs );
     void* userdata;
 };
 
@@ -134,11 +135,13 @@ struct disk_content_struct {
 
 // flags for content
 enum content_flags_enum {
+    CONT_NONE = 0,
     CONT_EMBEDDED = 1,
     CONT_DISK = 2,
     CONT_DYNAMIC = 4,
     CONT_STOP = 8,
-    CONT_PREFIX_MATCH = 16
+    CONT_PREFIX_MATCH = 16,
+    CONT_DIR_MATCH = 32
 };
 
 // content list entry
