@@ -203,3 +203,7 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
 // get matching header value from the request without leading whitespace, skipping skip entries (or NULL if not found)
 // name must be of the form "Date:" (including colon)
 const char* get_header_field( const req *c, const char* name, unsigned int skip );
+
+// handle a redirect. Removes as much of the full request URL as matches the content url pattern,
+// then appends the remainder to the string pointed to by userdata
+int handle_redirect( req *c, const struct content_struct *cs );
