@@ -1462,6 +1462,7 @@ int http_server_main( const struct server_config_struct *config )
         perror( "malloc" );
         exit( EXIT_FAILURE );
     }
+    bzero( fds, (conf.max_connections+2)*sizeof(struct pollfd) );
     for( unsigned int i = 0; i < conf.max_connections; i++ )
         fds[i].fd = -1;
     fds[conf.max_connections].fd = serverSocket;
