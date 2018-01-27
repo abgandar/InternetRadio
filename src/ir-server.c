@@ -342,7 +342,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum wbchain_flags_
 
 // try to send a file directly, and if that does not succeed append it to the internal write buffer
 // flag indicates wether to close fd after it has been sent (FD_CLOSE) or to keep it open (FD_KEEP).
-int bsendfile( req *c, int fd, off_t offset, int size, const enum memflags_enum flag )
+int bsendfile( req *c, int fd, off_t offset, int size, const enum wbchain_flags_enum flag )
 {
     int rc = 0;
 
@@ -393,7 +393,7 @@ int bsendfile( req *c, int fd, off_t offset, int size, const enum memflags_enum 
 // if body is non-NULL, it is sent as a string with appropriate Content-Length header
 // if body is NULL, and bodylen is non-null, the value is sent, expecting caller to send the data on its own
 // flag is a memory flag for the body, see bwrite.
-int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen, const enum memflags_enum flag )
+int write_response( req *c, const unsigned int code, const char* headers, const char* body, unsigned int bodylen, const enum wbchain_flags_enum flag )
 {
     // autodetermine length
     if( body != NULL && bodylen == 0 )
@@ -406,7 +406,7 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
 
     // prepare additional headers
     struct iovec iov[2];
-    enum memflags_enum flags[2];
+    enum wbchain_flags_enum flags[2];
     flags[0] = MEM_FREE;
     iov[0].iov_len = asprintf( (char** restrict) &(iov[0].iov_base),
                                "HTTP/1.%c %u %s\r\n%s%sContent-Length: %u\r\nDate: %s\r\n\r\n",
@@ -532,7 +532,7 @@ static int handle_disk_file( req *c, const struct content_struct *cs )
         return FILE_NOT_FOUND;
 
     char fn[PATH_MAX+2];
-    memcpy( fn, conf.www_dir, len_www_dir );
+    memcpy( fn, cs->content.disk.www_dir, len_www_dir );
     memcpy( fn + len_www_dir, c->url, len_url );
     fn[len_www_dir + len_url] = '\0';
 
