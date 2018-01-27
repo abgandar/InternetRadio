@@ -1455,7 +1455,7 @@ int http_server_main( const struct server_config_struct *config )
         perror( "malloc" );
         exit( EXIT_FAILURE );
     }
-    bzero( reqs, conf.max_connections*sizeof(reqs) );
+    bzero( reqs, conf.max_connections*sizeof(req) );
     struct pollfd *fds = malloc( (conf.max_connections+2)*sizeof(struct pollfd) );
     if( !fds )
     {
