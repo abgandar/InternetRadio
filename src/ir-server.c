@@ -448,7 +448,6 @@ static int cmpstringp( const void *p1, const void *p2 )
 static int list_directory_contents( req *c, const char *fn )
 {
     // check if url properly ends in a /, otherwise redirect
-    const unsigned int ul = ;
     if( !c->url[0] || c->url[strlen( c->url )-1] != '/' )
     {
         char* str;
