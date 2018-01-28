@@ -1298,7 +1298,7 @@ int http_server_main( const struct server_config_struct *config )
     if( config )
         conf = config;
     else
-        conf = &defaut_config;
+        conf = &default_config;
 
     // set up environment
     setenv( "TZ", "GMT", true );
