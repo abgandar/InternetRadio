@@ -36,7 +36,7 @@
 
 #include "config.h"
 #include "ir-common.h"
-#include "ir-server.h"
+#include "http-server.h"
 
 // various external binary files linked in later
 extern const char _binary_ir_html_start;

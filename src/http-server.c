@@ -55,8 +55,8 @@
 #include <netdb.h>
 
 #include "config.h"
-#include "ir-server.h"
-#include "ir-server-data.h"
+#include "http-server.h"
+#include "http-server-data.h"
 
 // global server configuration
 static struct server_config_struct conf;
