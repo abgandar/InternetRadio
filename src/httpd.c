@@ -24,6 +24,7 @@
  */
 
 #include <stdlib.h>
+#include <stdbool.h>
 #include "http-server.h"
 
 // list of Base64 encoded user:pass strings
