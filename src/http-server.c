@@ -551,7 +551,7 @@ static int handle_disk_file( req *c, const struct content_struct *cs )
         if( S_ISREG( sb.st_mode ) )
         {
             // it's a file: open it
-            fd = open( fn, O_RDONLY );
+            fd = open( fn, O_RDONLY | O_CLOEXEC );
             debug_printf( "===> Trying to open file: %s\n", fn );
         }
         else if( S_ISDIR( sb.st_mode ) )
@@ -575,7 +575,7 @@ static int handle_disk_file( req *c, const struct content_struct *cs )
                 fn[len_www_dir + len_url] = '/';
                 memcpy( fn + len_www_dir + len_url + 1, cs->content.disk.dir_index, len_dir_index );
                 fn[len_www_dir + len_url + len_dir_index + 1] = '\0';
-                fd = open( fn, O_RDONLY );
+                fd = open( fn, O_RDONLY | O_CLOEXEC );
                 if( fd >= 0 ) fstat( fd, &sb );
                 debug_printf( "===> Trying to open file: %s\n", fn );
             }
@@ -1295,10 +1295,7 @@ void http_server_config_argv( int *argc, char ***argv, struct server_config_stru
 int http_server_main( const struct server_config_struct *config )
 {
     // set up configuration
-    if( config )
-        conf = config;
-    else
-        conf = &default_config;
+    conf = config ? config : &default_config;
 
     // set up environment
     setenv( "TZ", "GMT", true );
@@ -1313,6 +1310,7 @@ int http_server_main( const struct server_config_struct *config )
     sigaction( SIGTERM, &sa_new, NULL );
     sa_new.sa_handler = SIG_IGN;
     sigaction( SIGPIPE, &sa_new, NULL );
+    sigaction( SIGCHLD, &sa_new, NULL );    // automatically reap child processes
 
     // block signals temporarily (re-enabled only in pselect)
     sigset_t sset_disabled, sset_enabled;
@@ -1328,7 +1326,7 @@ int http_server_main( const struct server_config_struct *config )
 
     if( conf->ip )
     {
-        if( !(serverSocket = socket( PF_INET, SOCK_STREAM, 0 )) )
+        if( !(serverSocket = socket( PF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0 )) )
         {
             perror( "socket" );
             exit( EXIT_FAILURE );
@@ -1355,7 +1353,7 @@ int http_server_main( const struct server_config_struct *config )
     
     if( conf->ip6 )
     {
-        if( !(serverSocket6 = socket( PF_INET6, SOCK_STREAM, 0 )) )
+        if( !(serverSocket6 = socket( PF_INET6, SOCK_STREAM | SOCK_CLOEXEC, 0 )) )
         {
             perror( "socket6" );
             exit( EXIT_FAILURE );
@@ -1494,7 +1492,7 @@ int http_server_main( const struct server_config_struct *config )
             {
                 struct sockaddr_storage rip;
                 socklen_t riplen = sizeof(rip);
-                const int new = accept( fds[i].fd, (struct sockaddr*)&rip, &riplen );
+                const int new = accept4( fds[i].fd, (struct sockaddr*)&rip, &riplen, SOCK_CLOEXEC );
                 if( new < 0 )
                 {
                     perror( "accept" );
