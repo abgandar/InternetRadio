@@ -405,7 +405,7 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
 // then appends the remainder to the string pointed to by userdata
 int handle_redirect( req *c, const struct content_struct *cs )
 {
-    if( !cs->content.dynamic.userdata )
+    if( !cs->content )
         return FILE_NOT_FOUND;
 
     // skip initial (identical) part of URL
@@ -414,8 +414,8 @@ int handle_redirect( req *c, const struct content_struct *cs )
 
     // assemble and send response
     char *str;
-    asprintf( &str, "Location: %s%s\r\n", (const char*)cs->content.dynamic.userdata, url );
-    debug_printf( "===> Redirecting to: %s%s\n", (const char*)cs->content.dynamic.userdata, url );
+    asprintf( &str, "Location: %s%s\r\n", (const char*)cs->content, url );
+    debug_printf( "===> Redirecting to: %s%s\n", (const char*)cs->content, url );
     const int rc = write_response( c, HTTP_REDIRECT, str, "308 - Permanent redirect", 0, MEM_KEEP );
     free( str );
     if( rc == BUFFER_OVERFLOW )
@@ -428,36 +428,43 @@ int handle_redirect( req *c, const struct content_struct *cs )
 // a single NULL pointer is passed in userdata
 int handle_basic_auth( req *c, const struct content_struct *cs )
 {
-    const char** users = (const char**)cs->content.dynamic.userdata;
+    const struct basic_auth_struct *data = (const struct basic_auth_struct*) cs->content;
     const char* auth = get_header_field( c, "Authorization:", 0 );
     bool allow = false;
 
     if( auth && !strncmp( auth, "Basic ", 6 ) )
     {
         auth += 6;
-        for( unsigned int i = 0; !allow && users[i]; i++ )
-            allow = (strcmp( users[i], auth ) == 0);
+        for( unsigned int i = 0; !allow && data->users[i]; i++ )
+            allow = (strcmp( data->users[i], auth ) == 0);
     }
 
     if( !allow )
-        return write_response( c, HTTP_UNAUTHORIZED, "WWW-Authenticate: Basic realm=\"Server\"", "401 - Unauthorized", 0, MEM_KEEP ) == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
+    {
+        char *str;
+        asprintf( &str, "WWW-Authenticate: Basic realm=\"%s\"\r\n", data->realm );
+        const int rc = write_response( c, HTTP_UNAUTHORIZED, str, "401 - Unauthorized", 0, MEM_KEEP );
+        free( str );
+        return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
+    }
     else
         return FILE_NOT_FOUND;  // this makes the server fall through to the next content entry, effectively allowing access
 }
 
 // handle a file query for an embedded file
-static int handle_embedded_file( req *c, const struct content_struct *cs )
+int handle_embedded_file( req *c, const struct content_struct *cs )
 {
+    const struct embedded_content_struct *embedded = (const struct embedded_content_struct *) cs->content;
 #ifdef TIMESTAMP
     const char *inm = get_header_field( c, "If-None-Match:", 0 );
     if( inm && strcmp( inm, TIMESTAMP ) == 0 )
     {
-        const int rc = write_response( c, HTTP_NOT_MODIFIED, cs->content.embedded.headers, NULL, 0, MEM_KEEP );
+        const int rc = write_response( c, HTTP_NOT_MODIFIED, embedded->headers, NULL, 0, MEM_KEEP );
         debug_printf( "===> ETag %s matches on %s\n", TIMESTAMP, c->url );
         return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
     }
 #endif
-    const int rc = write_response( c, HTTP_OK, cs->content.embedded.headers, cs->content.embedded.body, cs->content.embedded.len, MEM_KEEP );
+    const int rc = write_response( c, HTTP_OK, embedded->headers, embedded->body, embedded->len, MEM_KEEP );
     debug_printf( "===> Send embedded file %s (ETag %s)\n", c->url, TIMESTAMP );
     return rc == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
 }
@@ -545,19 +552,20 @@ static int list_directory_contents( req *c, const char *fn )
 }
 
 // handle a disk file query
-static int handle_disk_file( req *c, const struct content_struct *cs )
+int handle_disk_file( req *c, const struct content_struct *cs )
 {
-    if( !cs->content.disk.www_dir )
+    const struct disk_content_struct *disk = (const struct disk_content_struct *) cs->content;
+    if( !disk->www_dir )
         return FILE_NOT_FOUND;
 
-    const int len_www_dir = strlen( cs->content.disk.www_dir ),
+    const int len_www_dir = strlen( disk->www_dir ),
               len_url = strlen( c->url ),
-              len_dir_index = cs->content.disk.dir_index ? strlen( cs->content.disk.dir_index ) : 0;
+              len_dir_index = disk->dir_index ? strlen( disk->dir_index ) : 0;
     if( len_www_dir + len_url + len_dir_index >= PATH_MAX )
         return FILE_NOT_FOUND;
 
     char fn[PATH_MAX+2];
-    memcpy( fn, cs->content.disk.www_dir, len_www_dir );
+    memcpy( fn, disk->www_dir, len_www_dir );
     memcpy( fn + len_www_dir, c->url, len_url );
     fn[len_www_dir + len_url] = '\0';
 
@@ -591,17 +599,17 @@ static int handle_disk_file( req *c, const struct content_struct *cs )
                     return SUCCESS;
             }
             // try with dir-index file first
-            if( cs->content.disk.dir_index )
+            if( disk->dir_index )
             {
                 fn[len_www_dir + len_url] = '/';
-                memcpy( fn + len_www_dir + len_url + 1, cs->content.disk.dir_index, len_dir_index );
+                memcpy( fn + len_www_dir + len_url + 1, disk->dir_index, len_dir_index );
                 fn[len_www_dir + len_url + len_dir_index + 1] = '\0';
                 fd = open( fn, O_RDONLY | O_CLOEXEC );
                 if( fd >= 0 ) fstat( fd, &sb );
                 debug_printf( "===> Trying to open file: %s\n", fn );
             }
             // if that didn't work, try to send the directory content if enabled
-            if( (fd < 0) && (cs->content.disk.flags & DISK_LIST_DIRS) )
+            if( (fd < 0) && (disk->flags & DISK_LIST_DIRS) )
             {
                 fn[len_www_dir + len_url] = '\0';
                 return list_directory_contents( c, fn );
@@ -689,10 +697,10 @@ static int handle_request( req *c )
     {
         // walk through the list of content
         if( conf->contents )
-            for( unsigned int i = 0; (rc == FILE_NOT_FOUND) && conf->contents[i].url; i++ )
+            for( unsigned int i = 0; (rc == FILE_NOT_FOUND) && conf->contents[i].handler; i++ )
             {
                 // check Host
-                if( conf->contents[i].host && c->host && strcmp( conf->contents[i].host, c->host ) ) continue;
+                if( conf->contents[i].host && (!c->host || strcmp( conf->contents[i].host, c->host )) ) continue;
 
                 // check URL
                 if( conf->contents[i].flags & CONT_PREFIX_MATCH )
@@ -722,14 +730,8 @@ static int handle_request( req *c )
                     if( strcmp( conf->contents[i].url, c->url ) != 0 ) continue;
                 }
 
-                // invoke appropriate handler
-                if( conf->contents[i].flags & CONT_EMBEDDED )
-                    rc = handle_embedded_file( c, &conf->contents[i] );
-                else if( conf->contents[i].flags & CONT_DISK )
-                    rc = handle_disk_file( c, &conf->contents[i] );
-                else if( conf->contents[i].flags & CONT_DYNAMIC )
-                    if( conf->contents[i].content.dynamic.handler )
-                        rc = conf->contents[i].content.dynamic.handler( c, &conf->contents[i] );
+                // invoke handler
+                rc = conf->contents[i].handler( c, &conf->contents[i] );
 
                 // done?
                 if( conf->contents[i].flags & CONT_STOP )

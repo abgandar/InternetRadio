@@ -108,13 +108,6 @@ typedef struct req_struct {
     enum method_enum method;    // enumerated method
 } req;
 
-// dynamic file
-struct content_struct;
-struct dynamic_content_struct {
-    int (*handler)( req*, const struct content_struct *cs );
-    void* userdata;
-};
-
 // embedded file
 struct embedded_content_struct {
     const char *headers;
@@ -135,15 +128,18 @@ struct disk_content_struct {
     enum disk_content_flags_enum flags;
 };
 
+// basic authentication data
+struct basic_auth_struct {
+    const char **users;
+    const char* realm;
+};
+
 // flags for content
 enum content_flags_enum {
     CONT_NONE =         0,
-    CONT_EMBEDDED =     1,
-    CONT_DISK =         2,
-    CONT_DYNAMIC =      4,
-    CONT_STOP =         8,
-    CONT_PREFIX_MATCH = 16,
-    CONT_DIR_MATCH =    32
+    CONT_STOP =         1,      // stop checking after this entry, even if the file is not found
+    CONT_PREFIX_MATCH = 2,      // check that url starts with given prefix
+    CONT_DIR_MATCH =    4       // check that url starts with given directory (if ends without / directory itself matches, otherwise only entrires in directory match)
 };
 
 // content list entry
@@ -151,20 +147,17 @@ struct content_struct {
     const char *host;
     const char *url;
     enum content_flags_enum flags;
-    union {
-        struct embedded_content_struct embedded;
-        struct dynamic_content_struct dynamic;
-        struct disk_content_struct disk;
-    } content;
+    void* content;
+    int (*handler)( req*, const struct content_struct *cs );
 };
 
 // convenience macros for defining content list entries
-#define CONTENT_DISK(host, url, flags, dir, index, dirflags)    { host, url, CONT_DISK | flags, { .disk = { dir, index, dirflags } } }
-#define CONTENT_DYNAMIC(host, url, flags, handler, userarg)     { host, url, CONT_DYNAMIC | flags, { .dynamic = { handler, userarg } } }
-#define CONTENT_EMBEDDED(host, url, flags, header, data, size)  { host, url, CONT_EMBEDDED | flags, { .embedded = { header, data, size } } }
-#define CONTENT_REDIRECT(host, url, flags, target)              { host, url, CONT_DYNAMIC | flags, { .dynamic = { &handle_redirect, target } } }
-#define CONTENT_BASIC_AUTH(host, url, flags, users)             { host, url, CONT_DYNAMIC | flags, { .dynamic = { &handle_basic_auth, users } } }
-#define CONTENT_END { NULL, NULL }
+#define CONTENT_DISK(host, url, flags, dir, index, dirflags)    { host, url, flags, &(struct disk_content_struct){ dir, index, dirflags }, &handle_disk_file }
+#define CONTENT_DYNAMIC(host, url, flags, handler, userarg)     { host, url, flags, userarg, handler }
+#define CONTENT_EMBEDDED(host, url, flags, header, data, size)  { host, url, flags, &(struct embedded_content_struct){ header, data, size }, &handle_embedded_file }
+#define CONTENT_REDIRECT(host, url, flags, target)              { host, url, flags, target, &handle_redirect }
+#define CONTENT_BASIC_AUTH(host, url, flags, realm, users)      { host, url, flags, &(struct basic_auth_struct){ users, realm }, &handle_basic_auth }
+#define CONTENT_END { NULL, NULL, 0, NULL, NULL }
 
 // some common MIME types (note: extensions must be backwards for faster matching later!)
 struct mimetype_struct {
@@ -223,3 +216,9 @@ int handle_redirect( req *c, const struct content_struct *cs );
 // handle basic authentication. An array of base64 encoded user:pass strings terminated by
 // a single NULL pointer is passed in userdata
 int handle_basic_auth( req *c, const struct content_struct *cs );
+
+// handle a disk file query
+int handle_disk_file( req *c, const struct content_struct *cs );
+
+// handle a file query for an embedded file
+int handle_embedded_file( req *c, const struct content_struct *cs );
