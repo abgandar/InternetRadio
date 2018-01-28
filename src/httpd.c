@@ -30,8 +30,9 @@
 static const char* users[] = {
     "dGVzdDp0ZXN0",             // test:test
     "dXNlcjpwYXNzd29yZA==",     // user:password
-    "dmljdG9yaWE6c2VjcmV0"      // victoria:secret
-}
+    "dmljdG9yaWE6c2VjcmV0",     // victoria:secret
+    NULL
+};
 
 // handle basic authentication
 static int handle_basic_auth( req *c, const struct content_struct *cs )
@@ -54,7 +55,7 @@ static int handle_basic_auth( req *c, const struct content_struct *cs )
 
 // list of content
 static const struct content_struct contents[] = {
-    CONTENT_DYNAMIC( NULL, "/", CONT_PREFIX_MATCH, handle_basic_auth, NULL ),
+    CONTENT_DYNAMIC( NULL, "/", CONT_PREFIX_MATCH, &handle_basic_auth, NULL ),
     CONTENT_DISK( NULL, "/", CONT_PREFIX_MATCH, "/", "index.html", DISK_LIST_DIRS ),
     CONTENT_END
 };
