@@ -39,7 +39,7 @@ static const char* users[] = {
 // handle basic authentication
 static int handle_basic_auth( req *c, const struct content_struct *cs )
 {
-    const char* auth = get_header( c, "Authorization:" );
+    const char* auth = get_header_field( c, "Authorization:" );
     bool allow = false;
 
     if( auth && !strncmp( auth, "Basic ", 6 ) )
