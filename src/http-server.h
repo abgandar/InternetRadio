@@ -156,6 +156,12 @@ struct content_struct {
     } content;
 };
 
+// convenience macros for defining content list entries
+#define CONTENT_DISK(host, url, flags, dir, index, dirflags)     { host, url, CONT_DISK | flags, { .disk = { dir, index, dirflags } } }
+#define CONTENT_DYNAMIC(host, url, flags, handler, userarg)      { host, url, CONT_DYNAMIC | flags, { .dynamic = { handler, userarg } } }
+#define CONTENT_EMBEDDED(host, url, flags, header, data, size)   { host, url, CONT_EMBEDDED | flags, { .dynamic = { header, data, size } } }
+#define CONTENT_END { NULL, NULL }
+
 // some common MIME types (note: extensions must be backwards for faster matching later!)
 struct mimetype_struct {
     const char *ext;

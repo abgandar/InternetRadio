@@ -49,8 +49,12 @@ ir: ir-html.o radio-ico.o radio-0-75x-png.o radio-1x-png.o radio-2x-png.o radio-
 	$(CC) -o $@ $^ $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
 http-server.a: http-server.o
-	ar ru $@ $^
+	ar r $@ $^
 	ranlib $@
+
+httpd: httpd.o http-server.a
+	$(CC) -o $@ $^ $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
+	strip $@
 
 ir.html: ir-raw.html
 	sed -e "s/%DATE%/$(DATESTAMP)/g" -e "s/%GITREV%/$(GITREV)/g" ir-raw.html > ir.html
