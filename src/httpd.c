@@ -26,8 +26,35 @@
 #include <stdlib.h>
 #include "http-server.h"
 
-// list of embedded files to serve directly
+// list of Base64 encoded user:pass strings
+static const char* users[] = {
+    "dGVzdDp0ZXN0",             // test:test
+    "dXNlcjpwYXNzd29yZA==",     // user:password
+    "dmljdG9yaWE6c2VjcmV0"      // victoria:secret
+}
+
+// handle basic authentication
+static int handle_basic_auth( req *c, const struct content_struct *cs )
+{
+    const char* auth = get_header( c, "Authorization:" );
+    bool allow = false;
+
+    if( auth && !strncmp( auth, "Basic ", 6 ) )
+    {
+        auth += 6;
+        for( unsigned int i = 0; !allow && users[i]; i++ )
+            allow = (strcmp( users[i], auth ) == 0);
+    }
+
+    if( !allow )
+        return write_response( c, HTTP_UNAUTHORIZED, "WWW-Authenticate: Basic realm=\"Test server\"", "401 - Unauthorized", 0, MEM_KEEP ) == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
+    else
+        return FILE_NOT_FOUND;  // this makes the server fall through to the next content entry, effectively allowing access
+}
+
+// list of content
 static const struct content_struct contents[] = {
+    CONTENT_DYNAMIC( NULL, "/", CONT_PREFIX_MATCH, handle_basic_auth, NULL ),
     CONTENT_DISK( NULL, "/", CONT_PREFIX_MATCH, "/", "index.html", DISK_LIST_DIRS ),
     CONTENT_END
 };

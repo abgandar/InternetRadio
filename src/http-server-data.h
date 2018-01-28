@@ -80,6 +80,7 @@ static const struct response_struct responses[] = {
     { HTTP_NOT_MODIFIED,        "Not modified" },
     { HTTP_REDIRECT,            "Permanent redirect" },
     { HTTP_BAD_REQUEST,         "Bad request" },
+    { HTTP_UNAUTHORIZED,        "Unauthorized" },
     { HTTP_FORBIDDEN,           "Forbidden" },
     { HTTP_NOT_FOUND,           "Not found" },
     { HTTP_NOT_ALLOWED,         "Method not allowed" },
