@@ -871,7 +871,7 @@ static int read_head( req *c )
                 write_response( c, HTTP_BAD_REQUEST, NULL, "400 - Bad request", 0, MEM_KEEP );
                 return CLOSE_SOCKET;
             }
-            if( cl > MAX_REQ_LEN )
+            if( cl > conf->max_req_len )
             {
                 write_response( c, HTTP_TOO_LARGE, NULL, "413 - Payload too large", 0, MEM_KEEP );
                 return CLOSE_SOCKET;
@@ -1404,7 +1404,7 @@ int http_server_main( const struct server_config_struct *config )
                 perror( "setresgid" );
                 exit( EXIT_FAILURE );
             }
-            if( initgroups( UNPRIV_USER, pwd->pw_gid ) )
+            if( initgroups( conf->unpriv_user, pwd->pw_gid ) )
             {
                 perror( "initgroups" );
                 exit( EXIT_FAILURE );
