@@ -23,6 +23,7 @@
  *
  */
 
+#include <stdlib.h>
 #include "http-server.h"
 
 // list of embedded files to serve directly
@@ -39,7 +40,7 @@ int main( int argc, char *argv[] )
     // set up server configuration
     http_server_config_defaults( &config );
     config.unpriv_user = "www-data";
-    config.chdir = "/var/www/html/";
+    config.chroot = "/var/www/html/";
     config.contents = contents;
     http_server_config_argv( &argc, &argv, &config );
 
