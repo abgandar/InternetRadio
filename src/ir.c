@@ -159,6 +159,7 @@ int main( int argc, char *argv[] )
     // set up server configuration
     http_server_config_defaults( &config );
     config.unpriv_user = "mpd";
+    config.extra_headers = "Connection: Keep-Alive\r\nKeep-Alive: timeout=60,max=999999\r\nX-Frame-Options: SAMEORIGIN\r\n";
     config.contents = contents;
     http_server_config_argv( &argc, &argv, &config );
 

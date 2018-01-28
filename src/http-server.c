@@ -59,32 +59,10 @@
 #include "http-server-data.h"
 
 // global server configuration
-static struct server_config_struct conf;
+const struct server_config_struct *conf;
 
 // indicator if the main loop is still running (used for signaling)
-static bool running = true;
-
-// mapping between response code and human readable message
-struct response_struct {
-    const unsigned int code;
-    const char *msg;
-};
-
-// some human readable equivalents to HTTP status codes above (must be sorted by code except for last!)
-static const struct response_struct responses[] = {
-    { HTTP_OK,                  "OK" },
-    { HTTP_NOT_MODIFIED,        "Not modified" },
-    { HTTP_REDIRECT,            "Permanent redirect" },
-    { HTTP_BAD_REQUEST,         "Bad request" },
-    { HTTP_FORBIDDEN,           "Forbidden" },
-    { HTTP_NOT_FOUND,           "Not found" },
-    { HTTP_NOT_ALLOWED,         "Method not allowed" },
-    { HTTP_TOO_LARGE,           "Payload too large" },
-    { HTTP_SERVER_ERROR,        "Server error" },
-    { HTTP_NOT_IMPLEMENTED,     "Not implemented" },
-    { HTTP_SERVICE_UNAVAILABLE, "Service unavailable" },
-    { 0 }
-};
+static bool running;
 
 // allocate memory and set everything to zero
 static inline void INIT_REQ( req *c, const int fd, time_t now, struct sockaddr_storage *rip, socklen_t riplen )
@@ -147,7 +125,7 @@ static inline void TOUCH_REQ( req *c, time_t now )
 // is the request timed out?
 static inline bool TIMEDOUT_REQ( req *c, time_t now )
 {
-    return (now - c->time) > conf.timeout;
+    return (now - c->time) > conf->timeout;
 }
 
 // does this request match the given IP address
@@ -185,17 +163,17 @@ static const char* get_response( const unsigned int code )
 // guess a mime type for a filename
 static const char* get_mime( const char* fn )
 {
-    if( conf.mimetypes )
+    if( conf->mimetypes )
     {
         const unsigned int sl = strlen( fn );
         const char const* end = (sl ? fn+sl-1 : fn);
 
-        for( unsigned int i = 0; conf.mimetypes[i].ext; i++ )
+        for( unsigned int i = 0; conf->mimetypes[i].ext; i++ )
         {
             const char *p, *q;
-            for( p = end, q = conf.mimetypes[i].ext; *q && p >= fn && *p == *q; p--, q++ );
+            for( p = end, q = conf->mimetypes[i].ext; *q && p >= fn && *p == *q; p--, q++ );
             if( *q == '\0' )
-                return conf.mimetypes[i].mime;
+                return conf->mimetypes[i].mime;
         }
     }
 
@@ -281,7 +259,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum wbchain_flags_
         if( last->flags & MEM_PTR )
             buflen += last->len;
     if( last && (last->flags & MEM_PTR) ) buflen += last->len;
-    if( buflen + len - rc > 2*conf.max_wb_len )
+    if( buflen + len - rc > 2*conf->max_wb_len )
     {
         debug_printf( "===> Output buffer overflow\n" );
         return BUFFER_OVERFLOW;
@@ -413,7 +391,7 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
     iov[0].iov_len = asprintf( (char** restrict) &(iov[0].iov_base),
                                "HTTP/1.%c %u %s\r\n%s%sContent-Length: %u\r\nDate: %s\r\n\r\n",
                               c->version == V_10 ? '0' : '1', code, get_response( code ),
-                              conf.extra_headers ? conf.extra_headers : "",
+                              conf->extra_headers ? conf->extra_headers : "",
                               headers ? headers : "", bodylen, str );
 
     // first try to write everything right away using a single call. Most often this should succeed and write buffer is not used.
@@ -689,24 +667,24 @@ static int handle_request( req *c )
     else
     {
         // walk through the list of content
-        if( conf.contents )
-            for( unsigned int i = 0; (rc == FILE_NOT_FOUND) && conf.contents[i].url; i++ )
+        if( conf->contents )
+            for( unsigned int i = 0; (rc == FILE_NOT_FOUND) && conf->contents[i].url; i++ )
             {
                 // check Host
-                if( conf.contents[i].host && c->host && strcmp( conf.contents[i].host, c->host ) ) continue;
+                if( conf->contents[i].host && c->host && strcmp( conf->contents[i].host, c->host ) ) continue;
 
                 // check URL
-                if( conf.contents[i].flags & CONT_PREFIX_MATCH )
+                if( conf->contents[i].flags & CONT_PREFIX_MATCH )
                 {
                     // simple prefix match
-                    if( strncmp( conf.contents[i].url, c->url, strlen( conf.contents[i].url ) ) != 0 ) continue;
+                    if( strncmp( conf->contents[i].url, c->url, strlen( conf->contents[i].url ) ) != 0 ) continue;
                 }
-                else if( conf.contents[i].flags & CONT_DIR_MATCH )
+                else if( conf->contents[i].flags & CONT_DIR_MATCH )
                 {
                     // Directory prefix match
-                    const unsigned int url_len = strlen( conf.contents[i].url );
-                    if( strncmp( conf.contents[i].url, c->url, url_len ) ) continue;       // first part must always match
-                    if( (url_len > 0) && (conf.contents[i].url[url_len-1] == '/') )
+                    const unsigned int url_len = strlen( conf->contents[i].url );
+                    if( strncmp( conf->contents[i].url, c->url, url_len ) ) continue;       // first part must always match
+                    if( (url_len > 0) && (conf->contents[i].url[url_len-1] == '/') )
                     {
                         // only accept URLs starting with the exact string and strictly longer than it (i.e. thing in the directory but not the directory itself)
                         if( c->url[url_len] == '\0' ) continue;
@@ -720,20 +698,20 @@ static int handle_request( req *c )
                 else
                 {
                     // full match
-                    if( strcmp( conf.contents[i].url, c->url ) != 0 ) continue;
+                    if( strcmp( conf->contents[i].url, c->url ) != 0 ) continue;
                 }
 
                 // invoke appropriate handler
-                if( conf.contents[i].flags & CONT_EMBEDDED )
-                    rc = handle_embedded_file( c, &conf.contents[i] );
-                else if( conf.contents[i].flags & CONT_DISK )
-                    rc = handle_disk_file( c, &conf.contents[i] );
-                else if( conf.contents[i].flags & CONT_DYNAMIC )
-                    if( conf.contents[i].content.dynamic.handler )
-                        rc = conf.contents[i].content.dynamic.handler( c, &conf.contents[i] );
+                if( conf->contents[i].flags & CONT_EMBEDDED )
+                    rc = handle_embedded_file( c, &conf->contents[i] );
+                else if( conf->contents[i].flags & CONT_DISK )
+                    rc = handle_disk_file( c, &conf->contents[i] );
+                else if( conf->contents[i].flags & CONT_DYNAMIC )
+                    if( conf->contents[i].content.dynamic.handler )
+                        rc = conf->contents[i].content.dynamic.handler( c, &conf->contents[i] );
 
                 // done?
-                if( conf.contents[i].flags & CONT_STOP )
+                if( conf->contents[i].flags & CONT_STOP )
                     break;
             }
     }
@@ -1032,7 +1010,7 @@ static int read_request( req *c )
     }
 
     // clean up URL
-    if( conf.flags & CONF_CLEAN_URL )
+    if( conf->flags & CONF_CLEAN_URL )
         clean_url( c->url );
 
     // identify method
@@ -1088,22 +1066,22 @@ static int parse_data( req *c )
         {
             case STATE_NEW:
                 rc = read_request( c );
-                maxlen = conf.max_req_len;
+                maxlen = conf->max_req_len;
                 break;
 
             case STATE_HEAD:
                 rc = read_head( c );
-                maxlen = conf.max_head_len;
+                maxlen = conf->max_head_len;
                 break;
 
             case STATE_BODY:
                 rc = read_body( c );
-                maxlen = conf.max_body_len;
+                maxlen = conf->max_body_len;
                 break;
 
             case STATE_TAIL:
                 rc = read_tail( c );
-                maxlen = conf.max_body_len;
+                maxlen = conf->max_body_len;
                 break;
 
             case STATE_READY:
@@ -1116,12 +1094,12 @@ static int parse_data( req *c )
                 *pcc = '\0';
                 rc = handle_request( c );
                 *pcc = cc;
-                maxlen = conf.max_body_len;
+                maxlen = conf->max_body_len;
                 break;
 
             case STATE_FINISH:
                 rc = finish_request( c );
-                maxlen = conf.max_body_len;
+                maxlen = conf->max_body_len;
                 break;
         }
 
@@ -1139,7 +1117,7 @@ static int parse_data( req *c )
 static int read_from_client( req *c )
 {
     // suspend reading temporarily if the write buffer is too full
-    if( WB_SIZE( c ) > conf.max_wb_len )
+    if( WB_SIZE( c ) > conf->max_wb_len )
         return WRITE_DATA;
 
     // speculatively increase buffer if needed to avoid short reads
@@ -1202,12 +1180,12 @@ static int write_to_client( req *c )
                 if( (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != EINTR) )
                     return CLOSE_SOCKET;
                 else
-                    return WB_SIZE( c ) > conf.max_wb_len ? WRITE_DATA : READ_WRITE_DATA;
+                    return WB_SIZE( c ) > conf->max_wb_len ? WRITE_DATA : READ_WRITE_DATA;
             }
             c->wb->offset += rc;
             c->wb->len -= rc;
             if( c->wb->len > 0 )
-                return WB_SIZE( c ) > conf.max_wb_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
+                return WB_SIZE( c ) > conf->max_wb_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
             if( c->wb->flags & MEM_FREE ) free( c->wb->payload.data );
         }
         else if( c->wb->flags & MEM_FD )
@@ -1221,11 +1199,11 @@ static int write_to_client( req *c )
                 if( (errno != EAGAIN) && (errno != EWOULDBLOCK) && (errno != EINTR) )
                     return CLOSE_SOCKET;
                 else
-                    return WB_SIZE( c ) > conf.max_wb_len ? WRITE_DATA : READ_WRITE_DATA;
+                    return WB_SIZE( c ) > conf->max_wb_len ? WRITE_DATA : READ_WRITE_DATA;
             }
             c->wb->len -= rc;
             if( c->wb->len > 0 )
-                return WB_SIZE( c ) > conf.max_wb_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
+                return WB_SIZE( c ) > conf->max_wb_len ? WRITE_DATA : READ_WRITE_DATA;     // more data left to write, return till socket is ready for more
             if( c->wb->flags & FD_CLOSE ) close( c->wb->payload.fd );
         }
 
@@ -1242,28 +1220,7 @@ static int write_to_client( req *c )
 // set server config to defaults
 void http_server_config_defaults( struct server_config_struct *config )
 {
-    *config = (struct server_config_struct){
-        UNPRIV_USER,
-        CHROOT_DIR,
-        CONF_CLEAN_URL,
-        EXTRA_HEADERS,
-        SERVER_IP,
-        NULL,
-        SERVER_PORT,
-        MAX_REQ_LEN,
-        MAX_HEAD_LEN,
-        MAX_BODY_LEN,
-        MAX_WB_LEN,
-        MAX_CONNECTIONS,
-        MAX_CLIENT_CONN,
-        TIMEOUT,
-#ifdef DEFAULT_CONTENT
-        contents,
-#else
-        NULL,
-#endif
-        mimetypes
-    };
+    *config = default_config;
 }
 
 // update server config from command line
@@ -1339,9 +1296,9 @@ int http_server_main( const struct server_config_struct *config )
 {
     // set up configuration
     if( config )
-        conf = *config;
+        conf = config;
     else
-        http_server_config_defaults( &conf );
+        conf = &defaut_config;
 
     // set up environment
     setenv( "TZ", "GMT", true );
@@ -1369,7 +1326,7 @@ int http_server_main( const struct server_config_struct *config )
     // get and set up server socket
     int serverSocket = -1, serverSocket6 = -1;
 
-    if( conf.ip )
+    if( conf->ip )
     {
         if( !(serverSocket = socket( PF_INET, SOCK_STREAM, 0 )) )
         {
@@ -1382,8 +1339,8 @@ int http_server_main( const struct server_config_struct *config )
         // bind and listen on correct port and IP address
         struct sockaddr_in serverAddr = { 0 };
         serverAddr.sin_family = AF_INET;
-        serverAddr.sin_port = htons( conf.port );
-        inet_pton( AF_INET, conf.ip, &serverAddr.sin_addr.s_addr );
+        serverAddr.sin_port = htons( conf->port );
+        inet_pton( AF_INET, conf->ip, &serverAddr.sin_addr.s_addr );
         if( bind( serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr) ) )
         {
             perror( "bind" );
@@ -1396,7 +1353,7 @@ int http_server_main( const struct server_config_struct *config )
         }
     }
     
-    if( conf.ip6 )
+    if( conf->ip6 )
     {
         if( !(serverSocket6 = socket( PF_INET6, SOCK_STREAM, 0 )) )
         {
@@ -1409,8 +1366,8 @@ int http_server_main( const struct server_config_struct *config )
         // bind and listen on correct port and IP address
         struct sockaddr_in6 serverAddr6 = { 0 };
         serverAddr6.sin6_family = AF_INET6;
-        serverAddr6.sin6_port = htons( conf.port );
-        inet_pton( AF_INET6, conf.ip6, &serverAddr6.sin6_addr.s6_addr );
+        serverAddr6.sin6_port = htons( conf->port );
+        inet_pton( AF_INET6, conf->ip6, &serverAddr6.sin6_addr.s6_addr );
         if( bind( serverSocket6, (struct sockaddr *)&serverAddr6, sizeof(serverAddr6) ) )
         {
             perror( "bind6" );
@@ -1430,13 +1387,13 @@ int http_server_main( const struct server_config_struct *config )
     }
 
     // init stuff we can only do as root
-    if( (geteuid( ) == 0) && (conf.unpriv_user || conf.chroot) )
+    if( (geteuid( ) == 0) && (conf->unpriv_user || conf->chroot) )
     {
         // drop group privileges now while /etc/ still is here before chroot
         const struct passwd *pwd = NULL;
-        if( conf.unpriv_user )
+        if( conf->unpriv_user )
         {
-            pwd = getpwnam( conf.unpriv_user );
+            pwd = getpwnam( conf->unpriv_user );
             if( pwd == NULL )
             {
                 perror( "getpwnam" );
@@ -1452,30 +1409,30 @@ int http_server_main( const struct server_config_struct *config )
                 perror( "initgroups" );
                 exit( EXIT_FAILURE );
             }
-            debug_printf( "===> Dropped priviliges to user %s (I)\n", conf.unpriv_user );
+            debug_printf( "===> Dropped priviliges to user %s (I)\n", conf->unpriv_user );
         }
 
         // if we're root and chroot is requested, perform it (only useful if we also drop priviliges)
-        if( conf.chroot )
+        if( conf->chroot )
         {
-            if( chroot( conf.chroot ) )
+            if( chroot( conf->chroot ) )
             {
                 perror( "chroot" );
                 exit( EXIT_FAILURE );
             }
             chdir( "/" );
-            debug_printf( "===> Chrooted into %s\n", conf.chroot );
+            debug_printf( "===> Chrooted into %s\n", conf->chroot );
         }
 
         // finally drop full privileges now that init is done
-        if( conf.unpriv_user )
+        if( conf->unpriv_user )
         {
             if( setresuid( pwd->pw_uid, pwd->pw_uid, pwd->pw_uid ) )
             {
                 perror( "setresuid" );
                 exit( EXIT_FAILURE );
             }
-            debug_printf( "===> Dropped priviliges to user %s (II)\n", conf.unpriv_user );
+            debug_printf( "===> Dropped priviliges to user %s (II)\n", conf->unpriv_user );
         }
     }
 
@@ -1484,35 +1441,36 @@ int http_server_main( const struct server_config_struct *config )
 #endif
 
     // initialize poll structures
-    req *reqs = malloc( conf.max_connections*sizeof(req) );
+    req *reqs = malloc( conf->max_connections*sizeof(req) );
     if( !reqs )
     {
         perror( "malloc" );
         exit( EXIT_FAILURE );
     }
-    bzero( reqs, conf.max_connections*sizeof(req) );
-    struct pollfd *fds = malloc( (conf.max_connections+2)*sizeof(struct pollfd) );
+    bzero( reqs, conf->max_connections*sizeof(req) );
+    struct pollfd *fds = malloc( (conf->max_connections+2)*sizeof(struct pollfd) );
     if( !fds )
     {
         perror( "malloc" );
         exit( EXIT_FAILURE );
     }
-    bzero( fds, (conf.max_connections+2)*sizeof(struct pollfd) );
-    for( unsigned int i = 0; i < conf.max_connections; i++ )
+    bzero( fds, (conf->max_connections+2)*sizeof(struct pollfd) );
+    for( unsigned int i = 0; i < conf->max_connections; i++ )
         fds[i].fd = -1;
-    fds[conf.max_connections].fd = serverSocket;
-    fds[conf.max_connections].events = POLLIN;
-    fds[conf.max_connections+1].fd = serverSocket6;
-    fds[conf.max_connections+1].events = POLLIN;
+    fds[conf->max_connections].fd = serverSocket;
+    fds[conf->max_connections].events = POLLIN;
+    fds[conf->max_connections+1].fd = serverSocket6;
+    fds[conf->max_connections+1].events = POLLIN;
     struct timespec timeout;
-    timeout.tv_sec = conf.timeout;
+    timeout.tv_sec = conf->timeout;
     timeout.tv_nsec = 0;
 
     // main loop (exited only via signal handler)
+    running = true;
     while( running )
     {
         // wait for input
-        if( ppoll( fds, conf.max_connections+2, &timeout, &sset_enabled ) < 0 )
+        if( ppoll( fds, conf->max_connections+2, &timeout, &sset_enabled ) < 0 )
         {
             if( errno == EINTR ) continue;  // ignore interrupted system calls
             perror( "ppoll" );
@@ -1523,7 +1481,7 @@ int http_server_main( const struct server_config_struct *config )
         const time_t now = time( NULL );
 
         // check server sockets for new connections
-        for( unsigned int i = conf.max_connections; i < conf.max_connections+2; i++ )
+        for( unsigned int i = conf->max_connections; i < conf->max_connections+2; i++ )
         {
             if( fds[i].fd < 0 ) continue;   // skip inactive sockets
             if( fds[i].revents & (POLLRDHUP|POLLHUP|POLLERR|POLLNVAL) )
@@ -1545,11 +1503,11 @@ int http_server_main( const struct server_config_struct *config )
 
                 // find free connection slot and count connections from same host
                 unsigned int j, count = 0;
-                for( j = 0; (j < conf.max_connections) && (fds[j].fd >= 0); j++ );
-                for( unsigned int k = 0; k < conf.max_connections; k++ )
+                for( j = 0; (j < conf->max_connections) && (fds[j].fd >= 0); j++ );
+                for( unsigned int k = 0; k < conf->max_connections; k++ )
                     if( (fds[k].fd >= 0) && MATCH_IP_REQ( &reqs[k], &rip ) ) count++;
                 debug_printf( "===> New connection from %s (%u previous)\n", inet_ntoa( ((struct sockaddr_in*)&rip)->sin_addr ), count );
-                if( (j == conf.max_connections) || (count > conf.max_client_conn) )
+                if( (j == conf->max_connections) || (count > conf->max_client_conn) )
                 {
                     // can't handle any more clients. Client will have to retry later.
                     write( new, "HTTP/1.1 503 Service unavailable\r\nContent-Length: 37\r\n\r\n503 - Service temporarily unavailable", 94 );
@@ -1574,7 +1532,7 @@ int http_server_main( const struct server_config_struct *config )
         }
 
         // process all other client sockets
-        for( unsigned int i = 0; i < conf.max_connections; i++ )
+        for( unsigned int i = 0; i < conf->max_connections; i++ )
         {
             if( fds[i].fd < 0 )
                 continue;   // not an active connection
@@ -1636,7 +1594,7 @@ int http_server_main( const struct server_config_struct *config )
     debug_printf( "===> Exiting\n" );
     if( serverSocket >= 0 ) close( serverSocket );
     if( serverSocket6 >= 0) close( serverSocket6 );
-    for( unsigned int j = 0; j < conf.max_connections; j++ )
+    for( unsigned int j = 0; j < conf->max_connections; j++ )
         if( fds[j].fd >= 0 )
         {
             close( fds[j].fd );

@@ -1,6 +1,6 @@
 // some common MIME types (note: extensions must be backwards for faster matching later!)
+#ifndef TINY
 static const struct mimetype_struct mimetypes[] = {
-#ifdef MORE_MIME_TYPES
     // based on https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Complete_list_of_MIME_types
     { "caa.", "audio/aac"},
     { "iva.", "video/x-msvideo"},
@@ -64,27 +64,69 @@ static const struct mimetype_struct mimetypes[] = {
     { "lmx.", "application/xml"},
     { "piz.", "application/zip"},
     { "z7.", "application/x-7z-compressed"},
-#else
-    // just the types needed for the on-disk version of the internet radio to work
-    { "gnp.", "image/png" },
-    { "lmth.", "text/html" },
-    { "oci.", "image/x-icon" },
-#endif
     { NULL }
+};
+#endif
+
+// mapping between response code and human readable message
+struct response_struct {
+    const unsigned int code;
+    const char *msg;
+};
+
+// some human readable equivalents to HTTP status codes above (must be sorted by code except for last!)
+static const struct response_struct responses[] = {
+    { HTTP_OK,                  "OK" },
+    { HTTP_NOT_MODIFIED,        "Not modified" },
+    { HTTP_REDIRECT,            "Permanent redirect" },
+    { HTTP_BAD_REQUEST,         "Bad request" },
+    { HTTP_FORBIDDEN,           "Forbidden" },
+    { HTTP_NOT_FOUND,           "Not found" },
+    { HTTP_NOT_ALLOWED,         "Method not allowed" },
+    { HTTP_TOO_LARGE,           "Payload too large" },
+    { HTTP_SERVER_ERROR,        "Server error" },
+    { HTTP_NOT_IMPLEMENTED,     "Not implemented" },
+    { HTTP_SERVICE_UNAVAILABLE, "Service unavailable" },
+    { 0 }
 };
 
 // some simple default content
-#ifdef DEFAULT_CONTENT
-
-#ifdef TIMESTAMP
-#define LM_HEADER "ETag: " TIMESTAMP "\r\n"
-#else
-#define LM_HEADER ""
-#endif
+#ifndef TINY
+    #ifdef TIMESTAMP
+    #define LM_HEADER "ETag: " TIMESTAMP "\r\n"
+    #else
+    #define LM_HEADER ""
+    #endif
 
 static const struct content_struct contents[] = {
-    { NULL, "/", CONT_EMBEDDED | CONT_PREFIX_MATCH, { .embedded = { "Content-Type: text/html\r\n" LM_HEADER,
-        "<!doctype html><html><head><title>New website</title></html><body><h1>Welcome</h1><p>This is your new webserver which seems to be set up correctly.</p><body></html>", 156 } } },
-    { NULL }
+    CONTENT_EMBEDDED( NULL, "/", CONT_PREFIX_MATCH, "Content-Type: text/html\r\n" LM_HEADER,
+        "<!doctype html><html><head><title>New website</title></html><body><h1>Welcome</h1><p>This is your new webserver which seems to be set up correctly.</p><body></html>", 156 ),
+    CONTENT_END
 };
 #endif
+
+// default server config
+static const struct server_config_struct default_config = {
+    "www-data",     // unpriv user
+    NULL,           // chroot
+    CONF_CLEAN_URL, // flags
+    "",             // extra headers
+    "0.0.0.0",      // server ip
+    NULL,           // server ip6
+    80,             // server port
+    1024*64,        // max request line length
+    1024*128,       // max header length
+    1024*1024*2,    // max body length
+    1024*1024*10,   // max writebuffer length
+    32,             // max connections
+    3,              // max connections per client
+    60,             // timeout
+#ifdef TINY
+    NULL,           // content
+    NULL            // mime
+#else
+    contents,       // content
+    mimetypes       // mime
+#endif
+};
+

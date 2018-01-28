@@ -123,7 +123,8 @@ struct embedded_content_struct {
 
 // flags for disk content
 enum disk_content_flags_enum {
-    DISK_LIST_DIRS = 1
+    DISK_NONE =         0,
+    DISK_LIST_DIRS =    1
 };
 
 // disk file
@@ -135,13 +136,13 @@ struct disk_content_struct {
 
 // flags for content
 enum content_flags_enum {
-    CONT_NONE = 0,
-    CONT_EMBEDDED = 1,
-    CONT_DISK = 2,
-    CONT_DYNAMIC = 4,
-    CONT_STOP = 8,
+    CONT_NONE =         0,
+    CONT_EMBEDDED =     1,
+    CONT_DISK =         2,
+    CONT_DYNAMIC =      4,
+    CONT_STOP =         8,
     CONT_PREFIX_MATCH = 16,
-    CONT_DIR_MATCH = 32
+    CONT_DIR_MATCH =    32
 };
 
 // content list entry
@@ -170,7 +171,8 @@ struct mimetype_struct {
 
 // flags for configuration
 enum config_flags_enum {
-    CONF_CLEAN_URL = 1
+    CONF_NONE =         0,
+    CONF_CLEAN_URL =    1
 };
 
 // server configuration
