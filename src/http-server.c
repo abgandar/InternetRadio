@@ -424,6 +424,27 @@ int handle_redirect( req *c, const struct content_struct *cs )
         return SUCCESS;
 }
 
+// handle basic authentication. An array of base64 encoded user:pass strings terminated by
+// a single NULL pointer is passed in userdata
+int handle_basic_auth( req *c, const struct content_struct *cs )
+{
+    const char** users = (const char*)cs->content.dynamic.userdata;
+    const char* auth = get_header_field( c, "Authorization:", 0 );
+    bool allow = false;
+
+    if( auth && !strncmp( auth, "Basic ", 6 ) )
+    {
+        auth += 6;
+        for( unsigned int i = 0; !allow && users[i]; i++ )
+            allow = (strcmp( users[i], auth ) == 0);
+    }
+
+    if( !allow )
+        return write_response( c, HTTP_UNAUTHORIZED, "WWW-Authenticate: Basic realm=\"Server\"", "401 - Unauthorized", 0, MEM_KEEP ) == BUFFER_OVERFLOW ? CLOSE_SOCKET : SUCCESS;
+    else
+        return FILE_NOT_FOUND;  // this makes the server fall through to the next content entry, effectively allowing access
+}
+
 // handle a file query for an embedded file
 static int handle_embedded_file( req *c, const struct content_struct *cs )
 {

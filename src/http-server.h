@@ -159,9 +159,11 @@ struct content_struct {
 };
 
 // convenience macros for defining content list entries
-#define CONTENT_DISK(host, url, flags, dir, index, dirflags)     { host, url, CONT_DISK | flags, { .disk = { dir, index, dirflags } } }
-#define CONTENT_DYNAMIC(host, url, flags, handler, userarg)      { host, url, CONT_DYNAMIC | flags, { .dynamic = { handler, userarg } } }
-#define CONTENT_EMBEDDED(host, url, flags, header, data, size)   { host, url, CONT_EMBEDDED | flags, { .embedded = { header, data, size } } }
+#define CONTENT_DISK(host, url, flags, dir, index, dirflags)    { host, url, CONT_DISK | flags, { .disk = { dir, index, dirflags } } }
+#define CONTENT_DYNAMIC(host, url, flags, handler, userarg)     { host, url, CONT_DYNAMIC | flags, { .dynamic = { handler, userarg } } }
+#define CONTENT_EMBEDDED(host, url, flags, header, data, size)  { host, url, CONT_EMBEDDED | flags, { .embedded = { header, data, size } } }
+#define CONTENT_REDIRECT(host, url, flags, target)              { host, url, CONT_DYNAMIC | flags, { .dynamic = { &handle_redirect, target } } }
+#define CONTENT_BASIC_AUTH(host, url, flags, users)             { host, url, CONT_DYNAMIC | flags, { .dynamic = { &handle_basic_auth, users } } }
 #define CONTENT_END { NULL, NULL }
 
 // some common MIME types (note: extensions must be backwards for faster matching later!)
@@ -217,3 +219,7 @@ const char* get_header_field( const req *c, const char* name, unsigned int skip 
 // handle a redirect. Removes as much of the full request URL as matches the content url pattern,
 // then appends the remainder to the string pointed to by userdata
 int handle_redirect( req *c, const struct content_struct *cs );
+
+// handle basic authentication. An array of base64 encoded user:pass strings terminated by
+// a single NULL pointer is passed in userdata
+int handle_basic_auth( req *c, const struct content_struct *cs );
