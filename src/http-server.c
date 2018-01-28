@@ -428,7 +428,7 @@ int handle_redirect( req *c, const struct content_struct *cs )
 // a single NULL pointer is passed in userdata
 int handle_basic_auth( req *c, const struct content_struct *cs )
 {
-    const char** users = (const char*)cs->content.dynamic.userdata;
+    const char** users = (const char**)cs->content.dynamic.userdata;
     const char* auth = get_header_field( c, "Authorization:", 0 );
     bool allow = false;
 
