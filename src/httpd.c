@@ -38,7 +38,7 @@ static const char* users[] = {
 
 // list of content
 static const struct content_struct contents[] = {
-    CONTENT_BASIC_AUTH( NULL, "/secret", CONT_DIR_MATCH, users ),
+    CONTENT_BASIC_AUTH( NULL, "/secret", CONT_DIR_MATCH, "Server Realm", users ),
     CONTENT_DISK( NULL, "/", CONT_PREFIX_MATCH, "/", "index.html", DISK_LIST_DIRS ),
     CONTENT_END
 };
