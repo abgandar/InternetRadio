@@ -262,6 +262,9 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum wbchain_flags_
     if( buflen + len - rc > 2*conf->max_wb_len )
     {
         debug_printf( "===> Output buffer overflow\n" );
+        if( flags )
+            for( unsigned int i = 0; i < niov; i++ )
+                if( flags[i] & MEM_FREE ) free( iov[i].iov_base );
         return BUFFER_OVERFLOW;
     }
 
@@ -272,6 +275,7 @@ int bwrite( req *c, const struct iovec *iov, int niov, const enum wbchain_flags_
         {
             // the full buffer has been written
             rc -= iov[i].iov_len;
+            if( flags && (flags[i] & MEM_FREE) ) free( iov[i].iov_base );
             continue;
         }
         // allocate new buffer
@@ -390,9 +394,9 @@ int write_response( req *c, const unsigned int code, const char* headers, const 
     flags[0] = MEM_FREE;
     iov[0].iov_len = asprintf( (char** restrict) &(iov[0].iov_base),
                                "HTTP/1.%c %u %s\r\n%s%sContent-Length: %u\r\nDate: %s\r\n\r\n",
-                              c->version == V_10 ? '0' : '1', code, get_response( code ),
-                              conf->extra_headers ? conf->extra_headers : "",
-                              headers ? headers : "", bodylen, str );
+                               c->version == V_10 ? '0' : '1', code, get_response( code ),
+                               conf->extra_headers ? conf->extra_headers : "",
+                               headers ? headers : "", bodylen, str );
 
     // first try to write everything right away using a single call. Most often this should succeed and write buffer is not used.
     flags[1] = flag;
