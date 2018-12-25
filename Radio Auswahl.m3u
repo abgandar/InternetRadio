@@ -1,6 +1,6 @@
 #EXTM3U
 #EXTINF:0,Klassik Radio - Hamburg (Deutschland)
-http://klassikradio.hoerradar.de/klassikradio-live-mp3-hq
+https://stream.klassikradio.de/live/mp3-128/7Digital
 #EXTINF:0,SWR1 Baden-Württemberg - Stuttgart (Deutschland)
 http://swr-swr1-bw.cast.addradio.de/swr/swr1/bw/mp3/128/stream.mp3
 #EXTINF:0,SWR1 Rheinland-Pfalz - Stuttgart (Deutschland)
@@ -19,4 +19,3 @@ http://swr-swraktuell-live.cast.addradio.de/swr/swraktuell/live/mp3/128/stream.m
 http://st01.dlf.de/dlf/01/128/mp3/stream.mp3
 #EXTINF:0,BR-Klassik - München (Deutschland)
 http://br-brklassik-live.cast.addradio.de/br/brklassik/live/mp3/128/stream.mp3
-
