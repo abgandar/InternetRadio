@@ -1,21 +1,21 @@
 #EXTM3U
 #EXTINF:0,Klassik Radio - Hamburg (Deutschland)
-https://stream.klassikradio.de/live/mp3-128/7Digital
+https://live.streams.klassikradio.de/klassikradio-deutschland/stream/mp3
 #EXTINF:0,SWR1 Baden-Württemberg - Stuttgart (Deutschland)
-http://swr-swr1-bw.cast.addradio.de/swr/swr1/bw/mp3/128/stream.mp3
+https://liveradio.swr.de/sw331ch/swr1bw/
 #EXTINF:0,SWR1 Rheinland-Pfalz - Stuttgart (Deutschland)
-http://swr-swr1-rp.cast.addradio.de/swr/swr1/rp/mp3/128/stream.mp3
+https://liveradio.swr.de/sw331ch/swr1rp/
 #EXTINF:0,SWR2 - Stuttgart (Deutschland)
-http://swr-swr2-live.cast.addradio.de/swr/swr2/live/mp3/256/stream.mp3
+https://liveradio.swr.de/sw331ch/swr2/
 #EXTINF:0,SWR3 - Stuttgart (Deutschland)
-http://swr-swr3-live.cast.addradio.de/swr/swr3/live/mp3/128/stream.mp3
+https://liveradio.swr.de/sw331ch/swr3/
 #EXTINF:0,SWR4 Baden-Württemberg - Stuttgart (Deutschland)
-http://swr-swr4-bw.cast.addradio.de/swr/swr4/bw/mp3/128/stream.mp3
+https://liveradio.swr.de/sw331ch/swr4bw/
 #EXTINF:0,SWR4 Rheinland-Pfalz - Stuttgart (Deutschland)
-http://swr-swr4-rp.cast.addradio.de/swr/swr4/rp/mp3/128/stream.mp3
+https://liveradio.swr.de/sw331ch/swr4rp/
 #EXTINF:0,SWR info - Stuttgart (Deutschland)
-http://swr-swraktuell-live.cast.addradio.de/swr/swraktuell/live/mp3/128/stream.mp3
+https://liveradio.swr.de/sw331ch/swraktuell/
 #EXTINF:0,Deutschlandfunk - Köln (Deutschland)
 http://st01.dlf.de/dlf/01/128/mp3/stream.mp3
 #EXTINF:0,BR-Klassik - München (Deutschland)
-http://br-brklassik-live.cast.addradio.de/br/brklassik/live/mp3/128/stream.mp3
+https://dispatcher.rndfnk.com/br/brklassik/live/mp3/high

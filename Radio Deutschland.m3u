@@ -72,7 +72,7 @@ http://stream.blackbeats.fm
 #EXTINF:0,BR Heimat - München (Deutschland)
 http://br-mp3-brheimat-m.akacast.akamaistream.net/7/738/326703/v1/gnl.akacast.akamaistream.net/br_mp3_brheimat_m
 #EXTINF:0,BR- Klassik - München (Deutschland)
-http://br-mp3-br-klassik-m.akacast.akamaistream.net/7/120/142693/v1/gnl.akacast.akamaistream.net/br_mp3_br-klassik_m
+https://dispatcher.rndfnk.com/br/brklassik/live/mp3/high
 #EXTINF:0,Bremen Eins - Bremen (Deutschland)
 http://rb-mp3-m-bremeneins.akacast.akamaistream.net/7/716/234436/v1/gnl.akacast.akamaistream.net/rb-mp3-m-bremeneins
 #EXTINF:0,Bremen Next - Bremen (Deutschland)
@@ -337,22 +337,23 @@ http://sr2m.akacast.akamaistream.net/7/375/142686/v1/gnl.akacast.akamaistream.ne
 http://sr3m.akacast.akamaistream.net/7/722/142687/v1/gnl.akacast.akamaistream.net/sr3m
 #EXTINF:0,StadtRadio Goettingen - Göttingen (Deutschland)
 http://stream.stadtradio-goettingen.de:8000/stadtradio.mp3
-#EXTINF:0,SWR DasDing - Stuttgart (Deutschland)
-http://swr-mp3-m-dasding.akacast.akamaistream.net/7/588/137139/v1/gnl.akacast.akamaistream.net/swr-mp3-m-dasding
-#EXTINF:0,SWR info - Stuttgart (Deutschland)
-http://swr-swraktuell-live.cast.addradio.de/swr/swraktuell/live/mp3/128/stream.mp3
+
 #EXTINF:0,SWR1 Baden-Württemberg - Stuttgart (Deutschland)
-http://swr-swr1-bw.cast.addradio.de/swr/swr1/bw/mp3/128/stream.mp3
+https://liveradio.swr.de/sw331ch/swr1bw/
 #EXTINF:0,SWR1 Rheinland-Pfalz - Stuttgart (Deutschland)
-http://swr-swr1-rp.cast.addradio.de/swr/swr1/rp/mp3/128/stream.mp3
+https://liveradio.swr.de/sw331ch/swr1rp/
 #EXTINF:0,SWR2 - Stuttgart (Deutschland)
-http://swr-swr2-live.cast.addradio.de/swr/swr2/live/mp3/256/stream.mp3
+https://liveradio.swr.de/sw331ch/swr2/
 #EXTINF:0,SWR3 - Stuttgart (Deutschland)
-http://swr-swr3-live.cast.addradio.de/swr/swr3/live/mp3/128/stream.mp3
+https://liveradio.swr.de/sw331ch/swr3/
 #EXTINF:0,SWR4 Baden-Württemberg - Stuttgart (Deutschland)
-http://swr-swr4-bw.cast.addradio.de/swr/swr4/bw/mp3/128/stream.mp3
+https://liveradio.swr.de/sw331ch/swr4bw/
 #EXTINF:0,SWR4 Rheinland-Pfalz - Stuttgart (Deutschland)
-http://swr-swr4-rp.cast.addradio.de/swr/swr4/rp/mp3/128/stream.mp3
+https://liveradio.swr.de/sw331ch/swr4rp/
+#EXTINF:0,SWR info - Stuttgart (Deutschland)
+https://liveradio.swr.de/sw331ch/swraktuell/
+#EXTINF:0,SWR DasDing - Stuttgart (Deutschland)
+https://liveradio.swr.de/sw331ch/dasding/
 #EXTINF:0,TranceBase.FM - Mönchengladbach (Deutschland)
 http://mp3.trb-stream.net
 #EXTINF:0,UZIC - Techno Minimal - Lausanne (Schweiz)
