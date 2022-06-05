@@ -244,11 +244,12 @@ int connectMPD( )
     // is there a previous connection?
     if( conn )
     {
-        debug_printf( "===> Trying to connect to MPD\n" );
-        // clear errors if possible, else disconnect
+        // reuse connection if error can be reset
         if( mpd_connection_clear_error( conn ) )
+        {
+            debug_printf( "===> Reusing existing MPD connection\n" );
             return SUCCESS;
-        debug_printf( "     failed\n" );
+        }
         mpd_connection_free( conn );
         conn = NULL;
     }
@@ -611,9 +612,23 @@ int sendPassword( const char *arg )
 {
     if( connectMPD( ) )
         return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
-    if( !mpd_run_password( conn, arg ) )
-        return error( FORBIDDEN, FORBIDDEN_MSG, NULL );
-    return SUCCESS;
+
+    if( mpd_run_password( conn, arg ) )
+        return SUCCESS;
+
+    if( mpd_connection_get_error( conn ) == MPD_ERROR_SYSTEM )
+    {
+        // retry once with fresh connection if system error
+        // to catch "broken pipe" in case cached connection went stale
+        // Only done here as typically password is the first command and connectMPD( ) doesn't check connectivity
+        disconnectMPD( );
+        if( connectMPD( ) )
+            return error( SERVER_ERROR, SERVER_ERROR_MSG, NULL );
+        if( mpd_run_password( conn, arg ) )
+            return SUCCESS;
+    }
+
+    return error( FORBIDDEN, FORBIDDEN_MSG, NULL );
 }
 
 // send some statistics

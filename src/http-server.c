@@ -166,7 +166,7 @@ static const char* get_mime( const char* fn )
     if( conf->mimetypes )
     {
         const unsigned int sl = strlen( fn );
-        const char const* end = (sl ? fn+sl-1 : fn);
+        const char* const end = (sl ? fn+sl-1 : fn);
 
         for( unsigned int i = 0; conf->mimetypes[i].ext; i++ )
         {

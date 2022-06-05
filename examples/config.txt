@@ -1,16 +1,12 @@
 # For more options and information see
-# http://rpf.io/configtxtreadme
+# http://rpf.io/configtxt
 # Some settings may impact device functionality. See link above for details
-
-# Disable HDMI (https://github.com/raspberrypi/firmware/issues/352)
-hdmi_blanking=2
 
 # uncomment if you get no picture on HDMI for a default "safe" mode
 #hdmi_safe=1
 
-# uncomment this if your display has a black border of unused pixels visible
-# and your display can output without overscan
-#disable_overscan=1
+# Disable HDMI (https://github.com/raspberrypi/firmware/issues/352)
+hdmi_blanking=2
 
 # uncomment the following to adjust overscan. Use positive numbers if console
 # goes off screen, and negative if there is too much border
@@ -43,7 +39,7 @@ hdmi_blanking=2
 #sdtv_mode=2
 
 #uncomment to overclock the arm. 700 MHz is the default.
-#arm_freq=1000
+#arm_freq=800
 arm_freq_min=300        # sets min frequency (default: 700)
 core_freq_min=200	# sets min core frequency (default: 250)
 sdram_freq_min=300	# sets min SDRAM frequency (default: 400)
@@ -53,13 +49,41 @@ dtparam=i2c_arm=off
 dtparam=i2s=off
 dtparam=spi=off
 
-# Uncomment this to enable the lirc-rpi module
-#dtoverlay=lirc-rpi
+# Uncomment this to enable infrared communication.
+#dtoverlay=gpio-ir,gpio_pin=17
+#dtoverlay=gpio-ir-tx,gpio_pin=18
 
 # Additional overlays and parameters are documented /boot/overlays/README
 
 # Enable audio (loads snd_bcm2835)
 dtparam=audio=off
+
+# Automatically load overlays for detected cameras
+#camera_auto_detect=1
+
+# Automatically load overlays for detected DSI displays
+#display_auto_detect=1
+
+# Enable DRM VC4 V3D driver
+#dtoverlay=vc4-kms-v3d
+#max_framebuffers=2
+
+# Disable compensation for displays with overscan
+disable_overscan=1
+
+[cm4]
+# Enable host mode on the 2711 built-in XHCI USB controller.
+# This line should be removed if the legacy DWC2 controller is required
+# (e.g. for USB device mode) or if USB support is not required.
+#otg_mode=1
+
+[all]
+
+[pi4]
+# Run as fast as firmware / board allows
+arm_boost=0
+
+[all]
 
 enable_uart=0
 gpu_mem=16
