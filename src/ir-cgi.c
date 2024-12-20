@@ -13,7 +13,7 @@
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA 
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
 /**
@@ -57,21 +57,35 @@ int main( int argc, char *argv[] )
     // get query string from CGI environment and duplicate so it is writeable
     int rc = 0;
     char *arg = NULL;
-    char *env = getenv( "QUERY_STRING" );
+    char *method = getenv( "REQUEST_METHOD" );
 
-    if( env == NULL )
+    if( method == NULL )
     {
         // attempt to use command line argument(s) to simplify use as stand alone tool (similar to mpc)
         if( argc < 2 )
             rc = error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
         else
-            env = argv[1];
+        {
+            arg = strdup( argv[1] );
+            if( arg == NULL )
+                rc = error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
+        }
     }
-
-    if( env )
+    else if( strcmp(method, "POST") == 0 )
     {
-        arg = strdup( env );
-        if( arg == NULL )
+        size_t len = 0;
+        ssize_t l = getline( &arg, &len, stdin);
+        if( l < 0 )
+            rc = error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
+        else if( arg[l] == '\n' )
+            arg[l] = '\0';
+    }
+    else
+    {
+        char *env = getenv( "QUERY_STRING" );
+        if( env )
+            arg = strdup( env );
+        if( arg == NULL || env == NULL )
             rc = error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
     }
 

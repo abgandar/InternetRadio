@@ -65,7 +65,7 @@ install: ir ir.cgi ir.html
 	cp ir.service /etc/systemd/system/
 	cp ir.cgi /usr/lib/cgi-bin/
 	setcap CAP_SYS_BOOT+ep /usr/lib/cgi-bin/ir.cgi
-#	cp ir.html radio.ico radio-0-75x.png radio-1x.png radio-2-6x.png radio-2x.png radio-4x.png radio-5-3x.png /var/www/html
+	cp ir.html radio.ico radio-0-75x.png radio-1x.png radio-2-6x.png radio-2x.png radio-4x.png radio-5-3x.png /var/www/html
 	cp ../*.m3u /var/lib/mpd/playlists/
 	@systemctl stop mpd
 	@rm /var/lib/mpd/state
