@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016-2018 Alexander Wittig <alexander@wittig.name>
+ * Copyright (C) 2016-2024 Alexander Wittig <alexander@wittig.name>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -44,6 +44,35 @@ extern const int FORBIDDEN;
 extern const char* const NOT_FOUND_MSG;
 extern const int NOT_FOUND;
 
+// find and return the query string
+static char* find_cgi_query( int argc, char *argv[] )
+{
+    char *env = getenv( "QUERY_STRING" );
+    char *method = getenv( "REQUEST_METHOD" );
+
+    if( env )
+    {
+        return strdup( env );
+    }
+    else if( strcmp( method, "POST" ) == 0 )
+    {
+        // read a single line from request body
+        size_t len = 0;
+        char* arg = NULL;
+        ssize_t l = getline( &arg, &len, stdin);
+        if( l > 0 && arg[l] == '\n' )
+            arg[l] = '\0';
+        return arg;
+    }
+    else if( argc == 2 )
+    {
+        // attempt to use command line argument to simplify use as stand alone tool (similar to mpc)
+        return strdup( argv[1] );
+    }
+
+    return NULL;
+}
+
 // Main CGI program entry point
 int main( int argc, char *argv[] )
 {
@@ -54,40 +83,10 @@ int main( int argc, char *argv[] )
     if( output_start( &obuf, &obuf_size ) )         // in case of failure, outbuf is automatically set to stdout
         return error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
 
-    // get query string from CGI environment and duplicate so it is writeable
+    // get writeable copy of query string from CGI environment
     int rc = 0;
-    char *arg = NULL;
-    char *method = getenv( "REQUEST_METHOD" );
-
-    if( method == NULL )
-    {
-        // attempt to use command line argument(s) to simplify use as stand alone tool (similar to mpc)
-        if( argc < 2 )
-            rc = error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
-        else
-        {
-            arg = strdup( argv[1] );
-            if( arg == NULL )
-                rc = error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
-        }
-    }
-    else if( strcmp(method, "POST") == 0 )
-    {
-        size_t len = 0;
-        ssize_t l = getline( &arg, &len, stdin);
-        if( l < 0 )
-            rc = error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
-        else if( arg[l] == '\n' )
-            arg[l] = '\0';
-    }
-    else
-    {
-        char *env = getenv( "QUERY_STRING" );
-        if( env )
-            arg = strdup( env );
-        if( arg == NULL || env == NULL )
-            rc = error( SERVER_ERROR, SERVER_ERROR_MSG, "Request failed" );
-    }
+    char *arg = find_cgi_query( argc, argv );
+    if( !arg ) rc = error( BAD_REQUEST, BAD_REQUEST_MSG, "Request incomplete" );
 
     // handle query
     if( !rc ) rc = handleQuery( arg );
