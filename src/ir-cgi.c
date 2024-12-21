@@ -50,11 +50,7 @@ static char* find_cgi_query( int argc, char *argv[] )
     char *env = getenv( "QUERY_STRING" );
     char *method = getenv( "REQUEST_METHOD" );
 
-    if( env )
-    {
-        return strdup( env );
-    }
-    else if( method && strcmp( method, "POST" ) == 0 )
+    if( method && strcmp( method, "POST" ) == 0 )
     {
         // read a single line from request body
         size_t len = 0;
@@ -64,6 +60,10 @@ static char* find_cgi_query( int argc, char *argv[] )
         if( l > 0 && arg[l-1] == '\n' )
             arg[l-1] = '\0';
         return arg;
+    }
+    else if( env )
+    {
+        return strdup( env );
     }
     else if( argc == 2 )
     {
