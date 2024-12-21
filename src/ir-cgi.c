@@ -54,14 +54,15 @@ static char* find_cgi_query( int argc, char *argv[] )
     {
         return strdup( env );
     }
-    else if( strcmp( method, "POST" ) == 0 )
+    else if( method && strcmp( method, "POST" ) == 0 )
     {
         // read a single line from request body
         size_t len = 0;
         char* arg = NULL;
         ssize_t l = getline( &arg, &len, stdin);
-        if( l > 0 && arg[l] == '\n' )
-            arg[l] = '\0';
+        if( l < 0 ) return NULL;
+        if( l > 0 && arg[l-1] == '\n' )
+            arg[l-1] = '\0';
         return arg;
     }
     else if( argc == 2 )
