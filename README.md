@@ -24,7 +24,7 @@ After this, you also need to configure MPD to work with your particular system (
 cp examples/mpd.conf /etc
 ```
 Things you may want to change:
-* audio_output: this is the sound card (via alsa). You may need to tweak the device string ("plughw:CARD=S3,DEV=0") based on your system.
+* audio_output: this is the sound card (via ALSA). You may need to tweak the device string ("plughw:CARD=S3,DEV=0") based on your system. Try `aplay -l` to list known ALSA devices.
 * password: this is not really a safety feature as it is sent in plain text on the wire and in the HTML page. If you change it, you must also change it in `ir.html`.
 
 ### CGI script with LigHTTPd
