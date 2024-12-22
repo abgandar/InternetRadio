@@ -3,26 +3,18 @@ Raspberry Pi based internet radio player. Combining a cheap Raspberry (e.g. RPi 
 
 This module relies on the [MusicPD](https://www.musicpd.org/) daemon and related libraries.
 
-Newer versions of Debian have useable versions of mpd. Unfortunately the libmpdclient2 package is missing the headers required to compile the program, so this (small) library needs to be buit and installed from source.
+Newer versions of Debian (bullseye upward) have mostly useable versions of mpd.
 
 ## Installation
 There are two ways to run InternetRadio: as a standalone HTTP server or as a CGI script from another server.
 
 ### Build and install (common for both)
 ```
-sudo apt-get install mpc git meson
+sudo apt-get install mpd libmpdclient-dev git
 git clone "https://github.com/abgandar/InternetRadio.git"
-cd InternetRadio
-
-# build & install libmpdclient
-tar -xf libmpdclient-2.22
-cd libmpdclient-2.22
-meson setup output
-ninja -C output
-sudo ninja -C output install
 
 # build and install InternetRadio
-cd ../src
+cd InternetRadio/src
 make
 sudo make install
 ```
@@ -32,8 +24,8 @@ After this, you also need to configure MPD to work with your particular system (
 cp examples/mpd.conf /etc
 ```
 Things you may want to change:
-* audio_output: this is the sound card (via alsa), you may need to tweak the device string ("plughw:CARD=S3,DEV=0") based on your system
-* password setting: this is not really secure as it is also be sent in plain text in the HTML source. If you change it, you must also change it in `ir.html`
+* audio_output: this is the sound card (via alsa). You may need to tweak the device string ("plughw:CARD=S3,DEV=0") based on your system.
+* password: this is not really a safety feature as it is sent in plain text on the wire and in the HTML page. If you change it, you must also change it in `ir.html`.
 
 ### CGI script with LigHTTPd
 ```
@@ -66,3 +58,6 @@ To protect your system a little from unwanted network traffic you can set up IPT
 apt-get install iptables-persistent
 cp examples/rules.v4 /etc/iptables
 ```
+
+### Power saving configuration
+Streaming music is not terribly taxing even for small systems (eg RPi Zero). To save power, you can use some of the settings from `examples/config.txt` to reduce the frequencies of the RPi and to disable HDMI output. Place those in `/boot/config.txt`. You can also set the CPU governor to power saving mode at startup by copying `examples/rc.local` to `/etc/rc.local`.
