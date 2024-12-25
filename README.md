@@ -1,9 +1,11 @@
 # InternetRadio
 Raspberry Pi based internet radio player. Combining a cheap Raspberry (e.g. RPi Zero) with a USB soundcard (and WiFi dongle) allows you to hook it up to the AUX input of an old stereo system to enable it to play internet radio stations as well as your digital music library if you upload it to the RPi.
 
-This module relies on the [MusicPD](https://www.musicpd.org/) daemon and related libraries.
+![Desktop screenshot](https://github.com/abgandar/InternetRadio/blob/master/doc/desktop.png?raw=true)
+![Mobile screenshot](https://github.com/abgandar/InternetRadio/blob/master/doc/mobile.png?raw=true)
 
-Newer versions of Debian (bullseye upward) have mostly useable versions of mpd.
+This module relies on the [MusicPD](https://www.musicpd.org/) daemon and related libraries.
+Fortunately, newer versions of Debian (bullseye upward) have mostly useable versions of mpd.
 
 ## Installation
 There are two ways to run InternetRadio: as a standalone HTTP server or as a CGI script from another server.
