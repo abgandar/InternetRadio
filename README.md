@@ -1,11 +1,14 @@
 # InternetRadio
 Raspberry Pi based internet radio player. Combining a cheap Raspberry (e.g. RPi Zero) with a USB soundcard (and WiFi dongle) allows you to hook it up to the AUX input of an old stereo system to enable it to play internet radio stations as well as your digital music library if you upload it to the RPi.
 
-![Desktop screenshot](https://github.com/abgandar/InternetRadio/blob/master/doc/desktop.png?raw=true)
-![Mobile screenshot](https://github.com/abgandar/InternetRadio/blob/master/doc/mobile.png?raw=true)
+The UI is a simple to use web interface for both desktop and mobile browsers. It can either run on a simple local built-in HTTP server, or as a CGI script in a separate HTTP server.
 
 This module relies on the [MusicPD](https://www.musicpd.org/) daemon and related libraries.
 Fortunately, newer versions of Debian (bullseye upward) have mostly useable versions of mpd.
+
+## Screenshots
+![Desktop screenshot](https://github.com/abgandar/InternetRadio/blob/master/doc/desktop.png?raw=true)
+![Mobile screenshot](https://github.com/abgandar/InternetRadio/blob/master/doc/mobile.png?raw=true)
 
 ## Installation
 There are two ways to run InternetRadio: as a standalone HTTP server or as a CGI script from another server.
@@ -36,13 +39,20 @@ lighttpd-enable-mod 10-cgi.conf
 cp examples/lighttpd.conf /etc/lighttpd
 service enable lighttpd
 ```
-If you have other services in LigHTTPd you need to merge the relevant lines in the config file in `examples/lighttpd.conf`.
+
+If you have other services in LigHTTPd you may need to merge the relevant lines in the config file in `examples/lighttpd.conf`:
+```
+index-file.names            = ( "ir.html" )
+static-file.exclude-extensions = ( ".cgi" )
+server.breakagelog          = "/var/log/lighttpd/breakage.log"
+```
+These server the `ir.html` file as the index by default; prevent the `ir.cgi` executable file from being served as a static file; and record any error output from `ir.cgi` in `/var/log/lighttpd/breakage.log`.
 
 ### Standalone server
 ```
 service enable ir
 ```
-The executable is called `ir` (installed in `/usr/local/bin`), and a simple service script is provided so it should integrate with systemd.
+The executable is called `ir` (installed in `/usr/local/bin`), and a simple service script is provided so it should integrate with systemd as a system service.
 
 ## Optional
 
