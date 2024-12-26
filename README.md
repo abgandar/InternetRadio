@@ -10,6 +10,42 @@ Fortunately, newer versions of Debian (bullseye upward) have mostly useable vers
 ![Desktop screenshot](https://github.com/abgandar/InternetRadio/blob/master/doc/desktop.png?raw=true)
 ![Mobile screenshot](https://github.com/abgandar/InternetRadio/blob/master/doc/mobile.png?raw=true)
 
+## Hardware
+Required hardware:
+* Raspberry Pi Zero (optionally: W, 2)
+* USB 5V Power supply (plug type)
+* USB Soundcard
+* micro-SD card (any size above ~5GB)
+* USB Hub (if no built-in Wifi)
+* USB Wifi dongle (if no built-in Wifi)
+
+```
+  ┌──────────────────────────────────────────────┐
+  │                                              │
+  │                                  ┌─────────┐ │
+  │     Raspberry Pi Zero            │         │ │
+  │                                  │ microSD │ │
+  │                                  │         │ │
+  │                                  └─────────┘ │
+  │      USB        Power                        │
+  └───────┬──────────────────────────────────────┘
+          │           ▲
+       ┌─────┐        │
+       │ HUB │  USB Power Supply
+       └─────┘
+        │   │
+        │   │
+        │   └───────────► USB Sound Card (eg Creative Sound Blaster Play! 3)
+        │                       │
+        │                       └─► Audio out / AUX in (3.5" headphone jack)
+        │
+        └───────────────► USB WiFi Dongle (eg DLink DWA 131) [if not RPi W]
+```
+
+Prepare micro-SD card using [Raspberry Pi Imager](https://www.raspberrypi.com/software/) with Raspberry Pi OS (tested with
+Bullseye but should work with later versions as well). You can use the Lite flavor and set it up directly for headless
+operation if you can make it work. Installation is possible purely remotely using the command line via SSH.
+
 ## Installation
 There are two ways to run InternetRadio: as a standalone HTTP server or as a CGI script from another server.
 
