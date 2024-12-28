@@ -7,10 +7,12 @@ LDLIBS += -lmpdclient
 CPPFLAGS += -Wall -O3 -s -ffunction-sections -fdata-sections -Wl,--gc-sections -DTIMESTAMP='"\"$(TIMESTAMP)\""'
 #CPPFLAGS += -Wall -O1 -DTIMESTAMP='"\"$(TIMESTAMP)\""' -g
 
+LDBINFLAGS += -z noexecstack -z relro -r -b binary
+
 ifdef EASTEREGG
 EASTEROBJ = easteregg-png.o
 else
-EASTEROBJ = 
+EASTEROBJ =
 endif
 
 all: ir.cgi ir ir.html
@@ -19,31 +21,31 @@ ir.cgi: ir-cgi.o ir-common.o
 	$(CC) -o $@ $^ $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
 
 radio-ico.o: radio.ico
-	ld -r -b binary $^ -o $@
+	$(LD) $(LDBINFLAGS) $^ -o $@
 
 radio-0-75x-png.o: radio-0-75x.png
-	ld -r -b binary $^ -o $@
+	$(LD) $(LDBINFLAGS) $^ -o $@
 
 radio-1x-png.o: radio-1x.png
-	ld -r -b binary $^ -o $@
+	$(LD) $(LDBINFLAGS) $^ -o $@
 
 radio-2-6x-png.o: radio-2-6x.png
-	ld -r -b binary $^ -o $@
+	$(LD) $(LDBINFLAGS) $^ -o $@
 
 radio-2x-png.o: radio-2x.png
-	ld -r -b binary $^ -o $@
+	$(LD) $(LDBINFLAGS) $^ -o $@
 
 radio-4x-png.o: radio-4x.png
-	ld -r -b binary $^ -o $@
+	$(LD) $(LDBINFLAGS) $^ -o $@
 
 radio-5-3x-png.o: radio-5-3x.png
-	ld -r -b binary $^ -o $@
+	$(LD) $(LDBINFLAGS) $^ -o $@
 
 easteregg-png.o: easteregg.png
-	ld -r -b binary $^ -o $@
+	$(LD) $(LDBINFLAGS) $^ -o $@
 
 ir-html.o: ir.html
-	ld -r -b binary $^ -o $@
+	$(LD) $(LDBINFLAGS) $^ -o $@
 
 ir: ir-html.o radio-ico.o radio-0-75x-png.o radio-1x-png.o radio-2x-png.o radio-2-6x-png.o radio-2x-png.o radio-4x-png.o radio-5-3x-png.o $(EASTEROBJ) ir-common.o ir.o http-server.a
 	$(CC) -o $@ $^ $(CPPFLAGS) $(LDFLAGS) $(LDLIBS)
