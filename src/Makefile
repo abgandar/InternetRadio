@@ -7,7 +7,7 @@ LDLIBS += -lmpdclient
 CPPFLAGS += -Wall -O3 -s -ffunction-sections -fdata-sections -Wl,--gc-sections -DTIMESTAMP='"\"$(TIMESTAMP)\""'
 #CPPFLAGS += -Wall -O1 -DTIMESTAMP='"\"$(TIMESTAMP)\""' -g
 
-LDBINFLAGS += -z noexecstack -z relro -r -b binary
+LDBINFLAGS += -z noexecstack -r -b binary
 
 ifdef EASTEREGG
 EASTEROBJ = easteregg-png.o
